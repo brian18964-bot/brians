@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v30 — 修正圓角方頭配件可見度 + 配件邊緣柔化</title>
+<title>剪影走路/跑步循環 v31 — 全原型配件可見度審查 + 情緒符號比例縮放修正</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v30</div>
-    <h1>修正圓角方頭配件可見度 + 配件邊緣柔化</h1>
-    <p class="sub">修正兩個上一輪(雙元件對稱掛載點機制)交叉到新原型類型後才浮現的問題。<b>問題一</b>:圓角方形頭系列(方塊頭、方塊長型、方胖模糊型、方瘦長模糊型)的貓耳幾乎被頭部蓋住——根因是圓形頭的輪廓會隨水平偏移往下彎,同一組根部比例(baseRatio=0.6)套在方形頭「平頂」上就整個不成立。新增「可見度百分比」量化指標(耳尖淨空高度 / 耳朵自身高度,而非只看餘裕是否為正),量出圓形頭固定 56.3%、圓角方形頭在同一比例下只有 38.5%,且跟個別原型的 headR 無關、純粹是形狀決定。平頂情況下可見度化簡成简单封閉式 1-(1-baseRatio)/earHeightRatio,解出 baseRatio=0.716 可讓圓角方形頭系列全部回到 56.3%,同時包覆餘裕仍健康(1.70–2.27px)。<code>drawCatEarsAccessory</code> 依 <code>HEAD_SHAPE</code> 切換根部比例,未來雙元件對稱衍生配件可直接沿用同一個判斷。<b>問題二</b>:模糊型原型戴上配件後,身體模糊、配件卻完全銳利,兩者視覺脫節——根因是配件系統的繪製時機在呼叫端(stepFsm)、且在離屏模糊合成之後才畫,原始設計沒有考慮到模糊型原型這個交叉情境。採用「配件保持相對銳利,但加一層獨立的輕量邊緣柔化」的方案:新增 <code>drawAccessoriesMaybeSoftened</code>,沿用跟身體模糊同一套離屏緩衝技術,但柔化半徑遠小於身體本身(<code>ACCESSORY_BLUR_RADIUS = BLUR_RADIUS / 3</code>)。第一版用固定 1px 全域套用,截圖比對才發現對方瘦長模糊型(細窄形狀)柔化過頭、耳朵幾乎消失——比照身體模糊半徑早先「粗胖 3px / 細瘦 1.5px」的分級教訓,改成依各原型自己的 BLUR_RADIUS 等比例縮放才解決,不是單一固定值。眼睛與情緒符號完全排除在這層柔化之外,維持銳利。17 種原型 × 21 種姿勢,四個配件同時開啟,zero console 錯誤;修正前後截圖比對確認可見度與柔化效果皆符合預期。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v31</div>
+    <h1>全原型配件可見度審查 + 情緒符號比例縮放修正</h1>
+    <p class="sub">上一輪(v30)针對圓角方形頭系列做了「可見度百分比」parity 修正(圓角方形頭從 38.5% 拉回跟圓形頭一樣的 56.3%),但回報顯示配件在實際使用中仍讀起來像被蓋住。重新審查後發現問題不在 parity 本身失敗,而在 parity 目標訂得太保守:56.3% 在連續數學上是「有露出」,但三角形尖端從幾乎貼齊的邊界擠出來,天生只會露出極薄一截(triangle-vs-flat-boundary 的幾何特性,不是誤差)——圓形頭其實也一樣薄,只是先前只跟圓角方形頭比較、沒注意到圓形頭自己的基準也不夠清楚。這輪針對全部 17 種原型(不只圓角方形頭系列)重新解值,目標從「兩種頭型打平」改成「兩種頭型都拉到明確可辨識」:<code>EAR_HEIGHT_RATIO</code> 從 0.65 提高到 0.85(耳朵整體拉高,而非只調根部比例),圓形頭 <code>EAR_BASE_RATIO</code> 重新解到 0.647、圓角方形頭 <code>EAR_BASE_RATIO_SQUARE</code> 解到 0.745,兩者皆命中 70% 可見度。用最小 headR 的兩種頭型(petite 圓形 R=5.5、longBox 方形 R=6)驗證包覆餘裕仍為正(0.83px / 1.53px)、耳尖淨空幾乎翻倍(3.27px / 3.57px,對比上一輪的 ~2px)。8 個代表性原型(兩種頭型 × 最小/最大 headR)的修正前後截圖確認肉眼清楚可辨,不只是數字達標。<br><br>審查過程中也發現一個獨立、範圍更廣的既有 bug:情緒符號跟頭部的間距(<code>symbolGap</code>)幾乎沒有依 headR 縮放——側視 overlay 的 9 種符號裡只有「開心」有做 headR 比例縮放,其餘 8 種都是寫死的絕對像素值;正面表情群組的 8 種符號則完全沒有任何縮放,即使程式碼註解本身宣稱「有依 headR 縮放」。這代表 headR 較大的原型(大頭娃娃、大頭模糊型、圓潤模糊型等)符號間距早該按比例放大卻沒有,越大頭的原型符號跟頭部/配件擠壓的風險越高。已修正為 <code>OVERLAY_SYMBOL_GAP_BASE</code>(9 種側視符號)與 <code>symbolDescriptorFromExtra</code>(8 種正面符號)兩處都統一乘上 <code>headR/7.5</code>。同時把 <code>drawMountSymbol</code> 的間距公式從「只認帽子」的 <code>Math.max(symbol.gap, 帽子高度...)</code>,通用化成 <code>headAccessoryClearance()</code>——貓耳也納入計算,任何頭部配件現在都能自動撐開符號間距,不需要每加一種配件就手動改一行。全部 17 種原型 × 21 種姿勢,四個配件同時開啟,zero console 錯誤;另外針對 headR 最大的 4 個原型(大頭娃娃/大頭模糊型/圓潤模糊型/矮胖圓滾滾)專門截圖驗證符號與貓耳同時開啟時仍保持清楚分離、無重疊。</p>
   </header>
 
   <div class="compare">
@@ -1112,11 +1112,20 @@
     happy: 'happy', confused: 'confused', surprised: 'surprised', dozing: 'dozing', angry: 'angry', dejectedLite: 'dejected',
     irritated: 'irritated', dizzy: 'dizzy', scared: 'scared'
   };
-  // per-symbol clearance above the head -- the music note in particular
-  // was sitting close enough to read as merged with the head silhouette;
-  // everything else keeps the original tighter default. Scaled by headR
-  // per archetype (see buildArchetype) since a bigger head needs more
-  // absolute clearance for the same "clearly separated" read.
+  // per-symbol clearance above the head, at the headR=7.5 (longlimb)
+  // reference scale -- the music note ('happy') in particular was sitting
+  // close enough to read as merged with the head silhouette, so it got
+  // bumped to 10 while everything else kept the original tighter default
+  // of 5. buildArchetype scales EVERY entry by (p.headR/7.5), not just
+  // happy's -- found and fixed as a real gap while auditing accessory/
+  // symbol overlap across all 17 archetypes: only happy was ever actually
+  // multiplied by headR (the other 8 fell through the `|| 5` fallback in
+  // overlaySymbolDescriptor as a flat, unscaled 5px), even though this
+  // comment already claimed all of them were scaled "since a bigger head
+  // needs more absolute clearance." On the largest-headR archetypes
+  // (bighead 11, bigHeadBlur 12, blob 9) an unscaled 5px is proportionally
+  // tight enough to risk merging with the head or a tall accessory.
+  const OVERLAY_SYMBOL_GAP_BASE = { happy: 10, confused: 5, surprised: 5, dozing: 5, angry: 5, dejectedLite: 5, irritated: 5, dizzy: 5, scared: 5 };
   let OVERLAY_SYMBOL_GAP;
   const OVERLAY_SIDE_STATES = { walk: true, run: true, idleStop: true };
 
@@ -1527,13 +1536,21 @@
   // the returned mounts object instead of drawTurnPivotMove drawing the
   // symbol itself. Returns null when `extra` has no symbol (wave/bow/nod,
   // or plain turn/cheer calls that never had `extra` set at all).
+  //
+  // extra.symbolGap (9-15, set inline at each pose's call site) is tuned at
+  // the headR=7.5 reference scale, same as OVERLAY_SYMBOL_GAP_BASE -- scaled
+  // here by (WALK_CFG.headR/7.5) so it stays proportionally correct on
+  // every archetype instead of a flat absolute pixel value. Same headR-
+  // scaling gap found and fixed for the side-overlay symbols (see
+  // OVERLAY_SYMBOL_GAP_BASE's comment); this front-group path had never
+  // been scaled at all, not even partially.
   function symbolDescriptorFromExtra(extra){
     if (!extra || !extra.symbol) return null;
     return {
       kind: extra.symbol,
       scale: extra.symbolScale || 1,
       alpha: extra.symbolAlpha !== undefined ? extra.symbolAlpha : 1,
-      gap: extra.symbolGap || 8,
+      gap: (extra.symbolGap || 8) * (WALK_CFG.headR / 7.5),
       rotation: extra.symbolSpin || 0,
       dx: 0, bob: 0
     };
@@ -1991,7 +2008,8 @@
     CHEER_ARM_DEG = p.cheerArmDeg;
     SURPRISED_FLUNG_DEG = p.surprisedFlungDeg;
     SCARED_GUARD_DEG = p.scaredGuardDeg;
-    OVERLAY_SYMBOL_GAP = { happy: 10 * (p.headR / 7.5) };
+    OVERLAY_SYMBOL_GAP = {};
+    for (const k in OVERLAY_SYMBOL_GAP_BASE) OVERLAY_SYMBOL_GAP[k] = OVERLAY_SYMBOL_GAP_BASE[k] * (p.headR / 7.5);
     HAT_HEIGHT = R.hatHeight * p.headR;
     HAT_BASE_W = R.hatBaseW * p.headR;
     HAT_SYMBOL_MARGIN = R.hatSymbolMargin * p.headR;
@@ -2615,20 +2633,45 @@
   // curved like a circle's), so the same baseRatio that reads as clearly
   // visible on a circle head leaves a rounded-square head's ears mostly
   // buried -- verify_ear_shape_fix.js quantifies this as a "visibility %"
-  // (apex clearance / ear height, not just a positive margin): circle heads
-  // hit 56.3% with baseRatio=0.6, but rounded-square heads only hit 38.5%
-  // with the SAME ratio (confirmed shape-driven, not archetype-driven --
-  // identical 38.5% on all 4 rounded-square archetypes regardless of
-  // headR). Root cause: on the flat top, visibility reduces to a clean
-  // closed form, 1 - (1-baseRatio)/earHeightRatio, so raising baseRatio
-  // alone (root planted closer to the flat edge) restores parity without
-  // touching ear height/width at all. Solved for baseRatio=0.716, which
-  // lands rounded-square heads at exactly 56.3% too (matches circle) while
-  // keeping insideMargin comfortably positive (1.70-2.27px across the 4
-  // archetypes, same order as circle heads' 1.02-2.23px) -- see
-  // verify_ear_shape_fix.js's baseRatio sweep and per-archetype check.
-  const EAR_BASE_RATIO = 0.6, EAR_BASE_RATIO_SQUARE = 0.716, EAR_HALF_W_RATIO = 0.55;
-  const EAR_HEIGHT_RATIO = 0.65, EAR_BASE_W_RATIO = 0.6;
+  // (apex clearance / ear height, not just a positive margin). On the flat
+  // top this reduces to a clean closed form, visibility = 1 -
+  // (1-baseRatio)/earHeightRatio, identical for every archetype sharing a
+  // head shape regardless of its own headR.
+  //
+  // v1 (baseRatio 0.6 circle / 0.716 square) chased exact PARITY between
+  // the two shapes at whatever visibility circle heads already had
+  // (56.3%) and shipped on that basis. Re-screenshotting it at the demo's
+  // actual small icon scale (not just the continuous-math check) showed
+  // the flaw in that target: 56.3% clears the boundary in principle, but a
+  // triangle apex emerging from a nearly-flat cut only exposes a genuinely
+  // thin sliver near the tip (a geometric property of triangle-vs-line
+  // clipping, not a rounding bug), so even circle heads read as barely
+  // poking through, not "clearly a pair of ears" -- petite/longBox in
+  // particular. v2 instead re-solves BOTH shapes for a 70% target (verified
+  // by rendering, not assumed from the formula): EAR_HEIGHT_RATIO raised
+  // 0.65->0.85 (taller ears give more material to expose in absolute px,
+  // not just percentage) with baseRatio re-solved per shape to hit 70% at
+  // that height. Checked on the smallest headR in each shape category
+  // (petite R=5.5 circle, longBox R=6 square) since those are the tightest
+  // absolute-pixel cases: insideMargin stays positive (0.83px / 1.53px) and
+  // clearance roughly doubles versus v1 (3.27px / 3.57px vs v1's ~2px on
+  // both). Screenshot comparison across 7 archetypes (both shapes, smallest
+  // and largest headR of each) confirmed unambiguous ear silhouettes, not
+  // just an improved number -- see verify_ear_shape_fix.js / audit_all.js.
+  const EAR_BASE_RATIO = 0.647, EAR_BASE_RATIO_SQUARE = 0.745, EAR_HALF_W_RATIO = 0.55;
+  const EAR_HEIGHT_RATIO = 0.85, EAR_BASE_W_RATIO = 0.6;
+  // How far past headTop's own OUT-axis position the ear's apex reaches --
+  // used by drawMountSymbol (below) so the emotion symbol's gap can react
+  // to whichever head accessory is actually active, cat-ears included, not
+  // just the hat. This is the SAME closed form for both head shapes (circle
+  // and rounded-square): the apex's coordinate along the OUT axis only
+  // depends on baseRatio/earHeight, never on which boundary shape it has to
+  // clear -- the shape only decides visibility (whether the apex pokes
+  // past the silhouette), not this raw position.
+  function earApexBeyondHeadTop(headR){
+    const baseRatio = HEAD_SHAPE === 'roundedSquare' ? EAR_BASE_RATIO_SQUARE : EAR_BASE_RATIO;
+    return EAR_HEIGHT_RATIO * headR - (1 - baseRatio) * headR;
+  }
   function drawEarTriangle(ctx, mount, height, baseW){
     if (!mount) return;
     const out = mountOutward(mount);
@@ -2702,18 +2745,34 @@
   // side-overlay layer, symbolDescriptorFromExtra for the front action
   // group) rather than inline inside a pose function -- this is what fixes
   // the "hat covers the symbol" report: it draws AFTER every mount-based
-  // accessory (see the call order in stepFsm below, hat before this), and
-  // its distance from the head is Math.max(the symbol's own tuned gap,
-  // HAT_HEIGHT + HAT_SYMBOL_MARGIN if a hat is currently equipped) -- with
-  // no hat, this is exactly the old tuned gap, unchanged; with a hat, the
-  // symbol gets pushed above the hat's actual (per-archetype-scaled) apex
-  // instead of a value hard-coded for one specific accessory's height. Any
-  // future head accessory just needs its own `Math.max(..., itsHeight +
-  // margin)` term added to this one line -- nothing here or in the symbol
-  // descriptors themselves needs to change.
+  // accessory (see the call order in stepFsm below), and its distance from
+  // the head is Math.max(the symbol's own tuned gap, whichever active head
+  // accessory currently reaches furthest past headTop) -- with no head
+  // accessory equipped, this is exactly the old tuned gap, unchanged.
+  //
+  // headAccessoryClearance() covers hat and cat-ears today. Cat-ears was a
+  // real gap (no pun intended) in the previous round -- the hat term was
+  // added when the "hat covers the symbol" bug was fixed, but cat-ears
+  // shipped afterward without ever getting its own term here, so a tall-
+  // eared + symbol combo on a big-headR archetype (bighead/bigHeadBlur)
+  // could in principle sit closer than intended. HAT_SYMBOL_MARGIN is
+  // reused as a generic buffer (it's just "clearance past whichever
+  // accessory," already headR-scaled, not conceptually hat-specific) rather
+  // than adding a second identical constant. The next dual-symmetric-anchor
+  // accessory (bunny/bear ears, antlers, horns, antenna) reuses
+  // earApexBeyondHeadTop unchanged if it's also ear-triangle-shaped, or
+  // else needs its own `Math.max(..., itsOwnApexHeight + HAT_SYMBOL_MARGIN)`
+  // term added here -- same pattern, nothing else in the symbol pipeline
+  // needs to change.
+  function headAccessoryClearance(headR){
+    let h = 0;
+    if (ACCESSORY_HAT) h = Math.max(h, HAT_HEIGHT + HAT_SYMBOL_MARGIN);
+    if (ACCESSORY_CAT_EARS) h = Math.max(h, earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
+    return h;
+  }
   function drawMountSymbol(ctx, mounts, symbol){
     if (!symbol || !mounts || !mounts.headTop) return;
-    const gap = Math.max(symbol.gap, ACCESSORY_HAT ? HAT_HEIGHT + HAT_SYMBOL_MARGIN : 0);
+    const gap = Math.max(symbol.gap, headAccessoryClearance(WALK_CFG.headR));
     const out = mountOutward(mounts.headTop);
     const x = mounts.headTop.x + out.x * gap + (symbol.dx || 0);
     const y = mounts.headTop.y + out.y * gap + (symbol.bob || 0);
