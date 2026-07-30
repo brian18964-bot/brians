@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v25 — 新增圓潤模糊型(邊緣柔化原型)</title>
+<title>剪影走路/跑步循環 v26 — 新增全橢圓型 + 全圓形型</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v25</div>
-    <h1>新增圓潤模糊型(邊緣柔化原型)</h1>
-    <p class="sub">絨毛質感評估的後續:噴槍毛邊質感需要點陣紋理+全新不定形形狀語言,判定不值得投入;純粹的邊緣柔化(模糊)則保留現有橢圓/膠囊形狀語言,技術上可行且風險低,但不做成套用在全部原型的通用開關(跟原型比例是兩件獨立的事,套用範圍太廣不好掌控),改成只烘進 1 個新原型「圓潤模糊型」——其他 10 個原型的渲染路徑完全不受影響。做法:整隻角色先畫到一張離屏 canvas 合成成完整不透明剪影,再對這張離屏 canvas 整體套一次 <code>ctx.filter='blur(3px)'</code> 畫回主畫布(component R,<code>drawCharacterMaybeBlurred</code>)——只模糊最終合成後的輪廓,不會有個別形狀重疊處的雙重模糊接縫。這個新原型的比例是重新設計的(不是沿用既有原型的骨架比例):軀幹 torsoRX/torsoRY 接近 1:1(13/12,趨近圓形),頭部偏大(headR=9)但四肢短粗(armLen=10, legLen=9, armW=5.5, legW=7.5),外形更接近圓潤絨毛玩偶。比照 longBox 的驗證方法論重跑一次(verify_blob.js):基準 128/150/130 舉手角度一樣不夠用(surprised -5.1%、scared -36.2% 負餘裕),收窄成 108/100/88 後全部轉正,最小支點餘裕 +1.69px。配件(帽子/道具/尾巴)刻意維持銳利,直接畫在合成後的主畫布上,不進離屏緩衝——毛玩偶身體模糊、配件銳利的對比是刻意的視覺選擇。效能:用 180 幀取樣量測,一般原型平均每幀 16.57ms,這個原型平均 17.63ms、最大單幀 33.4ms(一次性的幀延遲,不是持續卡頓)——有實測數字可以參考,不是憑空保證零成本。11 種原型全部驗證過 zero console 錯誤,切回其他原型畫面/效能完全不受影響(離屏路徑只在這一個原型啟用時才會執行)。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v26</div>
+    <h1>新增全橢圓型 + 全圓形型</h1>
+    <p class="sub">兩個都是純橢圓/膠囊形狀語言(沒有 limbShape/torsoShape/headShape 覆寫),跟 chubby/bighead/blob 完全同一套 containment 數學,不需要重新推導——只需要重新算一次新比例下的支點包覆跟舉手類動作的頭部淨空(見 verify_ellipse_circle.js)。全橢圓型:軀幹是站立的長橢圓(torsoRX=10, torsoRY=14,比寬更高,不同於 chubby 的寬橢圓 13/10),四肢厚實圓潤(armW=4.5, legW=6.5)。全圓形型:軀幹趨近正圓(torsoRX=torsoRY=11),頭偏大(headR=8)但四肢短粗,是目前最「渾圓可愛」的比例。兩者基準 128/150/130 舉手角度都不夠用(跟 bighead/chubby/longBox/blob 同一種「大頭+短臂」風險),全橢圓型收窄成 118/122/95(scared 原本只調到 105 度時餘裕僅 9.0%,判定太薄再收一次到 95 度、餘裕拉到 22.7% 才收工),全圓形型收窄成 116/118/100,全部重新驗證轉正。13 種原型 × 16 種姿勢,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -84,6 +84,8 @@
           <option value="squareHead">方塊頭(全身方塊)</option>
           <option value="longBox">方塊長型(終界使者風格)</option>
           <option value="blob">圓潤模糊型(邊緣柔化)</option>
+          <option value="ellipseFull">全橢圓型</option>
+          <option value="circleFull">全圓形型</option>
         </select>
       </label>
       <label class="toggle">
@@ -1635,6 +1637,35 @@
       torsoRX: 13, torsoRY: 12,
       cheerArmDeg: 108, surprisedFlungDeg: 100, scaredGuardDeg: 88,
       blurEdges: true, blurRadius: 3
+    },
+    // Both of the following are PURE ellipse/capsule archetypes -- no
+    // limbShape/torsoShape/headShape overrides at all, so they reuse the
+    // exact same containment math already verified for chubby/bighead/blob
+    // (plain ellipse SDF, no rounded-rect case), per the request that no
+    // new derivation was needed here, just new proportions run through the
+    // existing check (see verify_ellipse_circle.js).
+    //
+    // Tall plump oval/bean torso (torsoRX=10, torsoRY=14 -- taller than
+    // wide, unlike chubby's wider-than-tall 13/10) with thick rounded
+    // limbs (armW=4.5/legW=6.5, thicker than every archetype except
+    // chubby/blob). Baseline raised-arm angles fail (same big-head-
+    // relative-to-reach risk as bighead/chubby/blob): surprised -7.2%,
+    // scared -43.0%. Pulled in to 118/122/95 -- scared specifically needed
+    // an extra pass (105deg only cleared 9.0%, thin enough to flag and
+    // pull in further rather than accept as "technically positive").
+    ellipseFull: {
+      label: '全橢圓型', headR: 7, armLen: 12, legLen: 10, armW: 4.5, legW: 6.5,
+      torsoRX: 10, torsoRY: 14,
+      cheerArmDeg: 118, surprisedFlungDeg: 122, scaredGuardDeg: 95
+    },
+    // Near-perfect circle torso (torsoRX=torsoRY=11) with a large head
+    // relative to short stubby limbs, for the roundest/cutest read of any
+    // archetype. Same risk profile again (surprised -1.0%, scared -25.7%
+    // at baseline angles), pulled in to 116/118/100.
+    circleFull: {
+      label: '全圓形型', headR: 8, armLen: 8, legLen: 7, armW: 4, legW: 5.5,
+      torsoRX: 11, torsoRY: 11,
+      cheerArmDeg: 116, surprisedFlungDeg: 118, scaredGuardDeg: 100
     }
   };
 
