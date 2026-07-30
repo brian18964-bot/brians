@@ -1,0 +1,2018 @@
+<title>剪影走路/跑步循環 v20 — 新增方塊頭 + 長尾巴型(新肢體類型驗證)</title>
+<style>
+  :root{
+    --ink:#e9e6df;
+    --muted:#9a9488;
+    --accent:#c9a15a;
+    --line:rgba(233,230,223,0.10);
+    --panel:#14151a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#0b0c0f;
+    color:var(--ink);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height:1.6;
+    min-height:100vh;
+  }
+  .mono{ font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace; }
+  .wrap{ max-width:980px; margin:0 auto; padding:40px 24px 80px; display:flex; flex-direction:column; gap:24px; }
+  header.top{ display:flex; flex-direction:column; gap:10px; padding-bottom:16px; border-bottom:1px solid var(--line); }
+  .kicker{ font-family: ui-monospace, monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); }
+  h1{ font-size:clamp(22px,3.2vw,30px); font-weight:600; margin:0; letter-spacing:-0.01em; text-wrap:balance; }
+  .sub{ color:var(--muted); font-size:14px; max-width:66ch; }
+  .compare{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:760px){ .compare{ grid-template-columns:1fr; } }
+  .stage-panel{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 14px 12px; display:flex; flex-direction:column; }
+  .stage-panel h2{ font-family: ui-monospace, monospace; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .stage-panel h2 .tag{ font-size:10px; padding:2px 7px; border-radius:999px; border:1px solid var(--line); }
+  .tag.before{ color:#c97a5a; border-color:rgba(201,122,90,0.4); }
+  .tag.after{ color:#7ec98a; border-color:rgba(126,201,138,0.4); }
+  canvas{ width:100%; height:auto; display:block; border-radius:6px; }
+  .stage-panel .note{ font-size:12px; color:var(--muted); margin-top:8px; }
+  .context-panel{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 14px 12px; }
+  .context-panel h2{ font-family: ui-monospace, monospace; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+  .controls{ display:flex; align-items:center; gap:16px; margin-top:14px; padding-top:12px; border-top:1px solid var(--line); flex-wrap:wrap; }
+  .controls button, .controls label.toggle{ font-family: ui-monospace, monospace; font-size:12px; letter-spacing:.04em; text-transform:uppercase; background:#1c1e24; color:var(--ink); border:1px solid var(--line); border-radius:7px; padding:8px 14px; cursor:pointer; user-select:none; }
+  .controls button:hover, .controls label.toggle:hover{ border-color:var(--accent); color:var(--accent); }
+  .controls button.active{ border-color:var(--accent); color:var(--accent); background:#242017; }
+  .controls button:focus-visible, .controls input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .controls label.toggle{ display:inline-flex; align-items:center; gap:8px; }
+  footer.foot{ color:var(--muted); font-size:12px; text-align:center; padding-top:6px; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v20</div>
+    <h1>新增方塊頭 + 長尾巴型(新肢體類型驗證)</h1>
+    <p class="sub">這版正式實作上一輪評估過的兩個提案。方塊頭:延伸方塊身體的圓角矩形繪圖邏輯到頭部,但頭部本身不是支點承載件(沒有其他肢體會 pivot 進頭部),所以不需要新的 containment 數學,只需要新增 `drawHeadShape()` 並確認 headR 對兩種形狀都代表同一件事(半高距離)——疊加層符號跟正面情緒符號的錨點都驗證過落在方塊頭的平頂正上方,乾淨不偏移。長尾巴型:維持直立雙足骨架完全不變,新增尾巴作為第五個附加肢體,根部支點用跟其他肢體同一套「支點圓盤是否落在橢圓內」驗證,但這次不是套現成比例——直接沿用原本估的支點位置(髖部同高度)算出來竟然是負值(貼到軀幹邊緣外面),數字驗證先抓到這個問題,調整成根部往上移到接近下背部的高度後才拿到 +3.28px 的健康餘裕,才動手寫進去。尾巴姿態做了 6 組核心動作(走路擺動、跑步擺動、停下的呼吸連動微擺、坐下沿地面後掃、躺下沿地面延伸、跳躍上翹),前 4 組(走路/跑步/停下/跳躍)都是共用同一個 `drawCharacter` 渲染路徑,只是切換擺動角度跟幅度參數,不需要另外寫渲染邏輯;坐下另外寫了一行呼叫。趴下跟正面朝向的姿勢刻意不做尾巴(正面時尾巴會被軀幹整個擋住,不需要處理),範圍界定清楚。實際工作量比對:方塊頭複雜度低,幾乎是複製上一輪的模式;長尾巴型明顯比任何先前原型都花更多心力——光是找到一組真正合格的支點位置就經過好幾輪數字搜尋,跟原本評估的「明顯高於前面任何原型」相符。</p>
+  </header>
+
+  <div class="compare">
+    <div class="stage-panel">
+      <h2>走路 <span class="tag before">既有</span></h2>
+      <canvas id="stageWalk" width="480" height="360"></canvas>
+      <p class="note">支點在軀幹內、無縫隙;右手右腳(近側)完整可見,左手左腳(遠側)在肩/髖接點處被軀幹局部遮住。</p>
+    </div>
+    <div class="stage-panel">
+      <h2>跑步 <span class="tag after">本次新增</span></h2>
+      <canvas id="stageRun" width="480" height="360"></canvas>
+      <p class="note">同一套支點/近遠側規則,加上更快步頻、更大擺動角度與固定前傾,前後遮擋在較大動作幅度下依然穩定。</p>
+    </div>
+  </div>
+
+  <div class="context-panel">
+    <h2>情境預覽 — 貼近行事曆情境的比例感</h2>
+    <canvas id="stageContext" width="960" height="120"></canvas>
+  </div>
+
+  <div class="context-panel">
+    <h2>狀態機驅動的動作切換 — 圖 + BFS 自動找路徑</h2>
+    <div class="controls" style="margin-top:0; padding-top:0; border-top:none; gap:10px;">
+      <label class="toggle" style="min-width:280px;">
+        角色原型
+        <select id="archetypeSelect" style="flex:1; background:#1c1e24; color:var(--ink); border:1px solid var(--line); border-radius:7px; padding:6px 10px; font-family:ui-monospace,monospace; font-size:12px;">
+          <option value="longlimb">長腳手(基準)</option>
+          <option value="tall">瘦高型</option>
+          <option value="petite">小頭高個</option>
+          <option value="bighead">大頭娃娃</option>
+          <option value="chubby">矮胖圓滾滾</option>
+          <option value="square">方塊身體</option>
+          <option value="slenderTall">細長型</option>
+          <option value="slenderPetite">細瘦小頭型</option>
+          <option value="squareHead">方塊頭(全身方塊)</option>
+          <option value="tailed">長尾巴型</option>
+        </select>
+      </label>
+    </div>
+    <p class="note">切換原型會重建所有支點/角度座標並把狀態機重置回「停下不走」(側身疊加層一併清除),走路/跑步/情境預覽三個上方畫布也會跟著換成新原型的比例——同一套狀態機、過渡曲線、疊加層架構,五種原型共用,只有下面列出的幾何/角度數值換了一組。</p>
+    <canvas id="stageFsm" width="480" height="360" style="max-width:320px; margin:0 auto;"></canvas>
+    <div class="controls" style="margin-top:12px; padding-top:12px; gap:10px; flex-wrap:wrap;">
+      <button id="fsmWalkBtn" type="button" data-target="walk">慢走</button>
+      <button id="fsmRunBtn" type="button" data-target="run">快走</button>
+      <button id="fsmIdleBtn" type="button" data-target="idleStop">停下</button>
+      <button id="fsmSitBtn" type="button" data-target="sit">坐下</button>
+      <button id="fsmLieBtn" type="button" data-target="lie">躺下</button>
+      <button id="fsmProneBtn" type="button" data-target="prone">趴下</button>
+      <button id="fsmJumpBtn" type="button" data-target="jump">跳躍</button>
+      <button id="fsmFrontBtn" type="button" data-target="front">正面站姿</button>
+    </div>
+    <p class="note mono" id="fsmStatus" style="font-size:12px;">目前狀態:待機</p>
+    <p class="note">點任一顆按鈕呼叫 <code>requestState(target)</code>,狀態機用 BFS 在狀態圖上找出從目前狀態到目標的路徑,自動依序播放中間必經的過渡,每一段過渡一定完整播完才會接下一段,連續點擊會排隊而不是互相打斷。</p>
+
+    <p class="note mono" style="margin-top:14px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);">側身疊加層 — 不進狀態機,不打斷走路/跑步/停下</p>
+    <div class="controls" style="margin-top:6px; padding-top:10px; gap:8px; flex-wrap:wrap;">
+      <button id="ovHappyBtn" type="button" data-overlay="happy">開心雀躍</button>
+      <button id="ovConfusedBtn" type="button" data-overlay="confused">疑惑</button>
+      <button id="ovSurprisedBtn" type="button" data-overlay="surprised">驚訝</button>
+      <button id="ovDozingBtn" type="button" data-overlay="dozing">打瞌睡</button>
+      <button id="ovAngryBtn" type="button" data-overlay="angry">生氣</button>
+      <button id="ovDejectedBtn" type="button" data-overlay="dejectedLite">沮喪(側身)</button>
+      <button id="ovIrritatedBtn" type="button" data-overlay="irritated">煩躁</button>
+      <button id="ovDizzyBtn" type="button" data-overlay="dizzy">頭昏腦脹</button>
+      <button id="ovScaredBtn" type="button" data-overlay="scared">嚇到</button>
+    </div>
+    <p class="note">再點一次同一顆按鈕取消。疊加層只在角色處於走路/跑步/停下不走這三個側身基礎狀態時才會畫出來(轉場過渡中或坐下/躺下/正面等狀態時不顯示),符號跟姿勢微調刻意做得很克制——單色深色線條、幅度很小,對應「不經意流露」而非表演。</p>
+
+    <p class="note mono" style="margin-top:14px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);">正面動作組 — 從「正面站姿」進入,結束回到「正面站姿」</p>
+    <div class="controls" style="margin-top:6px; padding-top:10px; gap:8px; flex-wrap:wrap;">
+      <button id="fsmCheerBtn" type="button" data-target="frontCheer">舉手歡呼</button>
+      <button id="fsmWaveBtn" type="button" data-target="frontWave">揮手打招呼</button>
+      <button id="fsmBowBtn" type="button" data-target="frontBow">鞠躬</button>
+      <button id="fsmNodBtn" type="button" data-target="frontNod">點頭</button>
+      <button id="fsmFHappyBtn" type="button" data-target="frontHappy">開心雀躍</button>
+      <button id="fsmFConfusedBtn" type="button" data-target="frontConfused">疑惑</button>
+      <button id="fsmFSurprisedBtn" type="button" data-target="frontSurprised">驚訝</button>
+      <button id="fsmFDozingBtn" type="button" data-target="frontDozing">打瞌睡</button>
+      <button id="fsmFAngryBtn" type="button" data-target="frontAngry">生氣</button>
+      <button id="fsmFDejectedBtn" type="button" data-target="frontDejected">沮喪</button>
+      <button id="fsmFIrritatedBtn" type="button" data-target="frontIrritated">煩躁</button>
+      <button id="fsmFDizzyBtn" type="button" data-target="frontDizzy">頭昏腦脹</button>
+      <button id="fsmFScaredBtn" type="button" data-target="frontScared">嚇到</button>
+    </div>
+    <p class="note">這幾顆都是掛在 <code>front</code> 節點下的完整獨立動作,只有「從 front 進入、結束回到 front」一條邊,BFS 會自動先轉正面再進場。跟側身疊加層用同一套符號設計,但表現強度不受克制限制,可以有比較大的姿勢變化跟動態。</p>
+  </div>
+
+  <div class="controls">
+    <button id="toggleBtn" type="button">暫停</button>
+    <label class="toggle"><input id="warpToggle" type="checkbox" checked style="accent-color:var(--accent);"> 自然時間曲線(關掉比較機械式等速擺動)</label>
+    <label class="toggle" style="min-width:280px;">
+      播放速度
+      <input id="speedSlider" type="range" min="0.2" max="2.5" step="0.05" value="1" style="accent-color:var(--accent); flex:1;">
+      <span id="speedVal" class="mono" style="min-width:44px; text-align:right;">1.00x</span>
+    </label>
+  </div>
+
+  <footer class="foot">純前端 Canvas 2D 展示,不依賴外部資源・僅供技術驗證參考</footer>
+</div>
+
+<script>
+(function(){
+  const SIL = '#0d0e12';
+
+  // Which limb/torso shape the ACTIVE archetype uses -- set by
+  // buildArchetype(), read by capsule()/drawTorsoShape() below. Every
+  // existing call site (capsule(...) for limbs, the torso-ellipse draws in
+  // drawCharacter/drawCharacterSit/drawProneFrame/drawTurnPivotMove/
+  // drawFrontDejected) stays completely unchanged -- these two flags are
+  // the ONLY thing that needs to exist for a boxy/square-bodied archetype
+  // to render differently, precisely because the containment MATH (see the
+  // square-archetype verification scripts) turned out not to depend on
+  // which shape is drawn, only on the pivot-disk-vs-boundary check.
+  let LIMB_SHAPE = 'capsule', TORSO_SHAPE = 'ellipse';
+
+  // capsule(): rounded-cap limb shape (the original, still the default for
+  // every archetype except the square-bodied one). Proximal AND distal ends
+  // are both semicircular caps of radius = width/2, centered exactly on
+  // (x1,y1)/(x2,y2) -- this is what makes the "pivot disk" containment
+  // argument work: the cap IS that disk, so it's rotationally invariant.
+  function capsule(ctx, x1, y1, x2, y2, width, color){
+    if (LIMB_SHAPE === 'box'){ drawBoxLimb(ctx, x1, y1, x2, y2, width, color); return; }
+    const r = width / 2;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const sx = r * Math.sin(angle), cy = r * Math.cos(angle);
+    ctx.beginPath();
+    ctx.moveTo(x1 + sx, y1 - cy);
+    ctx.lineTo(x2 + sx, y2 - cy);
+    ctx.arc(x2, y2, r, angle - Math.PI / 2, angle + Math.PI / 2);
+    ctx.lineTo(x1 - sx, y1 + cy);
+    ctx.arc(x1, y1, r, angle + Math.PI / 2, angle + Math.PI * 1.5);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // drawBoxLimb(): flat-edged rectangle instead of rounded caps -- same
+  // perpendicular-offset math as capsule() (reused unchanged: sx/cy are
+  // identical), just closes the shape with straight lineTo()s instead of
+  // arc()s. The proximal edge is centered on (x1,y1) exactly like the
+  // capsule's proximal cap was, so its corners sit at distance width/2 from
+  // the pivot regardless of the limb's rotation angle -- numerically
+  // verified in square_containment_math.js before this was written: the
+  // SAME disk-of-radius-width/2 containment check capsule() relies on
+  // applies identically here, nothing about the containment math needed to
+  // change for the limb side of this (only the TORSO boundary check did,
+  // since that's an actual shape change -- ellipse to rounded rect).
+  function drawBoxLimb(ctx, x1, y1, x2, y2, width, color){
+    const r = width / 2;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const sx = r * Math.sin(angle), cy = r * Math.cos(angle);
+    ctx.beginPath();
+    ctx.moveTo(x1 + sx, y1 - cy);
+    ctx.lineTo(x2 + sx, y2 - cy);
+    ctx.lineTo(x2 - sx, y2 + cy);
+    ctx.lineTo(x1 - sx, y1 + cy);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // drawTorsoShape(): the torso fill, dispatched on TORSO_SHAPE. Called
+  // wherever the code used to do `ctx.ellipse(cx,cy,rx,ry,...); ctx.fill();`
+  // directly -- cx/cy here are whatever local coordinate frame the caller is
+  // already in (some callers pre-translate to the torso center via
+  // ctx.translate, so cx/cy there is (0,0); others pass absolute canvas
+  // coordinates), which is why this takes cx/cy as explicit parameters
+  // rather than assuming a frame.
+  function drawTorsoShape(ctx, cx, cy, cfg){
+    ctx.fillStyle = SIL;
+    ctx.beginPath();
+    if (TORSO_SHAPE === 'roundedRect'){
+      const bx = cfg.torsoRX, by = cfg.torsoRY, cr = cfg.torsoCornerR || 0;
+      ctx.moveTo(cx - bx + cr, cy - by);
+      ctx.lineTo(cx + bx - cr, cy - by);
+      ctx.arcTo(cx + bx, cy - by, cx + bx, cy - by + cr, cr);
+      ctx.lineTo(cx + bx, cy + by - cr);
+      ctx.arcTo(cx + bx, cy + by, cx + bx - cr, cy + by, cr);
+      ctx.lineTo(cx - bx + cr, cy + by);
+      ctx.arcTo(cx - bx, cy + by, cx - bx, cy + by - cr, cr);
+      ctx.lineTo(cx - bx, cy - by + cr);
+      ctx.arcTo(cx - bx, cy - by, cx - bx + cr, cy - by, cr);
+      ctx.closePath();
+    } else {
+      ctx.ellipse(cx, cy, cfg.torsoRX, cfg.torsoRY, 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+
+  // drawHeadShape(): analogous to drawTorsoShape but for the head. The head
+  // is never a pivot host (no limb attaches INTO it the way limbs attach to
+  // the torso), so there's no containment question to re-derive here --
+  // headR just needs to keep meaning "half the head's extent along the
+  // torso axis" for BOTH shapes, which is true by construction (a rounded
+  // square's half-height equals headR, exactly like a circle's radius
+  // does), so every existing formula that uses headR as a linear distance
+  // (torsoAxisLens' headAxisLen, both symbol-gap calculations) stays
+  // correct unmodified -- verified in verify_head_and_tail.js before this
+  // was written.
+  let HEAD_SHAPE = 'circle';
+  function drawHeadShape(ctx, cx, cy, headR, cornerR){
+    ctx.fillStyle = SIL;
+    ctx.beginPath();
+    if (HEAD_SHAPE === 'roundedSquare'){
+      const cr = cornerR || 0;
+      ctx.moveTo(cx - headR + cr, cy - headR);
+      ctx.lineTo(cx + headR - cr, cy - headR);
+      ctx.arcTo(cx + headR, cy - headR, cx + headR, cy - headR + cr, cr);
+      ctx.lineTo(cx + headR, cy + headR - cr);
+      ctx.arcTo(cx + headR, cy + headR, cx + headR - cr, cy + headR, cr);
+      ctx.lineTo(cx - headR + cr, cy + headR);
+      ctx.arcTo(cx - headR, cy + headR, cx - headR, cy + headR - cr, cr);
+      ctx.lineTo(cx - headR, cy - headR + cr);
+      ctx.arcTo(cx - headR, cy - headR, cx - headR + cr, cy - headR, cr);
+      ctx.closePath();
+    } else {
+      ctx.arc(cx, cy, headR, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+  // drawTail(): the one new appendage type this rig supports (see the
+  // 'tailed' archetype). Root pivot uses rotateAroundHip -- the SAME helper
+  // every other pivot (torso/head/hip/shoulder) already uses -- so it leans
+  // with the body exactly like everything else, no special-casing needed
+  // there. The swing itself reuses Theta (the same phase driving legs/arms)
+  // rather than a separate timing system, so a tailed archetype's walk/run
+  // tail-sway is "free" motion, not a new animation clock; tailAmp=0 (used
+  // by jump/sit) just holds tailBaseDeg static. No-ops entirely for every
+  // archetype without cfg.tailLen -- this function was added purely
+  // additively, no existing call site or cfg needed to change.
+  function drawTail(ctx, baseX, hipY, lean, Theta, cfg){
+    if (!cfg.tailLen) return;
+    const root = rotateAroundHip(baseX, hipY, cfg.tailRootDx, cfg.tailRootDy, lean);
+    const swingDeg = (cfg.tailAmp || 0) * Math.sin(Theta);
+    const a = (cfg.tailBaseDeg + swingDeg) * Math.PI / 180 + lean;
+    const endX = root.x + cfg.tailLen * Math.sin(a);
+    const endY = root.y + cfg.tailLen * Math.cos(a);
+    capsule(ctx, root.x, root.y, endX, endY, cfg.tailW, SIL);
+  }
+  function warpPhase(x, k){ return x + k * Math.sin(x); }
+  // asymmetric timing plus a small second harmonic so the swing isn't a perfectly
+  // symmetric metronome -- this is the entire "does it look alive" budget now that
+  // there's no knee/elbow bend left to help sell it.
+  function naturalAngle(amp, rawPhase, k, h2amp, h2offset){
+    const phase = warpPhase(rawPhase, k);
+    return amp * (Math.sin(phase) + h2amp * Math.sin(2 * phase + h2offset));
+  }
+
+  function limbFK(baseX, baseY, rawPhase, amp, len, k, h2amp, h2off){
+    const angle = naturalAngle(amp, rawPhase, k, h2amp, h2off);
+    const endX = baseX + len * Math.sin(angle);
+    const endY = baseY + len * Math.cos(angle);
+    return { baseX, baseY, endX, endY, angle };
+  }
+
+  // Rotate a point given as a local (dx, dy) offset from the hip -- dx to the
+  // character's right, dy upward -- rigidly around the hip by `lean`. Used for
+  // every attachment point (torso center, shoulder, head, hip-side pivots) so
+  // the whole rig tilts as one solid body and the pivot-vs-torso containment
+  // math (done once, below, in the unrotated frame) stays valid at any lean.
+  function rotateAroundHip(hipX, hipY, dx, dy, lean){
+    const x = dx * Math.cos(lean) + dy * Math.sin(lean);
+    const y = dy * Math.cos(lean) - dx * Math.sin(lean);
+    return { x: hipX + x, y: hipY - y };
+  }
+
+  // Single-segment limbs, round torso. Every limb pivot is placed strictly
+  // inside the torso ellipse's fill area (verified numerically -- see
+  // verify_containment.js -- with 9-55% clearance depending on the pivot).
+  // Because the capsule's proximal cap is a fixed-radius disk around the
+  // pivot regardless of swing angle, "pivot-disk inside ellipse" guarantees
+  // the limb's base is covered by the torso at every angle in the cycle --
+  // no gap can open up, by construction, not by tuning. Swing amplitude is
+  // trimmed from the previous round to keep the look conservative, though
+  // it isn't required for the no-gap guarantee itself.
+  //
+  // Near/far side: each limb pair has a "near" pivot (further out, toward
+  // the torso's edge) and a "far" pivot (tucked closer to the torso's
+  // central axis). Both are still inside the ellipse -- what actually makes
+  // them read as near/far is draw order (see drawCharacter): the far limb
+  // is drawn BEFORE the torso, so the torso covers its attachment; the near
+  // limb is drawn AFTER, so it stays fully visible along its whole length.
+  // This is a fixed assignment (not swapped per frame by swing angle), since
+  // near/far here represents a persistent left/right depth relationship, not
+  // which foot currently happens to be forward in the gait.
+  // WALK_CFG through OVERLAY_SYMBOL_GAP (all the proportion-bound geometry/
+  // angle tables) are declared here as mutable bindings but built by
+  // buildArchetype() (see component L, near the end of the file) instead of
+  // literal initializers -- this lets a single archetype switch rebuild
+  // every one of them from a handful of base measurements (headR, armLen,
+  // legLen, torsoRX/RY, armW/legW) while every function that reads them
+  // (drawCharacter, drawCharacterSit, drawTurnPivotMove, frontEmotionPose,
+  // etc.) stays completely unchanged -- they all already took cfg as a
+  // parameter or read these names fresh at render time, never at
+  // module-eval time, so swapping what these names POINT TO is enough.
+  let WALK_CFG, RUN_CFG;
+  const EYE_COLOR = '#f5f2ea';
+
+  function drawCharacter(ctx, baseX, baseY, Theta, cfg, warpOn){
+    const legPhaseL = Theta, legPhaseR = Theta + Math.PI;
+    const armPhaseR = legPhaseL, armPhaseL = legPhaseR;
+    const legK = warpOn ? cfg.legK : 0, armK = warpOn ? cfg.armK : 0;
+    const legH2 = warpOn ? cfg.legH2 : 0, armH2 = warpOn ? cfg.armH2 : 0;
+
+    const bob = cfg.bobAmp * (0.5 + 0.5 * Math.cos(2 * Theta));
+    const lean = cfg.leanBias + cfg.leanAmp * Math.sin(2 * Theta + Math.PI * 0.15);
+    const hipY = baseY - cfg.legLen - bob;
+
+    const hipDrop = cfg.torsoRY * cfg.hipPoleFactor;
+    const shoulderDy = cfg.torsoRY * cfg.shoulderPoleFactor;
+    const headDy = shoulderDy + cfg.headR + cfg.neckGap;
+
+    const torsoPt = rotateAroundHip(baseX, hipY, 0, hipDrop, lean);
+    const shPt = rotateAroundHip(baseX, hipY, 0, shoulderDy, lean);
+    const headPt = rotateAroundHip(baseX, hipY, 0, headDy, lean);
+    const hipNearPt = rotateAroundHip(baseX, hipY, cfg.hipHalfWNear, 0, lean);
+    const hipFarPt = rotateAroundHip(baseX, hipY, -cfg.hipHalfWFar, 0, lean);
+    const shNearPt = rotateAroundHip(baseX, hipY, cfg.shHalfWNear, shoulderDy, lean);
+    const shFarPt = rotateAroundHip(baseX, hipY, -cfg.shHalfWFar, shoulderDy, lean);
+
+    // right side = near/front (fully visible), left side = far/back (tucked
+    // behind the torso at the join) -- fixed for the whole animation
+    const legNear = limbFK(hipNearPt.x, hipNearPt.y, legPhaseR, cfg.legAmp, cfg.legLen, legK, legH2, cfg.legH2Off);
+    const legFar = limbFK(hipFarPt.x, hipFarPt.y, legPhaseL, cfg.legAmp, cfg.legLen, legK, legH2, cfg.legH2Off);
+    const armNear = limbFK(shNearPt.x, shNearPt.y, armPhaseR, cfg.armAmp, cfg.armLen, armK, armH2, cfg.armH2Off);
+    const armFar = limbFK(shFarPt.x, shFarPt.y, armPhaseL, cfg.armAmp, cfg.armLen, armK, armH2, cfg.armH2Off);
+
+    function drawLimb(l, w){ capsule(ctx, l.baseX, l.baseY, l.endX, l.endY, w, SIL); }
+
+    // tail (if this cfg has one) draws with the far side, before the torso
+    // -- same "attachment gets covered" convention as the far leg/arm,
+    // using the identical disk-containment argument (see verify_head_and_
+    // tail.js). Archetypes without cfg.tailLen skip this entirely.
+    drawTail(ctx, baseX, hipY, lean, Theta, cfg);
+
+    // far side first -- the torso drawn next covers its attachment
+    drawLimb(legFar, cfg.legW);
+    drawLimb(armFar, cfg.armW);
+
+    ctx.save();
+    ctx.translate(torsoPt.x, torsoPt.y);
+    ctx.rotate(lean);
+    drawTorsoShape(ctx, 0, 0, cfg);
+    ctx.restore();
+
+    // near side on top of the torso -- fully visible along its whole length
+    drawLimb(legNear, cfg.legW);
+
+    drawHeadShape(ctx, headPt.x, headPt.y, cfg.headR, cfg.headCornerR);
+
+    // eye: small, toward the front of the face (character faces +x)
+    const eyeR = cfg.headR * 0.14;
+    ctx.fillStyle = EYE_COLOR;
+    ctx.beginPath();
+    ctx.arc(headPt.x + cfg.headR * 0.48, headPt.y - cfg.headR * 0.04, eyeR, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawLimb(armNear, cfg.armW);
+  }
+
+  function drawBackground(ctx, w, h){
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#e4d9c6');
+    g.addColorStop(0.45, '#b9ab97');
+    g.addColorStop(1, '#7d7266');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }
+  function drawGroundShadow(ctx, cx, groundY, rx){
+    ctx.fillStyle = 'rgba(13,14,18,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY + rx*0.12, rx, rx*0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function setupCanvas(canvas){
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.width, h = canvas.height;
+    canvas.width = w * DPR; canvas.height = h * DPR;
+    canvas.style.width = '100%';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+    return { ctx, w, h };
+  }
+
+  const walk = setupCanvas(document.getElementById('stageWalk'));
+  const run = setupCanvas(document.getElementById('stageRun'));
+  const context = setupCanvas(document.getElementById('stageContext'));
+  const fsmCanvas = setupCanvas(document.getElementById('stageFsm'));
+
+  function drawCalendarRow(ctx, w, h){
+    ctx.fillStyle = '#f4f1ea';
+    ctx.fillRect(0, 0, w, h);
+    const cellW = w / 7;
+    ctx.strokeStyle = 'rgba(20,20,20,0.10)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 7; i++){
+      ctx.beginPath();
+      ctx.moveTo(i*cellW, 0); ctx.lineTo(i*cellW, h);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(217,98,42,0.16)';
+    ctx.fillRect(cellW*1.15, h*0.18, cellW*0.7, h*0.22);
+    ctx.fillStyle = 'rgba(95,184,122,0.18)';
+    ctx.fillRect(cellW*4.15, h*0.55, cellW*0.7, h*0.22);
+    ctx.strokeStyle = 'rgba(20,20,20,0.14)';
+    ctx.beginPath();
+    ctx.moveTo(0, h-24); ctx.lineTo(w, h-24);
+    ctx.stroke();
+  }
+
+  // basic ease (zero 1st derivative at both ends) -- used for the amplitude/
+  // cadence ramps (decel, run->walk), where a slightly snappier ease reads fine
+  function smoothstep(x){ x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+  // stronger ease (zero 1st AND 2nd derivative at both ends) -- used for the
+  // squash/reveal transition specifically, per the "生硬感" fix: a plain
+  // smoothstep over a short 0.5s span still read as an abrupt snap, so this
+  // pass both strengthens the ease curve (more pronounced slow-fast-slow) and
+  // (below, in SEQ_STAGE_DUR) lengthens the duration so the ease is actually
+  // perceptible rather than compressed into a couple of frames
+  function smootherstep(x){ x = Math.max(0, Math.min(1, x)); return x * x * x * (x * (x * 6 - 15) + 10); }
+
+  let STILL_SIDE_CFG;
+
+  // ---------- component B: smooth speed blend (bidirectional) ----------
+  // Interpolates every motion parameter (not just a flat "speed" number) so
+  // stride length, arm swing, lean, bounce, and the natural-timing warp all
+  // shrink/grow together with cadence. Used both directions (walk<->run) by
+  // just swapping which cfg is `a` and which is `b` -- one function, no
+  // separate "walk to run" vs "run to walk" implementations.
+  const LERP_KEYS = ['legAmp','armAmp','bobAmp','leanAmp','leanBias','legK','legH2','legH2Off','armK','armH2','armH2Off','speedMul'];
+  function lerpCfg(a, b, p){
+    const out = Object.assign({}, a);
+    for (const k of LERP_KEYS) out[k] = a[k] + (b[k] - a[k]) * p;
+    return out;
+  }
+
+  // ---------- component A: gait-amplitude ramp (decel <-> accel, shared) ----------
+  // Both "walk -> idleStop" (amplitude ramps 1->0) and "idleStop -> walk"
+  // (amplitude ramps 0->1) are the SAME transform, just opposite direction --
+  // one function, direction picked by the caller via ampScale.
+  function gaitAmpCfg(cfg, ampScale){
+    return Object.assign({}, cfg, {
+      legAmp: cfg.legAmp * ampScale, armAmp: cfg.armAmp * ampScale,
+      bobAmp: cfg.bobAmp * ampScale, leanAmp: cfg.leanAmp * ampScale, leanBias: cfg.leanBias * ampScale
+    });
+  }
+
+  // ---------- component C: sitting pose (side view, static) ----------
+  // The one deliberate exception to "single-segment limbs" in this project:
+  // a sitting silhouette needs a visibly bent leg. Thigh+shin share an exact
+  // knee point (same seamless-joint technique used everywhere else here).
+  // Torso/pivot geometry is copied byte-for-byte from WALK_CFG (not
+  // redesigned) specifically so there is zero visual pop at the moment a
+  // sit transition begins -- same ellipse, same near/far hip attachment
+  // points, already verified gap-free. Only the leg's own thigh/shin
+  // geometry (knee, foot -- not attached to the torso, no containment
+  // requirement) and the seat height are new.
+  // Straight-leg "sit on the ground" per the reference art: hips low and
+  // near the ground, legs extended forward, not a bent cross-legged pose.
+  let SIT_CFG, STAND_AS_SIT_CFG;
+  function sitMorphCfg(p){
+    const out = {};
+    for (const k of Object.keys(SIT_CFG)) out[k] = STAND_AS_SIT_CFG[k] + (SIT_CFG[k] - STAND_AS_SIT_CFG[k]) * p;
+    return out;
+  }
+
+  // Two-segment limb helper (shared by the sit and dejected poses -- the
+  // only two places this project uses a bent joint instead of a single
+  // straight capsule): given a hip/shoulder pivot and two angle+length
+  // pairs, returns the knee and end points. The two capsules share the
+  // exact knee coordinate, same seamless-joint technique used everywhere.
+  function twoSegLimb(hipX, hipY, angle1Deg, len1, angle2Deg, len2){
+    const a1 = angle1Deg * Math.PI / 180;
+    const kneeX = hipX + len1 * Math.sin(a1), kneeY = hipY + len1 * Math.cos(a1);
+    const a2 = angle2Deg * Math.PI / 180;
+    const endX = kneeX + len2 * Math.sin(a2), endY = kneeY + len2 * Math.cos(a2);
+    return { baseX: hipX, baseY: hipY, kneeX, kneeY, endX, endY };
+  }
+  function drawTwoSegLimb(ctx, l, width){
+    capsule(ctx, l.baseX, l.baseY, l.kneeX, l.kneeY, width, SIL);
+    capsule(ctx, l.kneeX, l.kneeY, l.endX, l.endY, width, SIL);
+  }
+
+  // Head/shoulder axis length here MUST stay byte-identical to drawCharacter's
+  // own headDy/shoulderDy formula (torsoRY*shoulderPoleFactor, NOT plus
+  // hipDrop) -- an earlier version used a different formula that included
+  // hipDrop, which put the head at a different height than the standing rig
+  // even though every other parameter matched, producing a visible head
+  // pop right when a sit/dejected transition began. Keeping this identical
+  // is what makes the pose-morph transitions start with zero visual pop.
+  function torsoAxisLens(cfg){
+    const hipDrop = cfg.torsoRY * cfg.hipPoleFactor;
+    const shoulderAxisLen = cfg.torsoRY * cfg.shoulderPoleFactor;
+    const headAxisLen = shoulderAxisLen + cfg.headR + cfg.neckGap;
+    return { hipDrop, shoulderAxisLen, headAxisLen };
+  }
+
+  function drawCharacterSit(ctx, baseX, baseY, breathT, cfg){
+    const bob = cfg.breathBobAmp * (0.5 + 0.5 * Math.cos(breathT * cfg.breathSpeed));
+    const hipY = baseY - cfg.seatHeight - bob;
+    const { hipDrop, shoulderAxisLen, headAxisLen } = torsoAxisLens(cfg);
+    const torsoCy = hipY - hipDrop, shY = hipY - shoulderAxisLen, headCy = hipY - headAxisLen;
+
+    function leg(hipDx){
+      const l = twoSegLimb(baseX + hipDx, hipY, cfg.thighOutDeg, cfg.thighLen, cfg.shinInDeg, cfg.shinLen);
+      return { hipX: l.baseX, hipY: l.baseY, kneeX: l.kneeX, kneeY: l.kneeY, footX: l.endX, footY: l.endY };
+    }
+    const legNear = leg(cfg.hipHalfWNear), legFar = leg(-cfg.hipHalfWFar);
+    function armEnd(shDx){
+      const px = baseX + shDx, py = shY, angle = cfg.armRestAngle;
+      return { baseX: px, baseY: py, endX: px + cfg.armLen * Math.sin(angle), endY: py + cfg.armLen * Math.cos(angle) };
+    }
+    const armNear = armEnd(cfg.shHalfWNear), armFar = armEnd(-cfg.shHalfWFar);
+
+    // far side first (torso covers the attachment), near side last (fully
+    // visible) -- same convention as drawCharacter. No lean while seated,
+    // so the tail's swing (if any -- SIT_CFG sets tailAmp=0) is static.
+    drawTail(ctx, baseX, hipY, 0, 0, cfg);
+    capsule(ctx, legFar.hipX, legFar.hipY, legFar.kneeX, legFar.kneeY, cfg.legW, SIL);
+    capsule(ctx, legFar.kneeX, legFar.kneeY, legFar.footX, legFar.footY, cfg.legW, SIL);
+    capsule(ctx, armFar.baseX, armFar.baseY, armFar.endX, armFar.endY, cfg.armW, SIL);
+
+    drawTorsoShape(ctx, baseX, torsoCy, cfg);
+
+    capsule(ctx, legNear.hipX, legNear.hipY, legNear.kneeX, legNear.kneeY, cfg.legW, SIL);
+    capsule(ctx, legNear.kneeX, legNear.kneeY, legNear.footX, legNear.footY, cfg.legW, SIL);
+
+    drawHeadShape(ctx, baseX, headCy, cfg.headR, cfg.headCornerR);
+    const eyeR = cfg.headR * 0.14;
+    ctx.fillStyle = EYE_COLOR;
+    ctx.beginPath(); ctx.arc(baseX + cfg.headR * 0.48, headCy - cfg.headR * 0.04, eyeR, 0, Math.PI * 2); ctx.fill();
+
+    capsule(ctx, armNear.baseX, armNear.baseY, armNear.endX, armNear.endY, cfg.armW, SIL);
+  }
+
+  // ---------- component D: lying-down pose (side view, static) ----------
+  // Reuses drawCharacter itself rather than a bespoke shape: the whole rig
+  // is rotated ~90 deg around the ground-contact point (same trick as a
+  // tree falling over), with the gait phase frozen at Theta=PI/2 (legs/arms
+  // swing to their opposite extremes -- a natural "splayed" reading) and
+  // amplitude eased in together with the rotation. Reusing drawCharacter
+  // directly means every already-verified pivot/containment property
+  // carries over unchanged -- there's no new silhouette to re-check.
+  // Legs/arms stay near WALK_CFG's own small resting amplitude (NOT a wide
+  // splay) -- a plain side-on reclining pose, not a spread-limb/overhead
+  // look, per the "no bird's-eye starfish effect" direction.
+  let LIE_CFG;
+  const LIE_THETA = Math.PI / 2;
+  function drawReclined(ctx, baseX, baseY, p, cfg){
+    const rotAngle = -p * Math.PI / 2 * 0.92; // eases toward horizontal, stops just short of dead flat
+    const ampScale = smoothstep(p);
+    const tweenCfg = Object.assign({}, cfg, { legAmp: cfg.legAmp * ampScale, armAmp: cfg.armAmp * ampScale });
+    ctx.save();
+    ctx.translate(baseX, baseY);
+    ctx.rotate(rotAngle);
+    ctx.translate(-baseX, -baseY);
+    drawCharacter(ctx, baseX, baseY, LIE_THETA, tweenCfg, false);
+    ctx.restore();
+  }
+
+  // ---------- component K: prone / face-plant (mirror of lying down) ----------
+  // Reuses the same pivot/torso/head geometry as drawCharacter -- same
+  // hip/shoulder half-widths, same torso ellipse, same far-before-torso/
+  // near-after-torso draw order that keeps the near limb fully visible and
+  // hides the far limb's attachment point. Nothing about the already-
+  // verified containment changes; only two things differ from
+  // drawReclined: (1) the whole rig rotates the OPPOSITE direction around
+  // the ground point -- pitching forward onto the face instead of
+  // reclining backward -- and (2) the arms use a fixed angle instead of
+  // drawCharacter's small gait-phase oscillation, since "reach straight out
+  // in the fall direction" is a big, deliberate swing that system was never
+  // built to produce (it only ever wiggles within a few degrees of hanging
+  // straight down). In the UN-rotated body frame, PRONE_ARM_DEG points
+  // nearly straight "up" (the direction that was overhead while standing);
+  // once the body pitches ~83deg forward that becomes "reaching forward
+  // past the head", like a dive/face-plant.
+  let PRONE_CFG;
+  const PRONE_ARM_DEG = 172;
+  const PRONE_LEG_SPLAY_DEG = 12;
+
+  function drawProneFrame(ctx, baseX, baseY, p, cfg){
+    const rotAngle = p * Math.PI / 2 * 0.92; // positive: opposite sign of drawReclined -- pitches FORWARD
+    const ampScale = smoothstep(p);
+    const armDeg = PRONE_ARM_DEG * ampScale;
+    const legDeg = PRONE_LEG_SPLAY_DEG * ampScale;
+
+    ctx.save();
+    ctx.translate(baseX, baseY);
+    ctx.rotate(rotAngle);
+    ctx.translate(-baseX, -baseY);
+
+    const hipY = baseY - cfg.legLen;
+    const { hipDrop, shoulderAxisLen, headAxisLen } = torsoAxisLens(cfg);
+    const torsoCy = hipY - hipDrop, shY = hipY - shoulderAxisLen, headCy = hipY - headAxisLen;
+
+    function limbEnd(px, py, angleDeg, len){
+      const a = angleDeg * Math.PI / 180;
+      return { baseX: px, baseY: py, endX: px + len * Math.sin(a), endY: py + len * Math.cos(a) };
+    }
+    const legNear = limbEnd(baseX + cfg.hipHalfWNear, hipY, legDeg, cfg.legLen);
+    const legFar = limbEnd(baseX - cfg.hipHalfWFar, hipY, -legDeg, cfg.legLen);
+    const armNear = limbEnd(baseX + cfg.shHalfWNear, shY, armDeg, cfg.armLen);
+    const armFar = limbEnd(baseX - cfg.shHalfWFar, shY, armDeg, cfg.armLen);
+    function drawLimb(l, w){ capsule(ctx, l.baseX, l.baseY, l.endX, l.endY, w, SIL); }
+
+    // far side first (torso covers the attachment), near side last (fully
+    // visible) -- same convention as drawCharacter
+    drawLimb(legFar, cfg.legW);
+    drawLimb(armFar, cfg.armW);
+
+    drawTorsoShape(ctx, baseX, torsoCy, cfg);
+
+    drawLimb(legNear, cfg.legW);
+
+    drawHeadShape(ctx, baseX, headCy, cfg.headR, cfg.headCornerR);
+    // no eyes drawn -- face is pressed down against the ground
+
+    drawLimb(armNear, cfg.armW);
+
+    ctx.restore();
+  }
+
+  // ---------- component F: jump (side view, one-shot) ----------
+  // Reuses drawCharacter unchanged (Theta fixed at 0, legAmp/armAmp at 0 --
+  // limbs stay neutral) and conveys the jump purely through vertical
+  // height + a shrinking effective leg length (reads as knees tucking) + a
+  // small anticipation lean. No new silhouette, no new containment check
+  // (legLen doesn't touch torso geometry).
+  let JUMP_CFG, JUMP_CROUCH_DEPTH, JUMP_PEAK_HEIGHT, JUMP_LEG_TUCK, JUMP_RECOVER_DEPTH;
+  const JUMP_RISE_DUR = 0.55, JUMP_FALL_DUR = 0.55;
+  const JUMP_CROUCH_FRAC = 0.3;
+  const JUMP_FALL_FRAC = 0.72;
+
+  function jumpRiseState(p){
+    if (p < JUMP_CROUCH_FRAC){
+      const cp = smoothstep(p / JUMP_CROUCH_FRAC);
+      return { height: -JUMP_CROUCH_DEPTH * cp, legLenDelta: 0, lean: 6 * Math.PI / 180 * cp };
+    }
+    const rp = (p - JUMP_CROUCH_FRAC) / (1 - JUMP_CROUCH_FRAC);
+    const e = Math.sin(rp * Math.PI / 2); // fast liftoff, decelerating into the peak
+    return {
+      height: -JUMP_CROUCH_DEPTH + (JUMP_PEAK_HEIGHT + JUMP_CROUCH_DEPTH) * e,
+      legLenDelta: -JUMP_LEG_TUCK * e,
+      lean: (6 * Math.PI / 180) * (1 - e)
+    };
+  }
+  function jumpFallState(p){
+    if (p < JUMP_FALL_FRAC){
+      const fp = p / JUMP_FALL_FRAC;
+      const e = 1 - Math.cos(fp * Math.PI / 2); // slow start (apex), accelerating descent
+      return { height: JUMP_PEAK_HEIGHT * (1 - e), legLenDelta: -JUMP_LEG_TUCK * (1 - e), lean: 0 };
+    }
+    const rp = (p - JUMP_FALL_FRAC) / (1 - JUMP_FALL_FRAC);
+    return { height: -JUMP_RECOVER_DEPTH * Math.sin(rp * Math.PI), legLenDelta: 0, lean: 0 }; // impact absorb + recover
+  }
+  function drawJumpFrame(ctx, baseX, baseY, state){
+    const cfg = Object.assign({}, JUMP_CFG, { legLen: JUMP_CFG.legLen + state.legLenDelta, leanBias: state.lean });
+    drawCharacter(ctx, baseX, baseY - state.height, 0, cfg, false);
+  }
+
+  // ---------- component G: dejected pose parameters + tremble effect ----------
+  // Shared by the two replacements for the old side-view "dejected" state
+  // (see the STATE_GRAPH comment below): the front action group's
+  // drawFrontDejected (component J) reuses DEJECTED_CFG/drawTrembleLines
+  // directly, and the side-overlay layer's restrained "dejectedLite" reuses
+  // neither the crouch geometry nor the trembling (that's full-performance
+  // territory) -- just a small lean/bob tweak plus the shared droop symbol.
+  let DEJECTED_CFG;
+  function drawTrembleLines(ctx, cx, midY, spanY, t, amp){
+    if (amp <= 0.02) return;
+    ctx.strokeStyle = SIL;
+    ctx.lineWidth = 1.1;
+    ctx.lineCap = 'round';
+    const offsets = [-12.5, -9.5, 9.5, 12.5];
+    offsets.forEach((dx, i) => {
+      const j = Math.sin(t * 24 + i * 1.9) * amp;
+      ctx.beginPath();
+      ctx.moveTo(cx + dx, midY - spanY / 2);
+      ctx.lineTo(cx + dx + j, midY + spanY / 2);
+      ctx.stroke();
+    });
+  }
+
+  // ---------- shared emotion symbol set ----------
+  // ONE drawing function per symbol, called from both the side-overlay layer
+  // and the front action group -- same shape, same near-black silhouette-
+  // family color in both places (never a bright/saturated accent), so a
+  // player recognizes "this is the confused emotion" whether they're seeing
+  // the small side-view glyph or the bigger front-view one. Only `scale` and
+  // `alpha` differ per call site; the art-restraint rule (see side-overlay
+  // block below) is enforced by the CALLER choosing small/static values for
+  // the side layer, not by anything in here.
+  const SYMBOL_COLOR = 'rgba(13,14,18,0.86)'; // same hue family as SIL, never a saturated color
+
+  // Comic "spark"/asterisk mark: `rays` diameters through the center point
+  // (not just center-to-tip), which is what makes it read as a spiky spark
+  // burst rather than a star-polygon outline. Used for the angry symbol.
+  function sparkMarkPath(ctx, cx, cy, r, rays){
+    for (let i = 0; i < rays; i++){
+      const a = (i / rays) * Math.PI;
+      const dx = Math.cos(a) * r, dy = Math.sin(a) * r;
+      ctx.moveTo(cx - dx, cy - dy);
+      ctx.lineTo(cx + dx, cy + dy);
+    }
+  }
+
+  // `rotation` (optional, radians) lets the front action group spin a
+  // symbol (dizzy's swirl, irritated's squiggle) for a livelier performance;
+  // the side-overlay layer never passes it, so those stay static -- same
+  // "same shape, different intensity" split as scale/alpha above.
+  function drawSymbolMark(ctx, kind, x, y, scale, alpha, rotation){
+    if (!kind || alpha <= 0.01) return;
+    ctx.save();
+    ctx.translate(x, y);
+    if (rotation) ctx.rotate(rotation);
+    ctx.scale(scale, scale);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = SYMBOL_COLOR;
+    ctx.strokeStyle = SYMBOL_COLOR;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (kind === 'confused' || kind === 'surprised' || kind === 'dozing' || kind === 'happy'){
+      ctx.font = '800 12px ui-sans-serif, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const glyph = kind === 'confused' ? '?' : kind === 'surprised' ? '!' : kind === 'dozing' ? 'Z' : '♪';
+      ctx.fillText(glyph, 0, 0.5);
+    } else if (kind === 'angry'){
+      // per the reference image: a small pair of comic "spark" bursts --
+      // open radiating lines through a center point, not a filled cloud --
+      // replaces last round's jagged-cloud-with-star design
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      sparkMarkPath(ctx, -2.3, -1.5, 2.4, 4);
+      ctx.stroke();
+      ctx.beginPath();
+      sparkMarkPath(ctx, 2.6, -0.4, 1.8, 4);
+      ctx.stroke();
+    } else if (kind === 'dejected'){
+      // a single small drooping wave -- a quiet sigh, not a big frown
+      ctx.beginPath();
+      ctx.moveTo(-4.2, -1.2);
+      ctx.quadraticCurveTo(-1.4, 2.2, 0, 0.3);
+      ctx.quadraticCurveTo(1.4, -1.8, 4.2, 1.2);
+      ctx.stroke();
+    } else if (kind === 'irritated'){
+      // a few short wavy/zigzag strokes rising from the head -- a
+      // restrained squiggle reading as irritation, not a big spiral
+      for (let i = -1; i <= 1; i++){
+        const ox = i * 3.2;
+        ctx.beginPath();
+        ctx.moveTo(ox, 3.8);
+        ctx.quadraticCurveTo(ox + 1.7, 1.1, ox - 1.3, -1.1);
+        ctx.quadraticCurveTo(ox + 1.3, -3.3, ox, -5.8);
+        ctx.stroke();
+      }
+    } else if (kind === 'dizzy'){
+      // a small inward spiral -- swirl/tornado read
+      ctx.beginPath();
+      const turns = 1.8, steps = 22;
+      for (let i = 0; i <= steps; i++){
+        const t = i / steps;
+        const a = t * turns * Math.PI * 2;
+        const r = t * 4.4;
+        const px = Math.cos(a) * r, py = Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    } else if (kind === 'scared'){
+      // per the reference image: a single loose curled squiggle/hook (a
+      // "startled flick" mark) -- one continuous stroke, distinct from
+      // dizzy's smooth multi-turn spiral by being tighter, looser, and
+      // asymmetric rather than a clean Archimedean coil
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(-1.6, 3.6);
+      ctx.bezierCurveTo(-3.8, 2.6, -3.4, -1.6, -0.4, -2.0);
+      ctx.bezierCurveTo(2.4, -2.3, 2.8, 1.1, 0.2, 1.3);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---------- component I: side-overlay emotion layer (side-view only) ----------
+  // Deliberately outside STATE_GRAPH: this never calls requestState/BFS, so
+  // triggering or clearing it cannot interrupt the walk/run/idleStop gait
+  // underneath. Only one overlay is active at a time (toggled via the side
+  // panel's buttons); it is only ever drawn while fsm.currentState is one of
+  // the three side-view base states AND fsm is not mid-transition (see the
+  // call site in drawStableFrame/stepFsm) -- switching to sit/lie/jump/front
+  // simply stops drawing it without needing any special-case cleanup.
+  //
+  // Art rule for this layer specifically (front performances are NOT bound
+  // by this): stay small and quiet. Symbol scale stays at 1x (vs ~1.6-1.9x
+  // on the front versions), color is the same muted near-black as the
+  // symbol set above (no accent color), and every pose tweak below is a
+  // handful of degrees / a fraction of a pixel of bob -- "不經意流露", not
+  // a performance. Compare to the front action group's poses (component J),
+  // which are allowed much larger swings for the same emotions.
+  const OVERLAY_SYMBOL = {
+    happy: 'happy', confused: 'confused', surprised: 'surprised', dozing: 'dozing', angry: 'angry', dejectedLite: 'dejected',
+    irritated: 'irritated', dizzy: 'dizzy', scared: 'scared'
+  };
+  // per-symbol clearance above the head -- the music note in particular
+  // was sitting close enough to read as merged with the head silhouette;
+  // everything else keeps the original tighter default. Scaled by headR
+  // per archetype (see buildArchetype) since a bigger head needs more
+  // absolute clearance for the same "clearly separated" read.
+  let OVERLAY_SYMBOL_GAP;
+  const OVERLAY_SIDE_STATES = { walk: true, run: true, idleStop: true };
+
+  // Mirrors drawCharacter's own hipY/lean/head-axis formula exactly (same
+  // reason torsoAxisLens exists: any divergence from the live rig's own
+  // math reads as a pop). Kept side-by-side with drawCharacter rather than
+  // having drawCharacter export its internals, since this is the only
+  // other place that needs just the head point.
+  function computeHeadPointSide(baseX, baseY, Theta, cfg){
+    const bob = cfg.bobAmp * (0.5 + 0.5 * Math.cos(2 * Theta));
+    const lean = cfg.leanBias + cfg.leanAmp * Math.sin(2 * Theta + Math.PI * 0.15);
+    const hipY = baseY - cfg.legLen - bob;
+    const { headAxisLen } = torsoAxisLens(cfg);
+    return rotateAroundHip(baseX, hipY, 0, headAxisLen, lean);
+  }
+
+  // Tiny, restrained deltas layered on top of whichever base gait cfg is
+  // playing -- see the art-rule comment above. confused/surprised get no
+  // cfg change at all (the symbol's own small sway/pop, in
+  // drawOverlayEmotion, carries those two). `overlayT` (seconds since this
+  // overlay was turned on) drives the handful of time-varying tweaks
+  // (irritated's sway, dizzy's wobble, scared's one-shot recoil-then-
+  // freeze) -- all of them still small enough to read as "不經意流露".
+  function applyOverlayPoseTweak(cfg, overlay, overlayT){
+    if (overlay === 'happy') return Object.assign({}, cfg, { bobAmp: cfg.bobAmp * 1.2 + 0.4 });
+    if (overlay === 'dozing') return Object.assign({}, cfg, { leanBias: cfg.leanBias + 6 * Math.PI / 180, bobAmp: cfg.bobAmp * 0.7 });
+    if (overlay === 'dejectedLite') return Object.assign({}, cfg, { leanBias: cfg.leanBias + 4 * Math.PI / 180, bobAmp: cfg.bobAmp * 0.85 });
+    if (overlay === 'angry') return Object.assign({}, cfg, { leanAmp: cfg.leanAmp + 2 * Math.PI / 180 });
+    if (overlay === 'irritated'){
+      // slight side-to-side sway, standing in for a restrained foot-tap
+      return Object.assign({}, cfg, { leanBias: cfg.leanBias + (3.5 * Math.PI / 180) * Math.sin(overlayT * 5) });
+    }
+    if (overlay === 'dizzy'){
+      // slow, slightly wider wobble -- unsteady weight shift, still small
+      return Object.assign({}, cfg, { leanBias: cfg.leanBias + (4 * Math.PI / 180) * Math.sin(overlayT * 2.1), bobAmp: cfg.bobAmp * 1.15 });
+    }
+    if (overlay === 'scared'){
+      // one-shot recoil that eases out and then holds (freezes) -- not a
+      // continuous loop like the others, matching "瞬間後仰、定格"
+      const recoil = Math.max(0, 1 - overlayT / 0.22);
+      return Object.assign({}, cfg, { leanBias: cfg.leanBias - (7 * Math.PI / 180) * recoil, bobAmp: cfg.bobAmp * (1 - 0.25 * recoil) });
+    }
+    return cfg;
+  }
+
+  function drawOverlayEmotion(ctx, baseX, baseY, Theta, cfg, overlay, overlayT){
+    const sym = OVERLAY_SYMBOL[overlay];
+    if (!sym) return;
+    const headPt = computeHeadPointSide(baseX, baseY, Theta, cfg);
+    const fadeIn = Math.min(overlayT / 0.3, 1);
+    let scale = 1.0, dx = 0;
+    if ((overlay === 'surprised' || overlay === 'scared') && overlayT < 0.25){
+      scale = 1.0 + 0.3 * (1 - overlayT / 0.25); // brief small pop on entry, eases back to 1x -- not an elaborate burst
+    }
+    if (overlay === 'confused'){
+      dx = Math.sin(overlayT * 1.4) * 1.6; // stands in for a quizzical head-tilt without needing a separate head-rotation hook in drawCharacter
+    }
+    const bob = Math.sin(overlayT * 3) * 0.5;
+    const gap = OVERLAY_SYMBOL_GAP[overlay] || 5;
+    drawSymbolMark(ctx, sym, headPt.x + dx, headPt.y - cfg.headR - gap + bob, scale, fadeIn);
+  }
+
+  // ---------- component H: turn-to-front (part-move, adopted) + cheer overlay ----------
+  // Reuses WALK_CFG's torso/head geometry completely unchanged -- no separate
+  // front rig, no resize. Only four limb-pivot dx offsets and one eye's
+  // position/radius are interpolated; every limb keeps angle=0 (hanging
+  // straight down) throughout the turn, so this is a pure pivot relocation,
+  // not a pose change. The single genuinely discrete moment is the far-side
+  // draw-order swap at the interpolation midpoint (verified numerically safe
+  // up to e=0.55, well past the swap point -- see verify_turn_pivot.js).
+  // Validated as a standalone prototype first, then adopted here in place of
+  // the never-shipped squash/reveal transition.
+  // FRONT_PIVOT_CFG and CHEER_ARM_DEG are the two most proportion-sensitive
+  // numbers in the whole file -- see buildArchetype's comment for why: they
+  // control exactly how close a raised arm comes to merging with the head
+  // silhouette, and that margin shrinks fast for short arms or big heads.
+  let FRONT_PIVOT_CFG;
+  const FRONT_TURN_DUR = 0.9, CHEER_DUR = 0.5;
+  // NOT 165deg on the original long-limbed rig: that's nearly straight up,
+  // which puts the raised arm almost directly behind/beside the head --
+  // same fill color, so it visually merges into the head silhouette instead
+  // of reading as a cheer. 128deg keeps a clear diagonal V, arm tip well
+  // clear of the head's radius. Per-archetype override in buildArchetype
+  // (bighead/chubby need a smaller angle or a shorter surprised/scared
+  // fling to keep the same kind of clearance on their proportions).
+  let CHEER_ARM_DEG, SURPRISED_FLUNG_DEG, SCARED_GUARD_DEG;
+
+  // `extra` (optional, 8th arg) is what the front action group (component J)
+  // uses to layer richer performance detail on top of the same turned rig:
+  // leg angles (marching/stomping), a head tilt, an extra bob offset beyond
+  // the idle breathing bob, closed-eye lines instead of open eyes, and a
+  // symbol drawn above the head via the shared symbol set. Every existing
+  // caller (toFront/fromFront/toCheer/fromCheer/front/frontCheer) omits it,
+  // so they keep behaving exactly as before -- this is purely additive.
+  function drawTurnPivotMove(ctx, baseX, baseY, turnP, armAngleNearDeg, armAngleFarDeg, breathT, extra){
+    extra = extra || {};
+    const legAngleNearDeg = extra.legNear || 0, legAngleFarDeg = extra.legFar || 0;
+    const headTiltDeg = extra.headTilt || 0;
+    const headDip = extra.headDip || 0;
+    const bobExtra = extra.bobExtra || 0;
+    const eyesClosed = !!extra.eyesClosed;
+    const bowDeg = extra.bowDeg || 0;
+
+    const cfg = WALK_CFG;
+    const e = smoothstep(turnP);
+    const breathBob = breathT !== undefined ? 1.0 * (0.5 + 0.5 * Math.cos(0.8 * breathT)) : 0;
+    const bob = breathBob + bobExtra;
+    const hipY = baseY - cfg.legLen - bob;
+    const { hipDrop, shoulderAxisLen, headAxisLen } = torsoAxisLens(cfg);
+    const torsoCy = hipY - hipDrop, shY = hipY - shoulderAxisLen, headCy = hipY - headAxisLen + headDip;
+
+    const hipNearDx = cfg.hipHalfWNear + (FRONT_PIVOT_CFG.hipHalfW - cfg.hipHalfWNear) * e;
+    const hipFarDx = -cfg.hipHalfWFar + (-FRONT_PIVOT_CFG.hipHalfW + cfg.hipHalfWFar) * e;
+    const shNearDx = cfg.shHalfWNear + (FRONT_PIVOT_CFG.shHalfW - cfg.shHalfWNear) * e;
+    const shFarDx = -cfg.shHalfWFar + (-FRONT_PIVOT_CFG.shHalfW + cfg.shHalfWFar) * e;
+
+    function limbEnd(px, py, angleDeg, len){
+      const a = angleDeg * Math.PI / 180;
+      return { baseX: px, baseY: py, endX: px + len * Math.sin(a), endY: py + len * Math.cos(a) };
+    }
+    const legNear = limbEnd(baseX + hipNearDx, hipY, legAngleNearDeg, cfg.legLen);
+    const legFar = limbEnd(baseX + hipFarDx, hipY, legAngleFarDeg, cfg.legLen);
+    const armNear = limbEnd(baseX + shNearDx, shY, armAngleNearDeg, cfg.armLen);
+    const armFar = limbEnd(baseX + shFarDx, shY, armAngleFarDeg, cfg.armLen);
+    function drawLimb(l, w){ capsule(ctx, l.baseX, l.baseY, l.endX, l.endY, w, SIL); }
+
+    // Runs `fn` rotated around the hip point when a bow is active, otherwise
+    // just calls it directly -- wraps every UPPER-body piece (torso, head,
+    // arms) so bowing leans the whole upper body forward from the waist
+    // while legs (never wrapped) stay planted. Applied around individual
+    // pieces rather than the whole function so the existing near/far draw
+    // ORDER (which is what keeps the near limb fully visible and the far
+    // limb's attachment hidden) is completely unchanged -- bowDeg is 0 for
+    // every pose except frontBow, so this is a no-op everywhere else.
+    function withBow(fn){
+      if (!bowDeg){ fn(); return; }
+      ctx.save();
+      ctx.translate(baseX, hipY);
+      ctx.rotate(bowDeg * Math.PI / 180);
+      ctx.translate(-baseX, -hipY);
+      fn();
+      ctx.restore();
+    }
+
+    const farAfterTorso = turnP >= 0.5;
+    if (!farAfterTorso){ drawLimb(legFar, cfg.legW); withBow(() => drawLimb(armFar, cfg.armW)); }
+
+    withBow(() => drawTorsoShape(ctx, baseX, torsoCy, cfg));
+
+    drawLimb(legNear, cfg.legW);
+    if (farAfterTorso) drawLimb(legFar, cfg.legW);
+
+    // one eye slides from the side position toward front-right; a second
+    // eye is born at that same starting point (radius 0) and grows while
+    // sliding to the mirrored front-left position -- "1 eye becomes 2".
+    // Drawn relative to the head center (0,0) inside a save/translate/rotate
+    // block so an optional headTilt can rotate head+eyes together as one
+    // unit without needing a second parametrization.
+    const sideDx = cfg.headR * 0.48, sideDy = -cfg.headR * 0.04;
+    const frontDx = cfg.headR * 0.38, frontDy = -cfg.headR * 0.05;
+    const eye1Dx = sideDx + (frontDx - sideDx) * e, eye1Dy = sideDy + (frontDy - sideDy) * e;
+    const eye2Dx = sideDx + (-frontDx - sideDx) * e, eye2Dy = sideDy + (frontDy - sideDy) * e;
+    const eyeR = cfg.headR * 0.14;
+
+    withBow(() => {
+      ctx.save();
+      ctx.translate(baseX, headCy);
+      if (headTiltDeg) ctx.rotate(headTiltDeg * Math.PI / 180);
+      drawHeadShape(ctx, 0, 0, cfg.headR, cfg.headCornerR);
+      if (!eyesClosed){
+        ctx.fillStyle = EYE_COLOR;
+        ctx.beginPath(); ctx.arc(eye1Dx, eye1Dy, eyeR, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(eye2Dx, eye2Dy, eyeR * e, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.strokeStyle = EYE_COLOR;
+        ctx.lineWidth = 1.3;
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(eye1Dx - eyeR, eye1Dy); ctx.lineTo(eye1Dx + eyeR, eye1Dy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(eye2Dx - eyeR, eye2Dy); ctx.lineTo(eye2Dx + eyeR, eye2Dy); ctx.stroke();
+      }
+      ctx.restore();
+    });
+
+    withBow(() => drawLimb(armNear, cfg.armW));
+    if (farAfterTorso) withBow(() => drawLimb(armFar, cfg.armW));
+
+    if (extra.symbol){
+      withBow(() => drawSymbolMark(ctx, extra.symbol, baseX, headCy - cfg.headR - (extra.symbolGap || 8), extra.symbolScale || 1, extra.symbolAlpha !== undefined ? extra.symbolAlpha : 1, extra.symbolSpin || 0));
+    }
+  }
+
+  // ---------- component J: front action group (full performances) ----------
+  // Same six emotions as the side-overlay layer plus a wave-hello gesture,
+  // but here each is a genuine independent performance, not a light touch:
+  // bigger arm swings, head tilt, leg stomps, closed eyes, symbol drawn at
+  // ~1.6-1.9x scale with real motion (bounce/shake/pulse) instead of the
+  // side layer's near-static 1x. This is the "刻意的表演" half of the
+  // side/front split -- deliberately not bound by the side layer's art
+  // restraint rule. `q` is a 0..1 intensity: callers pass smoothstep(p) on
+  // the way in, 1-smoothstep(p) on the way out, and a flat 1 for the idle
+  // loop once fully entered -- same enter/hold/exit shape used everywhere
+  // else in this file (e.g. toCheer/fromCheer), just centralized here so
+  // six emotions + wave don't each need their own bespoke lerp math.
+  // frontDejected is the one exception (needs bent knees, not a straight
+  // pivot-limb) -- see drawFrontDejected below, reusing DEJECTED_CFG.
+  function frontEmotionPose(name, q, loopT){
+    if (name === 'happy'){
+      const osc = Math.sin(loopT * 4);
+      return {
+        armNear: CHEER_ARM_DEG * q + 16 * osc * q, armFar: CHEER_ARM_DEG * q - 16 * osc * q,
+        // symbolGap bumped up (was 9, too close to the head) so the note
+        // has clear separation from the silhouette instead of overlapping it
+        extra: { bobExtra: -Math.abs(osc) * 2.4 * q, symbol: 'happy', symbolScale: 1.7, symbolAlpha: q, symbolGap: 15 }
+      };
+    }
+    if (name === 'confused'){
+      return {
+        armNear: -75 * q, armFar: 12 * q,
+        extra: { headTilt: 16 * Math.sin(loopT * 1.1) * q, symbol: 'confused', symbolScale: 1.8, symbolAlpha: q, symbolGap: 9 }
+      };
+    }
+    if (name === 'surprised'){
+      const settle = Math.min(loopT / 0.35, 1);
+      const flung = SURPRISED_FLUNG_DEG - 40 * settle; // starts wide (recoil), eases to a slightly narrower held pose
+      return {
+        armNear: flung * q, armFar: -flung * q,
+        extra: { bobExtra: -3 * (1 - settle) * q, symbol: 'surprised', symbolScale: 1.9 - 0.4 * (1 - settle), symbolAlpha: q, symbolGap: 9 }
+      };
+    }
+    if (name === 'dozing'){
+      return {
+        armNear: 8 * q, armFar: 8 * q,
+        extra: {
+          headTilt: (10 + 6 * Math.sin(loopT * 0.6)) * q, bobExtra: 1.2 * Math.sin(loopT * 0.5) * q,
+          eyesClosed: q > 0.6, symbol: 'dozing', symbolScale: 1.6,
+          symbolAlpha: q * (0.6 + 0.4 * Math.sin(loopT * 0.8)), symbolGap: 9 + 3 * Math.sin(loopT * 0.8)
+        }
+      };
+    }
+    if (name === 'angry'){
+      const stomp = Math.sin(loopT * 6);
+      return {
+        armNear: (18 + 3 * Math.sin(loopT * 14)) * q, armFar: (18 - 3 * Math.sin(loopT * 14 + 1)) * q,
+        extra: { legNear: 8 * stomp * q, legFar: -8 * stomp * q, symbol: 'angry', symbolScale: 1.7, symbolAlpha: q, symbolGap: 9 }
+      };
+    }
+    if (name === 'irritated'){
+      // arms held in close (crossed-ish), a quick alternating foot-shift,
+      // and a fast small head shake -- a bigger, more theatrical version of
+      // the side overlay's restrained sway/tap
+      const shake = Math.sin(loopT * 10);
+      return {
+        armNear: -22 * q, armFar: 22 * q,
+        extra: {
+          legNear: 6 * Math.sin(loopT * 7) * q, legFar: -6 * Math.sin(loopT * 7) * q,
+          headTilt: shake * 5 * q, symbol: 'irritated', symbolScale: 1.7, symbolAlpha: q, symbolGap: 9,
+          symbolSpin: shake * 0.15
+        }
+      };
+    }
+    if (name === 'dizzy'){
+      // big, slow head tilt + swaying stance + gently rocking arms --
+      // reads as genuinely unsteady, plus the swirl symbol spins (front-
+      // only flourish, the side overlay's version never rotates)
+      return {
+        armNear: 25 * Math.sin(loopT * 1.5) * q, armFar: -25 * Math.sin(loopT * 1.5 + 1) * q,
+        extra: {
+          headTilt: 20 * Math.sin(loopT * 1.3) * q, bobExtra: 2.5 * Math.sin(loopT * 1.7) * q,
+          legNear: 5 * Math.sin(loopT * 1.1) * q, legFar: -5 * Math.sin(loopT * 1.1 + 0.5) * q,
+          symbol: 'dizzy', symbolScale: 1.8, symbolAlpha: q, symbolGap: 11, symbolSpin: loopT * 2.4
+        }
+      };
+    }
+    if (name === 'scared'){
+      // a genuine one-shot recoil-then-freeze (not a continuous loop like
+      // the others): arms snap up defensively, torso pulls back, then it
+      // holds still -- `settle` only ever counts up from entry, so once it
+      // reaches 1 the pose stops moving entirely
+      const settle = Math.min(loopT / 0.3, 1);
+      const guard = -SCARED_GUARD_DEG + 20 * settle;
+      return {
+        armNear: guard * q, armFar: -guard * q,
+        extra: {
+          bobExtra: -4 * (1 - settle) * q, headTilt: -6 * (1 - settle) * q,
+          symbol: 'scared', symbolScale: 2.0 - 0.5 * (1 - settle), symbolAlpha: q, symbolGap: 9
+        }
+      };
+    }
+    if (name === 'wave'){
+      // the zero-cost technique validated earlier for cheer, reused as-is:
+      // only one arm angle changes on the already-turned front rig, no new
+      // silhouette. Oscillates side to side rather than holding still.
+      // The first fix attempt (-100, then -140) used a NEGATIVE angle,
+      // which swings the near arm inward/across the body -- toward the
+      // head/torso instead of away from it -- so it read as merged into
+      // the silhouette instead of a clearly separated raised arm, no
+      // matter how large the magnitude got. The actual bug was the sign:
+      // cheer's near arm uses +128deg (swings up AND outward, away from
+      // center), which is exactly the confirmed-legible ratio to reuse
+      // here -- same sign, same base magnitude, oscillating for the wave.
+      return { armNear: (CHEER_ARM_DEG + 18 * Math.sin(loopT * 6)) * q, armFar: 0, extra: {} };
+    }
+    if (name === 'bow'){
+      // small-angle forward lean from the waist -- uses drawTurnPivotMove's
+      // bowDeg (rotates torso+head+arms around the hip, legs stay planted).
+      // Arms/legs stay at rest; this is a "kept simple" gesture (apology/
+      // thanks), not a full performance with limb motion.
+      return { armNear: 0, armFar: 0, extra: { bowDeg: 22 * q } };
+    }
+    if (name === 'nod'){
+      // lighter than bow: no torso movement at all, just a small vertical
+      // head dip/rise -- about as close to zero-cost as an overlay gets,
+      // reusing headDip (a plain vertical offset on the head draw, no new
+      // geometry). Two dips per second, gentle.
+      return { armNear: 0, armFar: 0, extra: { headDip: 1.8 * Math.sin(loopT * 6) * q } };
+    }
+    return { armNear: 0, armFar: 0, extra: {} };
+  }
+  const FRONT_EMOTION_DUR = 0.5, FRONT_DEJECTED_DUR = 0.6;
+
+  // Front-facing counterpart to the side-view dejected pose (component G):
+  // same two-segment-limb + torsoAxisLens()/DEJECTED_CFG parameters, but
+  // mirrored symmetrically (both knees pulled in the same way) since the
+  // character faces the viewer here instead of standing in profile, using
+  // FRONT_PIVOT_CFG's wider hip/shoulder spacing instead of near/far.
+  // Reuses drawTrembleLines unchanged.
+  function drawFrontDejected(ctx, baseX, baseY, q, breathT){
+    const cfg = Object.assign({}, DEJECTED_CFG, FRONT_PIVOT_CFG);
+    const bob = cfg.breathBobAmp * (0.5 + 0.5 * Math.cos(breathT * cfg.breathSpeed));
+    const seatHeight = WALK_CFG.legLen + (cfg.seatHeight - WALK_CFG.legLen) * q;
+    const hipY = baseY - seatHeight - bob;
+    const { hipDrop, shoulderAxisLen, headAxisLen } = torsoAxisLens(cfg);
+    const torsoCy = hipY - hipDrop, shY = hipY - shoulderAxisLen, headCy = hipY - headAxisLen;
+
+    const thighUpDeg = cfg.thighUpDeg * q, thighLen = WALK_CFG.legLen / 2 + (cfg.thighLen - WALK_CFG.legLen / 2) * q;
+    const shinDownDeg = cfg.shinDownDeg * q, shinLen = WALK_CFG.legLen / 2 + (cfg.shinLen - WALK_CFG.legLen / 2) * q;
+    const armWrapAngle = cfg.armWrapAngle * q, armLen = WALK_CFG.armLen + (cfg.armLen - WALK_CFG.armLen) * q;
+
+    function leg(hipDx){ return twoSegLimb(baseX + hipDx, hipY, thighUpDeg, thighLen, shinDownDeg, shinLen); }
+    const legL = leg(-cfg.hipHalfW), legR = leg(cfg.hipHalfW);
+    function armEnd(shDx, mirror){
+      const px = baseX + shDx, py = shY, ang = armWrapAngle * mirror;
+      return { baseX: px, baseY: py, endX: px + armLen * Math.sin(ang), endY: py + armLen * Math.cos(ang) };
+    }
+    const armL = armEnd(-cfg.shHalfW, -1), armR = armEnd(cfg.shHalfW, 1);
+
+    drawTwoSegLimb(ctx, legL, cfg.legW);
+    capsule(ctx, armL.baseX, armL.baseY, armL.endX, armL.endY, cfg.armW, SIL);
+
+    drawTorsoShape(ctx, baseX, torsoCy, cfg);
+
+    drawTwoSegLimb(ctx, legR, cfg.legW);
+
+    drawHeadShape(ctx, baseX, headCy, cfg.headR, cfg.headCornerR);
+
+    capsule(ctx, armR.baseX, armR.baseY, armR.endX, armR.endY, cfg.armW, SIL);
+
+    drawTrembleLines(ctx, baseX, torsoCy, cfg.torsoRY * 1.8, breathT, cfg.trembleAmp * q);
+  }
+
+  // ---------- component L: multi-archetype support ----------
+  // Every render function above already takes cfg as a parameter or reads
+  // these module-level names fresh at draw time -- none of them cache a
+  // value at module-eval time. That's what makes this possible: swapping
+  // an archetype just means rebuilding WALK_CFG/RUN_CFG/SIT_CFG/etc. from a
+  // small set of base measurements and reassigning the same names; nothing
+  // downstream needs to know an archetype switch happened.
+  //
+  // What's genuinely shared across archetypes (kept as fixed ratios/angles
+  // below, not re-derived): every MOTION parameter (legAmp/armAmp/bobAmp/
+  // leanAmp/leanK/H2 wobble, run's cadence deltas, sit/dejected BEND angles
+  // like thighOutDeg, lie/prone's rotation amount, jump's timing fractions)
+  // -- these are "how does this thing move", which this project treats as
+  // shared motion language, not per-archetype geometry. What genuinely
+  // scales per archetype: every LENGTH, WIDTH, and PIVOT POSITION, plus a
+  // short list of angles that were empirically found to control how close
+  // a raised arm comes to merging with the head silhouette (CHEER_ARM_DEG,
+  // SURPRISED_FLUNG_DEG, SCARED_GUARD_DEG) -- these three are NOT derived
+  // from a fixed ratio, because the earlier stress-test showed the safety
+  // margin for a fixed angle collapses non-linearly with proportions (down
+  // to single-digit % for a big head + short arms). Each archetype below
+  // carries its own hand-checked values for these three, verified against
+  // the same clearance formula used to flag the risk tiers, then confirmed
+  // visually on the actual render (see the "medium risk" archetypes'
+  // dedicated cheer/wave/happy screenshot pass).
+  const ARCHETYPES = {
+    longlimb: {
+      label: '長腳手(基準)', headR: 7.5, armLen: 15, legLen: 17, armW: 3.2, legW: 6.2,
+      torsoRX: 11, torsoRY: 11.2, cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130
+    },
+    tall: {
+      label: '瘦高型', headR: 7, armLen: 18, legLen: 20, armW: 3.0, legW: 5.8,
+      torsoRX: 10, torsoRY: 13, cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130
+    },
+    petite: {
+      label: '小頭高個', headR: 5.5, armLen: 16, legLen: 19, armW: 2.8, legW: 5.6,
+      torsoRX: 10, torsoRY: 12, cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130
+    },
+    bighead: {
+      label: '大頭娃娃', headR: 11, armLen: 15, legLen: 14, armW: 3.4, legW: 6.4,
+      torsoRX: 14, torsoRY: 13,
+      // 128/150 (the baseline angles) clearance-tested at 53.7%/14.5% on
+      // this proportion -- surprised's 14.5% was too tight, so its base
+      // fling angle is pulled in to 130deg (50.7% margin); cheer/happy/wave
+      // pulled in slightly too (122 vs 128) for a bit more headroom
+      cheerArmDeg: 122, surprisedFlungDeg: 130, scaredGuardDeg: 130
+    },
+    chubby: {
+      label: '矮胖圓滾滾', headR: 8, armLen: 11, legLen: 9, armW: 3.6, legW: 7.0,
+      torsoRX: 13, torsoRY: 10,
+      // cheer/happy/wave's 128 already clears at 67.4% here, kept as-is;
+      // surprised's 150 only cleared 27.8%, pulled in to 135 (56.4%)
+      cheerArmDeg: 128, surprisedFlungDeg: 135, scaredGuardDeg: 130
+    },
+    // The high-risk candidate from the risk assessment: rounded-square
+    // torso + box-shaped (not capsule) limbs. Its numbers were NOT picked
+    // by eye -- see square_containment_math.js and
+    // square_archetype_verify.js (run before this was ever written into the
+    // build) for the rounded-rect SDF containment check on every pivot
+    // (side-view hip/shoulder near+far, front-turn target hip/shoulder) and
+    // the same arm-clearance formula used for bighead/chubby. All checks
+    // passed with healthy margins (smallest was +3.6px on the shoulder
+    // pivots; clearance was 46.7%-100.4% across cheer/surprised/scared), so
+    // the baseline 128/150/130 angles carry over unchanged -- unlike
+    // bighead/chubby, this one did NOT need its raised-arm angles retuned.
+    square: {
+      label: '方塊身體', headR: 7.5, armLen: 14, legLen: 14, armW: 4, legW: 6,
+      torsoRX: 11, torsoRY: 11.2, torsoCornerR: 3.5, limbShape: 'box', torsoShape: 'roundedRect',
+      cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130
+    },
+    // Low-risk group: reuse 'tall'/'petite' body+head proportions verbatim
+    // (headR/armLen/legLen/torsoRX/torsoRY all identical), only armW/legW
+    // shrink -- clearance() never takes width as an input, so the
+    // already-verified tall/petite margins (154.6%/195.4% etc.) carry over
+    // completely unchanged; no new angle tuning needed (see
+    // verify_slender.js). The only open question was purely visual --
+    // whether a thin limb stays legible while swinging at icon scale --
+    // checked via screenshots, not assumed.
+    slenderTall: {
+      label: '細長型', headR: 7, armLen: 18, legLen: 20, armW: 1.6, legW: 3.2,
+      torsoRX: 10, torsoRY: 13, cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130
+    },
+    slenderPetite: {
+      label: '細瘦小頭型', headR: 5.5, armLen: 16, legLen: 19, armW: 1.4, legW: 2.6,
+      torsoRX: 10, torsoRY: 12, cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130
+    },
+    // Extends 'square' with a rounded-square HEAD too (headShape,
+    // headCornerR). The head is never a pivot host, so there's no
+    // containment math to re-derive for it -- confirmed in
+    // verify_head_and_tail.js that headR keeps meaning "half-extent" for
+    // both shapes, so headAxisLen and both symbol-gap formulas need no
+    // changes. headCornerR uses the same ratio-to-half-size as the torso's
+    // (3.5/11 = 0.318 of torsoCornerR/torsoRX) for a visually consistent
+    // "corner roundedness" between torso and head.
+    squareHead: {
+      label: '方塊頭(全身方塊)', headR: 7.5, armLen: 14, legLen: 14, armW: 4, legW: 6,
+      torsoRX: 11, torsoRY: 11.2, torsoCornerR: 3.5, limbShape: 'box', torsoShape: 'roundedRect',
+      headShape: 'roundedSquare', headCornerR: 2.4,
+      cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130
+    },
+    // Humanoid-plus-tail (option A from the feasibility assessment): keeps
+    // the upright biped skeleton completely unchanged, adds ONE new
+    // appendage. Tail root pivot containment (torso ellipse rx=12,ry=11)
+    // was searched numerically in verify_head_and_tail.js -- attaching
+    // AT hip level had negative margin even at the narrowest tested width;
+    // moving the root up 5 units above hip level (tailRootDy=5, in the same
+    // "up is positive" convention rotateAroundHip already uses) opened up
+    // enough room for a healthy +3.28px margin at tailW=5, dx=-6.
+    // Per-state tail angle/amplitude overrides are set directly in
+    // buildArchetype (see the WALK_CFG/RUN_CFG/etc block below) rather than
+    // here, since they're POSE data, not archetype-identity data -- this
+    // matches how legAmp/armAmp differ per state already.
+    tailed: {
+      label: '長尾巴型', headR: 7, armLen: 13, legLen: 15, armW: 3.2, legW: 6.5,
+      torsoRX: 12, torsoRY: 11, cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130,
+      hasTail: true, tailLen: 16, tailW: 5, tailRootDx: -6, tailRootDy: 5
+    }
+  };
+
+  // fixed ratios derived from the original long-limbed rig's own numbers
+  // (e.g. hipHalfWNear/torsoRX = 3.8/11) -- applied to every archetype's own
+  // torsoRX/legLen/armLen/headR so each one keeps the SAME relative pivot
+  // placement and pose proportions the original was tuned and verified with
+  const ARCHETYPE_RATIOS = {
+    hipHalfWNear: 3.8 / 11, hipHalfWFar: 1.6 / 11, shHalfWNear: 4.4 / 11, shHalfWFar: 1.8 / 11,
+    frontHipHalfW: 3.6 / 11, frontShHalfW: 4.0 / 11,
+    neckGap: 4.5 / 7.5,
+    sitSeatH: 4 / 17, sitThighShin: 8.2 / 17, sitArmLen: 10 / 15, sitLegW: 5.8 / 6.2, sitArmW: 2.9 / 3.2,
+    dejSeatH: 5.5 / 17, dejThighShin: 7.2 / 17, dejLegW: 5.6 / 6.2, dejArmLen: 9 / 15, dejArmW: 2.8 / 3.2, dejNeckGapOfNeckGap: 1.6 / 4.5,
+    jumpCrouch: 3.2 / 17, jumpPeak: 15 / 17, jumpTuck: 6 / 17, jumpRecover: 2.0 / 17
+  };
+
+  function buildArchetype(id){
+    const p = ARCHETYPES[id], R = ARCHETYPE_RATIOS;
+
+    // shape dispatch flags -- read by capsule()/drawTorsoShape(), see their
+    // definitions near the top of the file. Every archetype except 'square'
+    // omits these, defaulting back to the original capsule/ellipse shapes.
+    LIMB_SHAPE = p.limbShape || 'capsule';
+    TORSO_SHAPE = p.torsoShape || 'ellipse';
+    HEAD_SHAPE = p.headShape || 'circle';
+
+    WALK_CFG = {
+      legAmp: 26 * Math.PI / 180, armAmp: 28 * Math.PI / 180,
+      legLen: p.legLen, armLen: p.armLen,
+      legW: p.legW, armW: p.armW,
+      headR: p.headR,
+      torsoRX: p.torsoRX, torsoRY: p.torsoRY, torsoCornerR: p.torsoCornerR || 0,
+      headCornerR: p.headCornerR || 0,
+      hipHalfWNear: R.hipHalfWNear * p.torsoRX, hipHalfWFar: R.hipHalfWFar * p.torsoRX,
+      shHalfWNear: R.shHalfWNear * p.torsoRX, shHalfWFar: R.shHalfWFar * p.torsoRX,
+      hipPoleFactor: 0.58, shoulderPoleFactor: 0.5,
+      neckGap: R.neckGap * p.headR,
+      bobAmp: 2, leanAmp: 5 * Math.PI / 180, leanBias: 0,
+      legK: 0.34, legH2: 0.05, legH2Off: 0.7,
+      armK: 0.30, armH2: 0.045, armH2Off: -0.5,
+      speedMul: 1,
+      // tail geometry (fixed regardless of state) + this state's own
+      // swing -- see drawTail()/the 'tailed' archetype comment above.
+      // tailLen stays falsy (0) for every archetype except 'tailed', so
+      // drawTail() no-ops everywhere else without an extra flag to check.
+      tailLen: p.hasTail ? p.tailLen : 0, tailW: p.tailW || 0,
+      tailRootDx: p.tailRootDx || 0, tailRootDy: p.tailRootDy || 0,
+      tailBaseDeg: -110, tailAmp: 18
+    };
+    RUN_CFG = Object.assign({}, WALK_CFG, {
+      legAmp: 42 * Math.PI / 180, armAmp: 40 * Math.PI / 180,
+      bobAmp: 3.4, leanAmp: 4 * Math.PI / 180, leanBias: 16 * Math.PI / 180,
+      legK: 0.22, legH2: 0.05, legH2Off: 0.7,
+      armK: 0.20, armH2: 0.05, armH2Off: -0.5,
+      speedMul: 1.9,
+      tailBaseDeg: -95, tailAmp: 26 // bigger, faster-reading swing at running speed
+    });
+    STILL_SIDE_CFG = Object.assign({}, WALK_CFG, {
+      legAmp: 0, armAmp: 0, bobAmp: 0, leanAmp: 0, leanBias: 0,
+      tailAmp: 6 // gentle breathing-linked sway instead of a fully static droop
+    });
+
+    SIT_CFG = Object.assign({}, WALK_CFG, {
+      seatHeight: R.sitSeatH * p.legLen,
+      thighLen: R.sitThighShin * p.legLen, thighOutDeg: 84,
+      shinLen: R.sitThighShin * p.legLen, shinInDeg: 88,
+      legW: R.sitLegW * p.legW,
+      armRestAngle: 30 * Math.PI / 180, armLen: R.sitArmLen * p.armLen, armW: R.sitArmW * p.armW,
+      breathBobAmp: 0.9, breathSpeed: 0.5,
+      tailBaseDeg: -70, tailAmp: 0 // swept back along the ground, static (no bend/curl -- single capsule)
+    });
+    STAND_AS_SIT_CFG = Object.assign({}, SIT_CFG, {
+      seatHeight: WALK_CFG.legLen,
+      thighLen: WALK_CFG.legLen / 2, shinLen: WALK_CFG.legLen / 2,
+      thighOutDeg: 0, shinInDeg: 0,
+      armRestAngle: 0, armLen: WALK_CFG.armLen
+    });
+
+    LIE_CFG = Object.assign({}, WALK_CFG, {
+      legAmp: 9 * Math.PI / 180, armAmp: 12 * Math.PI / 180,
+      bobAmp: 0, leanAmp: 0, leanBias: 0,
+      tailBaseDeg: -100, tailAmp: 4 // small idle sway, matches the gentle breathing wobble already used while lying down
+    });
+    PRONE_CFG = Object.assign({}, WALK_CFG, { bobAmp: 0, leanAmp: 0, leanBias: 0 });
+
+    // Note: prone/front-facing/dejected states do NOT draw a tail in this
+    // pass -- drawProneFrame and drawTurnPivotMove are bespoke render paths
+    // that never call drawTail, by deliberate scope choice (see the tail
+    // feasibility assessment: front-facing states would have the tail
+    // fully self-occluded behind the torso anyway, and prone was left out
+    // to keep this pass to the "5-6 core poses" the user asked for --
+    // walk/run/idleStop/jump/sit/lie). Archetypes with hasTail simply show
+    // no tail in those states; this is a scope boundary, not a bug.
+    JUMP_CFG = Object.assign({}, WALK_CFG, {
+      legAmp: 0, armAmp: 0, bobAmp: 0, leanAmp: 0, leanBias: 0,
+      tailBaseDeg: -165, tailAmp: 0 // swept up for the classic jumping-animal counterbalance read
+    });
+    JUMP_CROUCH_DEPTH = R.jumpCrouch * p.legLen;
+    JUMP_PEAK_HEIGHT = R.jumpPeak * p.legLen;
+    JUMP_LEG_TUCK = R.jumpTuck * p.legLen;
+    JUMP_RECOVER_DEPTH = R.jumpRecover * p.legLen;
+
+    DEJECTED_CFG = Object.assign({}, WALK_CFG, {
+      seatHeight: R.dejSeatH * p.legLen,
+      thighLen: R.dejThighShin * p.legLen, thighUpDeg: 108,
+      shinLen: R.dejThighShin * p.legLen, shinDownDeg: 18,
+      legW: R.dejLegW * p.legW,
+      armWrapAngle: 78 * Math.PI / 180, armLen: R.dejArmLen * p.armLen, armW: R.dejArmW * p.armW,
+      neckGap: R.dejNeckGapOfNeckGap * WALK_CFG.neckGap,
+      trembleAmp: 1.3,
+      breathBobAmp: 0.5, breathSpeed: 0.7
+    });
+
+    FRONT_PIVOT_CFG = { hipHalfW: R.frontHipHalfW * p.torsoRX, shHalfW: R.frontShHalfW * p.torsoRX };
+    CHEER_ARM_DEG = p.cheerArmDeg;
+    SURPRISED_FLUNG_DEG = p.surprisedFlungDeg;
+    SCARED_GUARD_DEG = p.scaredGuardDeg;
+    OVERLAY_SYMBOL_GAP = { happy: 10 * (p.headR / 7.5) };
+  }
+
+  // Public entry point for the archetype switcher UI: rebuilds every cfg
+  // table AND resets the fsm to a clean idle state -- switching mid-gait or
+  // mid-transition with a different leg length would otherwise leave theta/
+  // bob/overlay state computed for the OLD proportions on screen for one
+  // frame, and any active side-overlay is cleared rather than carried over
+  // (there's no reason to assume the same overlay still makes sense).
+  function applyArchetype(id){
+    if (!(id in ARCHETYPES)) return;
+    buildArchetype(id);
+    fsm.currentState = 'idleStop';
+    fsm.transitioning = false; fsm.edgeVia = null; fsm.edgeTo = null;
+    fsm.t = 0; fsm.theta = 0; fsm.holdT = 0; fsm.pendingTarget = null;
+    fsm.overlay = null; fsm.overlayT = 0;
+  }
+
+  // ---------- state graph + BFS pathfinding ----------
+  // Nodes = the 6 requestable states (jump is requestable too, even though
+  // it auto-forwards back to idleStop once its animation completes).
+  // Each edge names a transition; several edges reuse the SAME transition
+  // kind (see drawTransitionFrame) so nothing here is duplicated per pair.
+  // durations reused by both the direct sit<->lie edges (chained, no pause)
+  // and the original sit<->stand / stand<->lie edges -- kept as one set of
+  // numbers so the two paths move at the same pace, not duplicated per edge
+  const SIT_STAND_DUR = 0.6, STAND_LIE_DUR = 0.8;
+  const SIT_LIE_DUR = SIT_STAND_DUR + STAND_LIE_DUR;
+  const PRONE_DUR = 0.7;
+
+  // The old `dejected` node (forced/auto edge hanging off idleStop) has been
+  // retired: per the side/front split, an emotion should never forcibly
+  // interrupt a side-view base state, so a STATE_GRAPH node under idleStop
+  // was the wrong shape for it. Its crouch geometry (DEJECTED_CFG,
+  // drawTrembleLines) lives on in the full frontDejected performance
+  // (component J); the side-overlay layer's "dejectedLite" (component I)
+  // is deliberately lighter-weight, reusing neither the crouch nor the
+  // trembling -- just a small lean/bob tweak plus the shared droop symbol.
+  //
+  // Every front emotion + wave only connects to/from `front` -- this is the
+  // whole point of the front action group: 6 emotions + wave adds 14 edges
+  // total (2 per node), not 14 x (number of other reachable states).
+  const STATE_GRAPH = {
+    walk:     [ { to: 'run', via: 'walkToRun' }, { to: 'idleStop', via: 'decelStop' } ],
+    run:      [ { to: 'walk', via: 'runToWalk' } ],
+    idleStop: [ { to: 'walk', via: 'idleToWalk' }, { to: 'sit', via: 'toSit' }, { to: 'lie', via: 'toLie' }, { to: 'prone', via: 'toProne' }, { to: 'jump', via: 'jumpRise' }, { to: 'front', via: 'toFront' } ],
+    sit:      [ { to: 'idleStop', via: 'fromSit' }, { to: 'lie', via: 'sitToLie' } ],
+    lie:      [ { to: 'idleStop', via: 'fromLie' }, { to: 'sit', via: 'lieToSit' } ],
+    // prone (face-plant) follows the same in/out pattern as lie: only
+    // reachable from idleStop, only returns to idleStop -- no direct edge
+    // to/from lie, since a "mirror of lying down" doesn't need one
+    prone:    [ { to: 'idleStop', via: 'fromProne' } ],
+    jump:     [ { to: 'idleStop', via: 'jumpFall', auto: true } ],
+    front: [
+      { to: 'idleStop', via: 'fromFront' },
+      { to: 'frontCheer', via: 'toCheer' },
+      { to: 'frontWave', via: 'toWave' },
+      { to: 'frontBow', via: 'toBow' },
+      { to: 'frontNod', via: 'toNod' },
+      { to: 'frontHappy', via: 'toFrontHappy' },
+      { to: 'frontConfused', via: 'toFrontConfused' },
+      { to: 'frontSurprised', via: 'toFrontSurprised' },
+      { to: 'frontDozing', via: 'toFrontDozing' },
+      { to: 'frontAngry', via: 'toFrontAngry' },
+      { to: 'frontDejected', via: 'toFrontDejected' },
+      { to: 'frontIrritated', via: 'toFrontIrritated' },
+      { to: 'frontDizzy', via: 'toFrontDizzy' },
+      { to: 'frontScared', via: 'toFrontScared' }
+    ],
+    frontCheer:     [ { to: 'front', via: 'fromCheer' } ],
+    frontWave:      [ { to: 'front', via: 'fromWave' } ],
+    frontBow:       [ { to: 'front', via: 'fromBow' } ],
+    frontNod:       [ { to: 'front', via: 'fromNod' } ],
+    frontHappy:     [ { to: 'front', via: 'fromFrontHappy' } ],
+    frontConfused:  [ { to: 'front', via: 'fromFrontConfused' } ],
+    frontSurprised: [ { to: 'front', via: 'fromFrontSurprised' } ],
+    frontDozing:    [ { to: 'front', via: 'fromFrontDozing' } ],
+    frontAngry:     [ { to: 'front', via: 'fromFrontAngry' } ],
+    frontDejected:  [ { to: 'front', via: 'fromFrontDejected' } ],
+    frontIrritated: [ { to: 'front', via: 'fromFrontIrritated' } ],
+    frontDizzy:     [ { to: 'front', via: 'fromFrontDizzy' } ],
+    frontScared:    [ { to: 'front', via: 'fromFrontScared' } ]
+  };
+  const STATE_LABEL = {
+    walk: '慢走', run: '快走', idleStop: '停下不走', sit: '坐下', lie: '躺下', prone: '趴下', jump: '跳躍(空中)',
+    front: '正面站姿', frontCheer: '正面舉手歡呼', frontWave: '正面揮手打招呼', frontBow: '正面鞠躬', frontNod: '正面點頭',
+    frontHappy: '正面-開心雀躍', frontConfused: '正面-疑惑', frontSurprised: '正面-驚訝',
+    frontDozing: '正面-打瞌睡', frontAngry: '正面-生氣', frontDejected: '正面-沮喪',
+    frontIrritated: '正面-煩躁', frontDizzy: '正面-頭昏腦脹', frontScared: '正面-嚇到'
+  };
+  const TRANSITION_LABEL = {
+    walkToRun: '慢走轉快走', runToWalk: '快走轉慢走', decelStop: '減速停下', idleToWalk: '起步走',
+    toSit: '坐下中', fromSit: '起身', toLie: '躺下中', fromLie: '起身',
+    toProne: '撲倒中', fromProne: '起身', jumpRise: '起跳', jumpFall: '落地',
+    toFront: '轉正面(部件移動)', fromFront: '轉回側面', toCheer: '舉手中', fromCheer: '放下手',
+    sitToLie: '坐姿轉躺下', lieToSit: '躺下轉坐姿',
+    toWave: '揮手中', fromWave: '收手', toBow: '鞠躬中', fromBow: '直起身', toNod: '點頭中', fromNod: '收起',
+    toFrontHappy: '開心雀躍中', fromFrontHappy: '收起', toFrontConfused: '疑惑中', fromFrontConfused: '收起',
+    toFrontSurprised: '驚訝中', fromFrontSurprised: '收起', toFrontDozing: '打瞌睡中', fromFrontDozing: '收起',
+    toFrontAngry: '生氣中', fromFrontAngry: '收起', toFrontDejected: '蹲下(正面)', fromFrontDejected: '起身',
+    toFrontIrritated: '煩躁中', fromFrontIrritated: '收起', toFrontDizzy: '頭昏腦脹中', fromFrontDizzy: '收起',
+    toFrontScared: '嚇到中', fromFrontScared: '收起'
+  };
+  const TRANSITION_DUR = {
+    walkToRun: 1.1, runToWalk: 1.1, decelStop: 0.9, idleToWalk: 0.6,
+    toSit: SIT_STAND_DUR, fromSit: SIT_STAND_DUR, toLie: STAND_LIE_DUR, fromLie: STAND_LIE_DUR,
+    toProne: PRONE_DUR, fromProne: PRONE_DUR,
+    jumpRise: JUMP_RISE_DUR, jumpFall: JUMP_FALL_DUR,
+    toFront: FRONT_TURN_DUR, fromFront: FRONT_TURN_DUR, toCheer: CHEER_DUR, fromCheer: CHEER_DUR,
+    sitToLie: SIT_LIE_DUR, lieToSit: SIT_LIE_DUR,
+    toWave: FRONT_EMOTION_DUR, fromWave: FRONT_EMOTION_DUR, toBow: FRONT_EMOTION_DUR, fromBow: FRONT_EMOTION_DUR,
+    toNod: FRONT_EMOTION_DUR, fromNod: FRONT_EMOTION_DUR,
+    toFrontHappy: FRONT_EMOTION_DUR, fromFrontHappy: FRONT_EMOTION_DUR,
+    toFrontConfused: FRONT_EMOTION_DUR, fromFrontConfused: FRONT_EMOTION_DUR,
+    toFrontSurprised: FRONT_EMOTION_DUR, fromFrontSurprised: FRONT_EMOTION_DUR,
+    toFrontDozing: FRONT_EMOTION_DUR, fromFrontDozing: FRONT_EMOTION_DUR,
+    toFrontAngry: FRONT_EMOTION_DUR, fromFrontAngry: FRONT_EMOTION_DUR,
+    toFrontDejected: FRONT_DEJECTED_DUR, fromFrontDejected: FRONT_DEJECTED_DUR,
+    toFrontIrritated: FRONT_EMOTION_DUR, fromFrontIrritated: FRONT_EMOTION_DUR,
+    toFrontDizzy: FRONT_EMOTION_DUR, fromFrontDizzy: FRONT_EMOTION_DUR,
+    toFrontScared: FRONT_EMOTION_DUR, fromFrontScared: FRONT_EMOTION_DUR
+  };
+
+  function bfsPath(start, target){
+    if (start === target) return [];
+    const queue = [[start]], visited = new Set([start]);
+    while (queue.length){
+      const path = queue.shift(), node = path[path.length - 1];
+      for (const edge of STATE_GRAPH[node] || []){
+        if (edge.to === target) return path.slice(1).concat(edge.to);
+        if (!visited.has(edge.to)){ visited.add(edge.to); queue.push(path.concat(edge.to)); }
+      }
+    }
+    return null; // genuinely unreachable -- reject rather than fake a jump
+  }
+  function findEdge(from, to){ return (STATE_GRAPH[from] || []).find(e => e.to === to); }
+
+  // ---------- execution model ----------
+  // `pendingTarget` holds only the LATEST requested target (not a growing
+  // queue of distinct targets) -- a new click always recomputes the path
+  // from wherever the currently-playing edge will land, so rapid clicking
+  // always converges on the most recent request instead of dog-piling
+  // stale ones. The edge in flight always finishes before anything else
+  // starts (see stepFsm) -- no animation is ever cut mid-transition.
+  const fsm = { currentState: 'idleStop', transitioning: false, edgeVia: null, edgeTo: null, t: 0, theta: 0, breathT: 0, holdT: 0, pendingTarget: null, overlay: null, overlayT: 0 };
+
+  function requestState(target){
+    if (!(target in STATE_GRAPH)) return;
+    fsm.pendingTarget = target;
+    if (!fsm.transitioning) tryStartNextEdge();
+  }
+  function tryStartNextEdge(){
+    // A pending request is satisfied the instant we arrive at it, even if a
+    // forced auto-edge (below) immediately carries us further -- otherwise
+    // a request of exactly "jump" would never be cleared (jump's own arrival
+    // never survives long enough to reach the old post-auto-edge clear
+    // check) and idleStop<->jump would loop forever after every landing.
+    if (fsm.pendingTarget === fsm.currentState) fsm.pendingTarget = null;
+
+    // forced/auto edges always take priority over whatever is pending -- a
+    // node like `jump` or `dejected` can never just be requested away from
+    // early, it must run its course. `holdDur` (default 0, e.g. jump) means
+    // "fire immediately on arrival"; a positive holdDur (dejected) means
+    // "stay and animate for at least this long first" -- tracked via
+    // fsm.holdT, incremented every stable frame in stepFsm. This does NOT
+    // touch pendingTarget beyond the line above, so a request made mid-hold
+    // (e.g. clicking "sit" while trembling) survives and resumes once the
+    // forced edge finally completes.
+    const auto = (STATE_GRAPH[fsm.currentState] || []).find(e => e.auto);
+    if (auto){
+      if (fsm.holdT >= (auto.holdDur || 0)){
+        fsm.transitioning = true; fsm.edgeVia = auto.via; fsm.edgeTo = auto.to; fsm.t = 0;
+      }
+      return;
+    }
+    if (fsm.pendingTarget === null) return;
+    const path = bfsPath(fsm.currentState, fsm.pendingTarget);
+    if (!path || path.length === 0){ fsm.pendingTarget = null; return; }
+    const edge = findEdge(fsm.currentState, path[0]);
+    fsm.transitioning = true; fsm.edgeVia = edge.via; fsm.edgeTo = edge.to; fsm.t = 0;
+  }
+  function onArriveAt(state){
+    fsm.currentState = state; fsm.transitioning = false; fsm.t = 0; fsm.holdT = 0;
+    tryStartNextEdge();
+  }
+
+  function drawTransitionFrame(ctx, cx, groundY, via, p, dt){
+    if (via === 'walkToRun'){
+      const cfg = lerpCfg(WALK_CFG, RUN_CFG, smoothstep(p));
+      fsm.theta += dt * 0.9 * cfg.speedMul;
+      drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
+    } else if (via === 'runToWalk'){
+      const cfg = lerpCfg(RUN_CFG, WALK_CFG, smoothstep(p));
+      fsm.theta += dt * 0.9 * cfg.speedMul;
+      drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
+    } else if (via === 'decelStop'){
+      const ampScale = 1 - smoothstep(p);
+      fsm.theta += dt * 0.9 * WALK_CFG.speedMul * Math.max(ampScale, 0);
+      drawCharacter(ctx, cx, groundY, fsm.theta, gaitAmpCfg(WALK_CFG, ampScale), true);
+    } else if (via === 'idleToWalk'){
+      const ampScale = smoothstep(p);
+      fsm.theta += dt * 0.9 * WALK_CFG.speedMul * Math.max(ampScale, 0.02);
+      drawCharacter(ctx, cx, groundY, fsm.theta, gaitAmpCfg(WALK_CFG, ampScale), true);
+    } else if (via === 'toSit'){
+      fsm.breathT += dt;
+      drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(smoothstep(p)));
+    } else if (via === 'fromSit'){
+      fsm.breathT += dt;
+      drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(1 - smoothstep(p)));
+    } else if (via === 'toLie'){
+      fsm.breathT += dt;
+      drawReclined(ctx, cx, groundY, smoothstep(p), LIE_CFG);
+    } else if (via === 'fromLie'){
+      fsm.breathT += dt;
+      drawReclined(ctx, cx, groundY, 1 - smoothstep(p), LIE_CFG);
+    } else if (via === 'toProne'){
+      drawProneFrame(ctx, cx, groundY, smoothstep(p), PRONE_CFG);
+    } else if (via === 'fromProne'){
+      drawProneFrame(ctx, cx, groundY, 1 - smoothstep(p), PRONE_CFG);
+    } else if (via === 'jumpRise'){
+      drawJumpFrame(ctx, cx, groundY, jumpRiseState(p));
+    } else if (via === 'jumpFall'){
+      drawJumpFrame(ctx, cx, groundY, jumpFallState(p));
+    } else if (via === 'toFront'){
+      fsm.breathT += dt;
+      drawTurnPivotMove(ctx, cx, groundY, p, 0, 0, fsm.breathT);
+    } else if (via === 'fromFront'){
+      fsm.breathT += dt;
+      drawTurnPivotMove(ctx, cx, groundY, 1 - p, 0, 0, fsm.breathT);
+    } else if (via === 'toCheer'){
+      fsm.breathT += dt;
+      const q = smoothstep(p);
+      drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG * q, -CHEER_ARM_DEG * q, fsm.breathT);
+    } else if (via === 'fromCheer'){
+      fsm.breathT += dt;
+      const q = smoothstep(p);
+      drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG * (1 - q), -CHEER_ARM_DEG * (1 - q), fsm.breathT);
+    } else if (via === 'sitToLie'){
+      // Chained, not two separate hops -- but critically, ONE unified ease
+      // spanning the whole compound motion, not two independently-restarted
+      // smoothstep() calls. Two independent eases (sit->stand, then
+      // stand->lie), even when rescaled off a shared global smoothstep(p),
+      // still divide by unequal per-phase denominators (SIT_STAND_DUR !=
+      // STAND_LIE_DUR), which leaves a real velocity KINK right at the
+      // standing silhouette -- exactly the "先站起來再躺下"-looking
+      // hesitation this was meant to avoid. Folding both phases into one
+      // compoundE = 2*smoothstep(p) curve and letting each phase consume it
+      // UNRESCALED (compoundE vs compoundE-1) makes both phases share the
+      // identical derivative at the crossing, so velocity is continuous
+      // there -- verified numerically (see check_sitlie_curve2.js). This
+      // does mean the sit<->stand and stand<->lie phases now split the
+      // duration evenly (50/50) rather than at SIT_STAND_DUR/STAND_LIE_DUR,
+      // which is fine: the standing silhouette still appears (this
+      // project's sit/lie rigs don't share a parametrization, so bridging
+      // through the one shape they both already anchor to is what makes it
+      // pop-free -- see the component comments above), it's just the
+      // fastest, no-lingering part of the motion instead of a pause.
+      fsm.breathT += dt;
+      const compoundE = 2 * smoothstep(p);
+      if (compoundE < 1){
+        drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(1 - compoundE));
+      } else {
+        drawReclined(ctx, cx, groundY, compoundE - 1, LIE_CFG);
+      }
+    } else if (via === 'lieToSit'){
+      // reverse of sitToLie, same unified-compoundE reasoning
+      fsm.breathT += dt;
+      const compoundE = 2 * smoothstep(p);
+      if (compoundE < 1){
+        drawReclined(ctx, cx, groundY, 1 - compoundE, LIE_CFG);
+      } else {
+        drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(compoundE - 1));
+      }
+    } else if (via === 'toWave'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('wave', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromWave'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('wave', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toBow'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('bow', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromBow'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('bow', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toNod'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('nod', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromNod'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('nod', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toFrontHappy'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('happy', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromFrontHappy'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('happy', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toFrontConfused'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('confused', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromFrontConfused'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('confused', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toFrontSurprised'){
+      fsm.breathT += dt;
+      // 'surprised' (and 'scared', below) use a one-shot settle-then-hold
+      // ramp inside frontEmotionPose that needs "time since THIS transition
+      // began" -- fsm.t is exactly that (resets to 0 when the edge starts,
+      // counts up during it). fsm.breathT would be wrong here: it's a
+      // global clock that keeps accumulating across the whole session, so
+      // by the time a player actually triggers this pose it's typically
+      // already past the settle window and the recoil would never show.
+      const ps = frontEmotionPose('surprised', smoothstep(p), fsm.t);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromFrontSurprised'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('surprised', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toFrontDozing'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('dozing', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromFrontDozing'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('dozing', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toFrontAngry'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('angry', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromFrontAngry'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('angry', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toFrontDejected'){
+      fsm.breathT += dt;
+      drawFrontDejected(ctx, cx, groundY, smoothstep(p), fsm.breathT);
+    } else if (via === 'fromFrontDejected'){
+      fsm.breathT += dt;
+      drawFrontDejected(ctx, cx, groundY, 1 - smoothstep(p), fsm.breathT);
+    } else if (via === 'toFrontIrritated'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('irritated', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromFrontIrritated'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('irritated', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toFrontDizzy'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('dizzy', smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromFrontDizzy'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('dizzy', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'toFrontScared'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('scared', smoothstep(p), fsm.t); // see toFrontSurprised comment -- needs transition-local time, not the global breathing clock
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (via === 'fromFrontScared'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('scared', 1 - smoothstep(p), fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    }
+  }
+
+  function drawStableFrame(ctx, cx, groundY, state, dt){
+    if (state === 'walk'){
+      fsm.theta += dt * 0.9 * WALK_CFG.speedMul;
+      const cfg = fsm.overlay ? applyOverlayPoseTweak(WALK_CFG, fsm.overlay, fsm.overlayT) : WALK_CFG;
+      drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
+      if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, fsm.theta, cfg, fsm.overlay, fsm.overlayT);
+    } else if (state === 'run'){
+      fsm.theta += dt * 0.9 * RUN_CFG.speedMul;
+      const cfg = fsm.overlay ? applyOverlayPoseTweak(RUN_CFG, fsm.overlay, fsm.overlayT) : RUN_CFG;
+      drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
+      if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, fsm.theta, cfg, fsm.overlay, fsm.overlayT);
+    } else if (state === 'idleStop'){
+      fsm.breathT += dt;
+      const baseCfg = Object.assign({}, STILL_SIDE_CFG, { bobAmp: 1.0 });
+      const cfg = fsm.overlay ? applyOverlayPoseTweak(baseCfg, fsm.overlay, fsm.overlayT) : baseCfg;
+      const theta = fsm.breathT * 0.4;
+      drawCharacter(ctx, cx, groundY, theta, cfg, false);
+      if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, theta, cfg, fsm.overlay, fsm.overlayT);
+    } else if (state === 'sit'){
+      fsm.breathT += dt;
+      drawCharacterSit(ctx, cx, groundY, fsm.breathT, SIT_CFG);
+    } else if (state === 'lie'){
+      fsm.breathT += dt;
+      const breathP = 1 - 0.015 * (0.5 + 0.5 * Math.cos(fsm.breathT * 0.5));
+      drawReclined(ctx, cx, groundY, breathP, LIE_CFG);
+    } else if (state === 'prone'){
+      fsm.breathT += dt;
+      const breathP = 1 - 0.015 * (0.5 + 0.5 * Math.cos(fsm.breathT * 0.5));
+      drawProneFrame(ctx, cx, groundY, breathP, PRONE_CFG);
+    } else if (state === 'jump'){
+      drawJumpFrame(ctx, cx, groundY, { height: JUMP_PEAK_HEIGHT, legLenDelta: -JUMP_LEG_TUCK, lean: 0 });
+    } else if (state === 'front'){
+      fsm.breathT += dt;
+      drawTurnPivotMove(ctx, cx, groundY, 1, 0, 0, fsm.breathT);
+    } else if (state === 'frontCheer'){
+      fsm.breathT += dt;
+      drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG, -CHEER_ARM_DEG, fsm.breathT);
+    } else if (state === 'frontWave'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('wave', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontBow'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('bow', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontNod'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('nod', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontHappy'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('happy', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontConfused'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('confused', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontSurprised'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('surprised', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontDozing'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('dozing', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontAngry'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('angry', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontDejected'){
+      fsm.breathT += dt;
+      drawFrontDejected(ctx, cx, groundY, 1, fsm.breathT);
+    } else if (state === 'frontIrritated'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('irritated', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontDizzy'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('dizzy', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    } else if (state === 'frontScared'){
+      fsm.breathT += dt;
+      const ps = frontEmotionPose('scared', 1, fsm.breathT);
+      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+    }
+  }
+
+  function stepFsm(dt, stage){
+    const ctx = stage.ctx, cx = stage.w / 2, groundY = stage.h - 30;
+    drawBackground(ctx, stage.w, stage.h);
+    drawGroundShadow(ctx, cx, groundY, 14);
+
+    if (fsm.transitioning){
+      fsm.t += dt;
+      const dur = TRANSITION_DUR[fsm.edgeVia];
+      const p = Math.min(fsm.t / dur, 1);
+      drawTransitionFrame(ctx, cx, groundY, fsm.edgeVia, p, dt);
+      if (fsm.t >= dur) onArriveAt(fsm.edgeTo);
+    } else {
+      fsm.holdT += dt;
+      // overlay only accumulates its own clock while actually visible (a
+      // side-view base state, not mid-transition) -- toggling it on right
+      // as a decelStop/idleToWalk transition starts just means the symbol's
+      // fade-in begins once the base state is reached, not before
+      if (fsm.overlay && OVERLAY_SIDE_STATES[fsm.currentState]) fsm.overlayT += dt;
+      drawStableFrame(ctx, cx, groundY, fsm.currentState, dt);
+      tryStartNextEdge(); // lets a delayed auto-edge (e.g. jump's landing) fire once ready
+    }
+  }
+
+  function fsmStatusText(){
+    if (fsm.transitioning){
+      let s = '目前狀態:' + STATE_LABEL[fsm.currentState] + ' → 過渡中(' + TRANSITION_LABEL[fsm.edgeVia] + ') → 目標:' + STATE_LABEL[fsm.edgeTo];
+      if (fsm.pendingTarget && fsm.pendingTarget !== fsm.edgeTo) s += '  ｜ 佇列:' + STATE_LABEL[fsm.pendingTarget];
+      return s;
+    }
+    return '目前狀態:' + STATE_LABEL[fsm.currentState];
+  }
+
+  buildArchetype('longlimb'); // default archetype, matches every existing behavior exactly
+
+  let t = 0, running = true, warpOn = true, speedFactor = 1;
+  let last = performance.now();
+  function tick(now){
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    // accumulate phase-time scaled by the live speed slider (rather than
+    // scaling Theta by speedFactor at read time) so changing the slider mid-
+    // animation doesn't jump the pose -- it just changes the rate going forward
+    if (running) t += dt * speedFactor;
+    const ThetaWalk = t * 0.9 * WALK_CFG.speedMul;
+    const ThetaRun = t * 0.9 * RUN_CFG.speedMul;
+
+    drawBackground(walk.ctx, walk.w, walk.h);
+    const walkGroundY = walk.h - 30;
+    drawGroundShadow(walk.ctx, walk.w/2, walkGroundY, 15);
+    drawCharacter(walk.ctx, walk.w/2, walkGroundY, ThetaWalk, WALK_CFG, warpOn);
+
+    drawBackground(run.ctx, run.w, run.h);
+    const runGroundY = run.h - 30;
+    drawGroundShadow(run.ctx, run.w/2, runGroundY, 15);
+    drawCharacter(run.ctx, run.w/2, runGroundY, ThetaRun, RUN_CFG, warpOn);
+
+    drawCalendarRow(context.ctx, context.w, context.h);
+    drawCharacter(context.ctx, context.w * 0.28, context.h - 24, ThetaWalk, WALK_CFG, warpOn);
+
+    stepFsm(dt, fsmCanvas);
+    fsmStatus.textContent = fsmStatusText();
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  document.getElementById('toggleBtn').addEventListener('click', function(){
+    running = !running;
+    this.textContent = running ? '暫停' : '播放';
+  });
+  document.getElementById('warpToggle').addEventListener('change', function(){ warpOn = this.checked; });
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal = document.getElementById('speedVal');
+  speedSlider.addEventListener('input', function(){
+    speedFactor = parseFloat(this.value);
+    speedVal.textContent = speedFactor.toFixed(2) + 'x';
+  });
+  const fsmStatus = document.getElementById('fsmStatus');
+  document.querySelectorAll('[data-target]').forEach(function(btn){
+    btn.addEventListener('click', function(){ requestState(btn.dataset.target); });
+  });
+  // side-overlay toggle buttons: independent of requestState/BFS entirely --
+  // just flips fsm.overlay on/off and resets its own little clock, never
+  // touches fsm.currentState/pendingTarget
+  const overlayBtns = document.querySelectorAll('[data-overlay]');
+  overlayBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      const name = btn.dataset.overlay;
+      fsm.overlay = (fsm.overlay === name) ? null : name;
+      fsm.overlayT = 0;
+      overlayBtns.forEach(function(b){ b.classList.toggle('active', b.dataset.overlay === fsm.overlay); });
+    });
+  });
+  window.addEventListener('keydown', function(e){
+    if (e.key === ' '){ e.preventDefault(); document.getElementById('toggleBtn').click(); }
+  });
+  document.getElementById('archetypeSelect').addEventListener('change', function(){
+    applyArchetype(this.value);
+    overlayBtns.forEach(function(b){ b.classList.remove('active'); });
+  });
+})();
+</script>
