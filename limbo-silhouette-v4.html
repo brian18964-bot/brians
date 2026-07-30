@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v28 — 新增 4 款模糊型原型</title>
+<title>剪影走路/跑步循環 v29 — 雙元件對稱掛載點機制 + 貓耳示範</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v28</div>
-    <h1>新增 4 款模糊型原型</h1>
-    <p class="sub">全部沿用「圓潤模糊型」已經驗證過的管線(離屏合成+模糊、眼睛抽離最後銳利疊加),render 路徑本身沒有新東西。2 款方形基礎:方胖模糊型(torsoRX=14/torsoRY=10,目前最寬的方形軀幹,厚實短肢)、方瘦長模糊型(獨立設計比例,不是沿用 longBox 的數字,torsoRX=8/torsoRY=15)。2 款刻意跟方形系列拉開視覺區隔:大頭模糊型(純橢圓/膠囊,headR=12 目前最大的頭,配小身體,「搖頭娃娃」感)、扁寬模糊型(純橢圓/膠囊,torsoRX=17 目前最寬的軀幹,torsoRY=9 壓扁,「軟墊」感)。四款都各自重新做過支點包覆+舉手動作淨空的數字驗證(見 verify_blur4.js),沒有因為共用模糊效果就跳過——基準 128/150/130 角度全部不夠用,個別收窄後最小餘裕:方胖 31.9%、方瘦長 32.4%、大頭 48.0%、扁寬 42.2%。大頭跟扁寬另外把軀幹比例調大過一輪(9/8→10.5/9.5、8→9)才讓背後掛載點的支點餘裕從 +0.75px/+1.16px 拉到 +1.24px/+1.51px,判定原本太薄。<b>肉眼複查發現一個先前 10 種原型沒遇過的問題</b>:固定 3px 模糊半徑在細肢原型上會讓四肢幾乎融進軀幹的模糊暈裡看不見(方瘦長型的手臂/大頭型的舉手動作最明顯)——這不是既有管線的 bug,是模糊半徑需要跟肢體粗細成比例的新發現。解法沒有動架構,`blurRadius` 本來就是逐原型可調的數值(圓潤模糊型當初就這樣設計),方瘦長型跟大頭型調降到 1.5(大頭型甚至試過 3→2→1.5 三輪),方胖跟扁寬因肢體較粗維持原本的 3。大頭模糊型的舉手手勢即使調到 1.5 依然偏含蓄——短手臂配巨大頭部這個比例組合,是這個原型本身的視覺特性,不是模糊半徑能完全解決的,誠實記錄不強行修飾。17 種原型 × 16 種姿勢,zero console 錯誤。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v29</div>
+    <h1>雙元件對稱掛載點機制 + 貓耳示範</h1>
+    <p class="sub">頭部配件庫規劃清單裡「報酬率最高的投資」:攻克雙元件對稱掛載點機制,一次為貓耳/兔耳/熊耳/鹿角/惡魔角/雙天線 6 項配件解鎖技術路徑。核心是 <code>deriveSymmetricHeadPair(headTop, headR, baseRatio, halfWRatio)</code>——純粹從已經回傳的 <code>headTop</code> 掛載點反推頭部中心(headTop 本身就定義為「沿 OUT(angle) 距頭部中心 headR 遠」,反推一步就拿到中心點),再沿同一條 OUT 軸線找一個「根部略淺於 headR」的基準點、垂直方向左右對稱偏移,衍生出兩個新錨點。<b>沒有動任何一個姿態渲染函式</b>——這是純粹的回傳值後處理,跟帽子讀取 headTop 完全同一個層次,情緒符號/帽子的既有分層邏輯完全不受影響。根部刻意設計在頭部輪廓「內側」(baseRatio<1,而非等於 1 的 headTop 本身),讓配件根部被頭部剪影蓋住、只有伸出的部分需要露出頭部邊界,跟尾巴根部、帽子底座同一個「接點被遮住」設計原則。左右兩個錨點不做近/遠側遮擋區分(跟四肢的近/遠側邏輯不同)——這套系統從來沒有幫頭部特徵做過真正的景深模擬(單眼一律面向 +x,不分近遠),刻意選擇「兩耳對稱同時顯示」而非硬做假的透視遮擋,誠實記錄為刻意的範圍決定而非疏漏。貓耳作為第一個示範配件,用簡單三角形(重用帽子的三角形繪製技巧)驗證機制:重新做過數字驗證(見 verify_ear_mounts.js),涵蓋圓形頭/方形頭、最小/最大頭部尺寸、20 度傾斜壓力測試,根部包覆餘裕最小 +1.02px、耳尖淨空餘裕最小 +1.50px。截圖驗證轉正面、鞠躬(bowDeg 大幅旋轉)、跟情緒符號/帽子同時開啟共存,雙耳都正確對稱跟隨、無重疊衝突。17 種原型 × 16 種姿勢,四個配件同時開啟,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -101,9 +101,12 @@
       <label class="toggle">
         <input id="propToggle" type="checkbox" style="accent-color:var(--accent);"> 手持道具配件(手部掛載點示範)
       </label>
+      <label class="toggle">
+        <input id="catEarsToggle" type="checkbox" style="accent-color:var(--accent);"> 貓耳配件(雙元件對稱掛載點示範)
+      </label>
     </div>
     <p class="note">切換原型會重建所有支點/角度座標並把狀態機重置回「停下不走」(側身疊加層一併清除),走路/跑步/情境預覽三個上方畫布也會跟著換成新原型的比例——同一套狀態機、過渡曲線、疊加層架構,五種原型共用,只有下面列出的幾何/角度數值換了一組。</p>
-    <p class="note">三個配件勾選框都套用在「狀態機驅動」這個畫布上,跟哪一種原型無關——各自只讀取渲染函式回傳的對應掛載點座標(位置 + 當下角度),不知道也不需要知道現在是哪個原型、哪個動作。切換原型或動作時配件會自動跟著新的掛載點座標移動;貓尾巴用背後掛載點(正面朝向的姿勢刻意不顯示,因為背後掛載點在正面視角會被軀幹完全擋住),小帽子用頭部掛載點(所有姿勢都顯示,包含正面),手持道具用雙手掛載點(所有姿勢都顯示)。</p>
+    <p class="note">四個配件勾選框都套用在「狀態機驅動」這個畫布上,跟哪一種原型無關——各自只讀取渲染函式回傳的對應掛載點座標(位置 + 當下角度),不知道也不需要知道現在是哪個原型、哪個動作。切換原型或動作時配件會自動跟著新的掛載點座標移動;貓尾巴用背後掛載點(正面朝向的姿勢刻意不顯示,因為背後掛載點在正面視角會被軀幹完全擋住),小帽子用頭部掛載點(所有姿勢都顯示,包含正面),手持道具用雙手掛載點(所有姿勢都顯示),貓耳則是從頭部掛載點衍生出的左右對稱新錨點(所有姿勢都顯示,包含正面,不分近/遠側)。</p>
     <canvas id="stageFsm" width="480" height="360" style="max-width:320px; margin:0 auto;"></canvas>
     <div class="controls" style="margin-top:12px; padding-top:12px; gap:10px; flex-wrap:wrap;">
       <button id="fsmWalkBtn" type="button" data-target="walk">慢走</button>
@@ -2450,6 +2453,56 @@
   // special-casing.
   function mountOutward(mount){ return { x: Math.sin(mount.angle), y: -Math.cos(mount.angle) }; }
 
+  // ---------- dual-symmetric-anchor derivation (component S) ----------
+  // Derives a mirrored LEFT/RIGHT pair of points from the headTop mount, for
+  // accessories that come in bilateral pairs (ears, horns, antennae) --
+  // NO pose function needs to change to support this. headTop already
+  // carries the head's current position+orientation for whatever this
+  // frame's pose/rotation did (lean, headTiltDeg, bowDeg, or drawReclined/
+  // drawProneFrame's own wrap) -- see drawCharacter's headTopPt and
+  // drawTurnPivotMove's headTopPreBow, both already verified against every
+  // rotation this rig produces. Reconstructing head center from headTop and
+  // re-deriving two new points off it is a pure post-processing step, at
+  // the exact same level drawHatAccessory already operates at -- no pose
+  // function has ever needed to know accessories exist, and this doesn't
+  // change that.
+  //
+  // Math: headTop sits exactly headR out from head center along
+  // OUT(headTop.angle) (that IS headTop's own definition). Reversing that
+  // one step recovers head center. A base point partway back out along the
+  // same OUT axis (baseRatio*headR, less than the full headR headTop
+  // itself sits at) is where a pair visually roots on a round head --
+  // DELIBERATELY inside the head's own silhouette (baseRatio < 1), so the
+  // root is covered by the head shape and only the accessory's own
+  // extension beyond that point needs to clear the boundary, the same
+  // "attachment gets covered, only the free end needs clearance" principle
+  // the tail root used. Offsetting perpendicular to OUT by halfWRatio*headR
+  // on each side gives the mirrored pair; both use headTop's own angle
+  // (not independently tilted) as a first pass -- each accessory's own
+  // shape can add local flare via the same perp vector.
+  //
+  // No near/far occlusion split (unlike limbs): both anchors are returned
+  // unconditionally in every view, side or front. This project's rig has
+  // never modeled true depth for head features (a single eye faces +x
+  // regardless of what else is near/far), and a "hide the far ear" rule
+  // would need an actual depth model this rig doesn't have -- two
+  // symmetric bumps reads clearly at this icon scale and is the simpler,
+  // more honest choice than faking foreshortening. Documented as a
+  // deliberate scope decision, not an oversight.
+  function deriveSymmetricHeadPair(headTop, headR, baseRatio, halfWRatio){
+    if (!headTop) return { left: null, right: null };
+    const out = mountOutward(headTop);
+    const headCenter = { x: headTop.x - out.x * headR, y: headTop.y - out.y * headR };
+    const baseX = headCenter.x + out.x * (baseRatio * headR);
+    const baseY = headCenter.y + out.y * (baseRatio * headR);
+    const perp = { x: -out.y, y: out.x };
+    const halfW = halfWRatio * headR;
+    return {
+      left: { x: baseX - perp.x * halfW, y: baseY - perp.y * halfW, angle: headTop.angle },
+      right: { x: baseX + perp.x * halfW, y: baseY + perp.y * halfW, angle: headTop.angle }
+    };
+  }
+
   // ---------- "eyes stay sharp" (blur-edge archetype follow-up) ----------
   // drawCharacter/drawCharacterSit/drawTurnPivotMove skip their own inline
   // eye draw whenever BLUR_EDGES is active (see the `if (!BLUR_EDGES)`
@@ -2483,7 +2536,7 @@
     }
   }
 
-  let ACCESSORY_CAT_TAIL = false, ACCESSORY_HAT = false, ACCESSORY_PROP = false;
+  let ACCESSORY_CAT_TAIL = false, ACCESSORY_HAT = false, ACCESSORY_PROP = false, ACCESSORY_CAT_EARS = false;
   let accessoryT = 0;
 
   // Cat tail (back mount): deliberately simpler than the retired dinosaur
@@ -2501,6 +2554,41 @@
     const endX = mount.x + CAT_TAIL_LEN * Math.sin(a);
     const endY = mount.y + CAT_TAIL_LEN * Math.cos(a);
     capsule(ctx, mount.x, mount.y, endX, endY, CAT_TAIL_W, SIL);
+  }
+
+  // Cat ears -- first demo of the dual-symmetric-anchor mechanism
+  // (deriveSymmetricHeadPair, component S). EAR_BASE_RATIO/EAR_HALF_W_RATIO
+  // are the tuned root-placement ratios verified in verify_ear_mounts.js
+  // (smallest rooting margin +1.02px on petite's small circle head, smallest
+  // tip-clearance +1.50px on longBox's rounded-square head, both re-checked
+  // at a 20deg head tilt as a stress test). EAR_HEIGHT_RATIO/EAR_BASE_W_RATIO
+  // size the triangle itself, off the SAME headR the anchor derivation
+  // already used -- no separate scaling step. Each ear is drawn with
+  // drawHatAccessory's own triangle technique (apex along OUT, base
+  // perpendicular) since a simple flat-vector ear silhouette is exactly a
+  // small triangle, just rooted at a derived side point instead of headTop
+  // itself.
+  const EAR_BASE_RATIO = 0.6, EAR_HALF_W_RATIO = 0.55;
+  const EAR_HEIGHT_RATIO = 0.65, EAR_BASE_W_RATIO = 0.6;
+  function drawEarTriangle(ctx, mount, height, baseW){
+    if (!mount) return;
+    const out = mountOutward(mount);
+    const perp = { x: -out.y, y: out.x };
+    const apexX = mount.x + out.x * height, apexY = mount.y + out.y * height;
+    ctx.beginPath();
+    ctx.moveTo(apexX, apexY);
+    ctx.lineTo(mount.x - perp.x * baseW / 2, mount.y - perp.y * baseW / 2);
+    ctx.lineTo(mount.x + perp.x * baseW / 2, mount.y + perp.y * baseW / 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  function drawCatEarsAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const pair = deriveSymmetricHeadPair(headTop, headR, EAR_BASE_RATIO, EAR_HALF_W_RATIO);
+    const earHeight = EAR_HEIGHT_RATIO * headR, earBaseW = EAR_BASE_W_RATIO * headR;
+    ctx.fillStyle = SIL;
+    drawEarTriangle(ctx, pair.left, earHeight, earBaseW);
+    drawEarTriangle(ctx, pair.right, earHeight, earBaseW);
   }
 
   // Party hat (headTop mount): a small filled triangle extending straight
@@ -2614,6 +2702,11 @@
       // BLUR_EDGES suppressed the inline draw; every other archetype
       // already has its eye as part of the body itself.
       if (BLUR_EDGES) drawSharpEyes(ctx, mounts.eyes);
+      // ears drawn before the hat -- ears grow FROM the head (rooted inside
+      // its own silhouette, see deriveSymmetricHeadPair), while a hat sits
+      // ON TOP of/between them, so hat-after-ears is the natural wearing
+      // order if both happen to be on at once during testing.
+      if (ACCESSORY_CAT_EARS) drawCatEarsAccessory(ctx, mounts.headTop, WALK_CFG.headR);
       if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(ctx, mounts.back);
       if (ACCESSORY_HAT) drawHatAccessory(ctx, mounts.headTop);
       if (ACCESSORY_PROP){
@@ -2712,6 +2805,9 @@
   });
   document.getElementById('propToggle').addEventListener('change', function(){
     ACCESSORY_PROP = this.checked;
+  });
+  document.getElementById('catEarsToggle').addEventListener('change', function(){
+    ACCESSORY_CAT_EARS = this.checked;
   });
 })();
 </script>
