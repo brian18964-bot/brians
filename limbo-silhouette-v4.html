@@ -608,6 +608,36 @@
   const runBuf = setupOffscreen(run.w, run.h);
   const contextBuf = setupOffscreen(context.w, context.h);
   const fsmBuf = setupOffscreen(fsmCanvas.w, fsmCanvas.h);
+  const accessoryBuf = setupOffscreen(fsmCanvas.w, fsmCanvas.h);
+
+  // ---------- accessory edge-softening (Option B, blur-edge follow-up) ----------
+  // Accessories (hat/ears/tail/prop) are deliberately NOT pulled into the
+  // body's own drawCharacterMaybeBlurred pass -- see that call site's
+  // comment in stepFsm -- they're worn, physical objects; the body is the
+  // one dissolving into the void. But drawn fully sharp against a blurred
+  // body they read as pasted on, disconnected from the rest of the
+  // silhouette. This is a SECOND, independent, much lighter blur pass
+  // (ACCESSORY_BLUR_RADIUS, a flat 1px rather than a fraction of the body's
+  // own per-archetype BLUR_RADIUS, which ranges 1.5-3px) applied to
+  // accessories only, so they stay clearly readable as physical objects
+  // while no longer looking completely severed from the body's ethereal
+  // edge quality. Same offscreen-buffer-then-composite technique as
+  // drawCharacterMaybeBlurred, zero-overhead passthrough when BLUR_EDGES is
+  // false (the other 13 archetypes' accessory rendering is unaffected).
+  // Eyes (drawSharpEyes) and the emotion symbol are drawn OUTSIDE this pass
+  // on purpose: eyes must stay fully sharp for the "gazing from the void"
+  // effect, and the symbol is a communicative overlay, not a worn object --
+  // neither belongs in an "accessories" treatment.
+  const ACCESSORY_BLUR_RADIUS = 1;
+  function drawAccessoriesMaybeSoftened(stage, offscreen, drawFn){
+    if (!BLUR_EDGES){ drawFn(stage.ctx); return; }
+    offscreen.ctx.clearRect(0, 0, offscreen.w, offscreen.h);
+    drawFn(offscreen.ctx);
+    stage.ctx.save();
+    stage.ctx.filter = `blur(${ACCESSORY_BLUR_RADIUS}px)`;
+    stage.ctx.drawImage(offscreen.canvas, 0, 0, stage.w, stage.h);
+    stage.ctx.restore();
+  }
 
   function drawCalendarRow(ctx, w, h){
     ctx.fillStyle = '#f4f1ea';
@@ -2559,16 +2589,32 @@
   // Cat ears -- first demo of the dual-symmetric-anchor mechanism
   // (deriveSymmetricHeadPair, component S). EAR_BASE_RATIO/EAR_HALF_W_RATIO
   // are the tuned root-placement ratios verified in verify_ear_mounts.js
-  // (smallest rooting margin +1.02px on petite's small circle head, smallest
-  // tip-clearance +1.50px on longBox's rounded-square head, both re-checked
-  // at a 20deg head tilt as a stress test). EAR_HEIGHT_RATIO/EAR_BASE_W_RATIO
-  // size the triangle itself, off the SAME headR the anchor derivation
-  // already used -- no separate scaling step. Each ear is drawn with
-  // drawHatAccessory's own triangle technique (apex along OUT, base
-  // perpendicular) since a simple flat-vector ear silhouette is exactly a
-  // small triangle, just rooted at a derived side point instead of headTop
-  // itself.
-  const EAR_BASE_RATIO = 0.6, EAR_HALF_W_RATIO = 0.55;
+  // (smallest rooting margin +1.02px on petite's small circle head; +1.50px
+  // on longBox's rounded-square head using the circle ratio unmodified).
+  // EAR_HEIGHT_RATIO/EAR_BASE_W_RATIO size the triangle itself, off the SAME
+  // headR the anchor derivation already used -- no separate scaling step.
+  // Each ear is drawn with drawHatAccessory's own triangle technique (apex
+  // along OUT, base perpendicular) since a simple flat-vector ear silhouette
+  // is exactly a small triangle, just rooted at a derived side point instead
+  // of headTop itself.
+  //
+  // Shape-aware base ratio: a rounded-square head's top is FLAT (not
+  // curved like a circle's), so the same baseRatio that reads as clearly
+  // visible on a circle head leaves a rounded-square head's ears mostly
+  // buried -- verify_ear_shape_fix.js quantifies this as a "visibility %"
+  // (apex clearance / ear height, not just a positive margin): circle heads
+  // hit 56.3% with baseRatio=0.6, but rounded-square heads only hit 38.5%
+  // with the SAME ratio (confirmed shape-driven, not archetype-driven --
+  // identical 38.5% on all 4 rounded-square archetypes regardless of
+  // headR). Root cause: on the flat top, visibility reduces to a clean
+  // closed form, 1 - (1-baseRatio)/earHeightRatio, so raising baseRatio
+  // alone (root planted closer to the flat edge) restores parity without
+  // touching ear height/width at all. Solved for baseRatio=0.716, which
+  // lands rounded-square heads at exactly 56.3% too (matches circle) while
+  // keeping insideMargin comfortably positive (1.70-2.27px across the 4
+  // archetypes, same order as circle heads' 1.02-2.23px) -- see
+  // verify_ear_shape_fix.js's baseRatio sweep and per-archetype check.
+  const EAR_BASE_RATIO = 0.6, EAR_BASE_RATIO_SQUARE = 0.716, EAR_HALF_W_RATIO = 0.55;
   const EAR_HEIGHT_RATIO = 0.65, EAR_BASE_W_RATIO = 0.6;
   function drawEarTriangle(ctx, mount, height, baseW){
     if (!mount) return;
@@ -2584,7 +2630,8 @@
   }
   function drawCatEarsAccessory(ctx, headTop, headR){
     if (!headTop) return;
-    const pair = deriveSymmetricHeadPair(headTop, headR, EAR_BASE_RATIO, EAR_HALF_W_RATIO);
+    const baseRatio = HEAD_SHAPE === 'roundedSquare' ? EAR_BASE_RATIO_SQUARE : EAR_BASE_RATIO;
+    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, EAR_HALF_W_RATIO);
     const earHeight = EAR_HEIGHT_RATIO * headR, earBaseW = EAR_BASE_W_RATIO * headR;
     ctx.fillStyle = SIL;
     drawEarTriangle(ctx, pair.left, earHeight, earBaseW);
@@ -2705,13 +2752,21 @@
       // ears drawn before the hat -- ears grow FROM the head (rooted inside
       // its own silhouette, see deriveSymmetricHeadPair), while a hat sits
       // ON TOP of/between them, so hat-after-ears is the natural wearing
-      // order if both happen to be on at once during testing.
-      if (ACCESSORY_CAT_EARS) drawCatEarsAccessory(ctx, mounts.headTop, WALK_CFG.headR);
-      if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(ctx, mounts.back);
-      if (ACCESSORY_HAT) drawHatAccessory(ctx, mounts.headTop);
-      if (ACCESSORY_PROP){
-        drawPropAccessory(ctx, mounts.handNear);
-        drawPropAccessory(ctx, mounts.handFar);
+      // order if both happen to be on at once during testing. Routed
+      // through drawAccessoriesMaybeSoftened (Option B) so a blur-edge
+      // archetype gets a light independent softening pass on top of these
+      // four; every other archetype draws straight to `ctx` exactly as
+      // before.
+      if (ACCESSORY_CAT_EARS || ACCESSORY_CAT_TAIL || ACCESSORY_HAT || ACCESSORY_PROP){
+        drawAccessoriesMaybeSoftened(stage, accessoryBuf, function(accCtx){
+          if (ACCESSORY_CAT_EARS) drawCatEarsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
+          if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(accCtx, mounts.back);
+          if (ACCESSORY_HAT) drawHatAccessory(accCtx, mounts.headTop);
+          if (ACCESSORY_PROP){
+            drawPropAccessory(accCtx, mounts.handNear);
+            drawPropAccessory(accCtx, mounts.handFar);
+          }
+        });
       }
       drawMountSymbol(ctx, mounts, mounts.symbol);
     }
