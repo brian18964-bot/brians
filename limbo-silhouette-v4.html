@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v27 — 模糊原型的眼睛保持銳利</title>
+<title>剪影走路/跑步循環 v28 — 新增 4 款模糊型原型</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v27</div>
-    <h1>模糊原型的眼睛保持銳利</h1>
-    <p class="sub">「圓潤模糊型」的後續加強:身體/四肢維持模糊,眼睛保持銳利,呈現「從虛無中凝視」的對比。做法:<code>drawCharacter</code>/<code>drawCharacterSit</code>/<code>drawTurnPivotMove</code> 三個會畫眼睛的函式,在 <code>BLUR_EDGES</code> 為真時跳過內部畫眼睛的那幾行,改成把眼睛座標/半徑(或是打瞌睡狀態的閉眼線段)算好放進回傳值的新欄位 <code>eyes</code>——跟 <code>mounts</code>/<code>symbol</code> 完全同一套「算好就回傳、呼叫端最後畫」模式,非模糊原型一行都不用改,眼睛還是照舊畫在身體裡面。分層順序:眼睛畫在「身體合成完之後、配件之前」——眼睛是臉部本身特徵不是穿戴物,理論上該最先確立,之後帽子等配件才依正常穿戴邏輯疊上去,跟情緒符號畫在最上層完全不衝突。最需要注意的正面轉身雙眼跟鞠躬旋轉,直接重用 headTop 掛載點已經驗證過的同一條轉換鏈(先套 headTiltRad、再套 bowRad 的 <code>rotatePointAround</code> + <code>carryMountThroughRotation</code> 組合),沒有發明新技巧;<code>drawReclined</code> 額外多包一層旋轉(躺下姿勢),新增 <code>carryEyesThroughRotation</code> 比照現有的 <code>carryMountThroughRotation</code> 把眼睛也一併轉正。已用截圖驗證鞠躬(bowDeg 旋轉)、正面轉身、打瞌睡(headTilt+閉眼)、躺下(~90 度大幅旋轉)四種情境,銳利雙眼都正確跟隨;切回其他原型畫面完全不受影響。13 種原型 × 16 種姿勢,zero console 錯誤。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v28</div>
+    <h1>新增 4 款模糊型原型</h1>
+    <p class="sub">全部沿用「圓潤模糊型」已經驗證過的管線(離屏合成+模糊、眼睛抽離最後銳利疊加),render 路徑本身沒有新東西。2 款方形基礎:方胖模糊型(torsoRX=14/torsoRY=10,目前最寬的方形軀幹,厚實短肢)、方瘦長模糊型(獨立設計比例,不是沿用 longBox 的數字,torsoRX=8/torsoRY=15)。2 款刻意跟方形系列拉開視覺區隔:大頭模糊型(純橢圓/膠囊,headR=12 目前最大的頭,配小身體,「搖頭娃娃」感)、扁寬模糊型(純橢圓/膠囊,torsoRX=17 目前最寬的軀幹,torsoRY=9 壓扁,「軟墊」感)。四款都各自重新做過支點包覆+舉手動作淨空的數字驗證(見 verify_blur4.js),沒有因為共用模糊效果就跳過——基準 128/150/130 角度全部不夠用,個別收窄後最小餘裕:方胖 31.9%、方瘦長 32.4%、大頭 48.0%、扁寬 42.2%。大頭跟扁寬另外把軀幹比例調大過一輪(9/8→10.5/9.5、8→9)才讓背後掛載點的支點餘裕從 +0.75px/+1.16px 拉到 +1.24px/+1.51px,判定原本太薄。<b>肉眼複查發現一個先前 10 種原型沒遇過的問題</b>:固定 3px 模糊半徑在細肢原型上會讓四肢幾乎融進軀幹的模糊暈裡看不見(方瘦長型的手臂/大頭型的舉手動作最明顯)——這不是既有管線的 bug,是模糊半徑需要跟肢體粗細成比例的新發現。解法沒有動架構,`blurRadius` 本來就是逐原型可調的數值(圓潤模糊型當初就這樣設計),方瘦長型跟大頭型調降到 1.5(大頭型甚至試過 3→2→1.5 三輪),方胖跟扁寬因肢體較粗維持原本的 3。大頭模糊型的舉手手勢即使調到 1.5 依然偏含蓄——短手臂配巨大頭部這個比例組合,是這個原型本身的視覺特性,不是模糊半徑能完全解決的,誠實記錄不強行修飾。17 種原型 × 16 種姿勢,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -86,6 +86,10 @@
           <option value="blob">圓潤模糊型(邊緣柔化)</option>
           <option value="ellipseFull">全橢圓型</option>
           <option value="circleFull">全圓形型</option>
+          <option value="boxChubbyBlur">方胖模糊型</option>
+          <option value="boxSlenderBlur">方瘦長模糊型</option>
+          <option value="bigHeadBlur">大頭模糊型</option>
+          <option value="wideFlatBlur">扁寬模糊型</option>
         </select>
       </label>
       <label class="toggle">
@@ -1742,6 +1746,82 @@
       label: '全圓形型', headR: 8, armLen: 8, legLen: 7, armW: 4, legW: 5.5,
       torsoRX: 11, torsoRY: 11,
       cheerArmDeg: 116, surprisedFlungDeg: 118, scaredGuardDeg: 100
+    },
+    // Four more blur-edge archetypes (same drawCharacterMaybeBlurred /
+    // sharp-eyes pipeline as 'blob', nothing new in the render path itself)
+    // -- geometry/angles independently verified per archetype (see
+    // verify_blur4.js), not assumed safe just because the edge treatment
+    // is shared. At least 2 are box-shaped (limbShape/torsoShape/headShape
+    // overrides, like square/squareHead/longBox), the other 2 deliberately
+    // reuse the plain ellipse/capsule vocabulary for a visually distinct
+    // read from the box pair.
+    //
+    // 方胖模糊型: box-shaped, short and wide (torsoRX=14/torsoRY=10, wider
+    // than any prior box archetype) with thick short limbs -- a "plush
+    // cube" read. Baseline raised-arm angles fail (scared -37.6%), pulled
+    // in to 112/106/90, smallest raised-arm clearance afterward 31.9%.
+    boxChubbyBlur: {
+      label: '方胖模糊型', headR: 8, armLen: 9, legLen: 8, armW: 4.5, legW: 7,
+      torsoRX: 14, torsoRY: 10, torsoCornerR: 2.5, limbShape: 'box', torsoShape: 'roundedRect',
+      headShape: 'roundedSquare', headCornerR: 2.5,
+      cheerArmDeg: 112, surprisedFlungDeg: 106, scaredGuardDeg: 90,
+      blurEdges: true, blurRadius: 3
+    },
+    // 方瘦長模糊型: box-shaped, narrow and tall -- independently designed
+    // proportions from longBox (not reusing its numbers), verified on its
+    // own. Baseline angles fail (scared -30.3%), pulled in to 116/112/96,
+    // smallest raised-arm clearance 32.4%.
+    // blurRadius=1.5, not the 3 every other blur archetype uses -- at 3px
+    // this archetype's thin limbs (armW=2.6/legW=3.6, the thinnest of any
+    // blur archetype) all but vanished into the torso's own blur halo,
+    // found by screenshot, not assumed. blurRadius was already a per-
+    // archetype value (see 'blob'), so this needed a number change here,
+    // not a pipeline change -- containment/clearance math is unaffected by
+    // blur radius entirely, so no re-verification was needed for this fix.
+    boxSlenderBlur: {
+      label: '方瘦長模糊型', headR: 6, armLen: 18, legLen: 20, armW: 2.6, legW: 3.6,
+      torsoRX: 8, torsoRY: 15, torsoCornerR: 2, limbShape: 'box', torsoShape: 'roundedRect',
+      headShape: 'roundedSquare', headCornerR: 1.9,
+      cheerArmDeg: 116, surprisedFlungDeg: 112, scaredGuardDeg: 96,
+      blurEdges: true, blurRadius: 1.5
+    },
+    // 大頭模糊型: plain ellipse/capsule (no shape overrides) -- huge head
+    // (headR=12, the biggest of any archetype) on a small body, a
+    // "bobblehead" read deliberately distinct from the box pair above.
+    // torsoRX/torsoRY were bumped twice during verification (9/8 -> 9.5/8.5
+    // -> 10.5/9.5) specifically because the back-mount margin kept coming
+    // out thin (+0.75px, then +0.91px) even though every other check
+    // already passed -- pushed further rather than accepted at a thinner
+    // margin than this project's other archetypes typically carry.
+    // Baseline raised-arm angles technically clear here (smallest +4.3%)
+    // but that's thin enough to not trust at a glance, so pulled in anyway
+    // to 100/92/80 for a comfortable 48% margin on all three.
+    // blurRadius=1.5 (tried 3, then 2, before landing here) -- the huge
+    // head next to short arms/legs (armLen=8, the shortest reach of any
+    // blur archetype relative to its own headR) meant even a moderate blur
+    // made the raised-cheer-arm pose read as barely more than a blob with
+    // two faint bumps. Even at 1.5 the arms stay subtle rather than bold --
+    // an honest characteristic of this proportion combination (short limbs
+    // + big head), not something blur radius alone fully resolves.
+    bigHeadBlur: {
+      label: '大頭模糊型', headR: 12, armLen: 8, legLen: 7, armW: 3.5, legW: 5,
+      torsoRX: 10.5, torsoRY: 9.5,
+      cheerArmDeg: 100, surprisedFlungDeg: 92, scaredGuardDeg: 80,
+      blurEdges: true, blurRadius: 1.5
+    },
+    // 扁寬模糊型: plain ellipse/capsule, very wide and flat torso
+    // (torsoRX=17, the widest of any archetype; torsoRY=9, short) -- a
+    // squashed "cushion" read, the other visually-distinct-from-the-box-
+    // pair candidate. Same back-mount-margin story as bigHeadBlur: torsoRY
+    // bumped from 8 to 9 once the rest of the checks passed but backMount
+    // was still thin (+1.16px). Baseline raised-arm angles fail (scared
+    // -50.5%, the single worst baseline miss of all 4), pulled in to
+    // 108/98/82.
+    wideFlatBlur: {
+      label: '扁寬模糊型', headR: 7, armLen: 9, legLen: 7, armW: 4, legW: 6,
+      torsoRX: 17, torsoRY: 9,
+      cheerArmDeg: 108, surprisedFlungDeg: 98, scaredGuardDeg: 82,
+      blurEdges: true, blurRadius: 3
     }
   };
 
