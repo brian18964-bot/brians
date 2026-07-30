@@ -628,7 +628,11 @@
   // on purpose: eyes must stay fully sharp for the "gazing from the void"
   // effect, and the symbol is a communicative overlay, not a worn object --
   // neither belongs in an "accessories" treatment.
-  const ACCESSORY_BLUR_RADIUS = 1;
+  //
+  // ACCESSORY_BLUR_RADIUS is `let`, not `const` -- set in buildArchetype as
+  // BLUR_RADIUS/3 (see that assignment's comment for why a flat radius
+  // doesn't work across both "thick" 3px and "thin" 1.5px blur archetypes).
+  let ACCESSORY_BLUR_RADIUS = 0;
   function drawAccessoriesMaybeSoftened(stage, offscreen, drawFn){
     if (!BLUR_EDGES){ drawFn(stage.ctx); return; }
     offscreen.ctx.clearRect(0, 0, offscreen.w, offscreen.h);
@@ -1993,6 +1997,15 @@
     HAT_SYMBOL_MARGIN = R.hatSymbolMargin * p.headR;
     BLUR_EDGES = !!p.blurEdges;
     BLUR_RADIUS = p.blurRadius || 0;
+    // A flat accessory-softening radius was tried first and screenshot-
+    // tested against boxSlenderBlur (thin shapes, BLUR_RADIUS=1.5): even
+    // just 1px was enough to blur the cat ears' thin tip completely away,
+    // while the same 1px read fine as a light touch on boxChubbyBlur's
+    // thicker ears (BLUR_RADIUS=3). Scaling it off each archetype's own
+    // BLUR_RADIUS (same ratio that already separates "thick" 3px archetypes
+    // from "thin" 1.5px ones) fixes this without a second per-archetype
+    // tuning pass -- verified by re-screenshotting the same sweep at /3.
+    ACCESSORY_BLUR_RADIUS = BLUR_RADIUS / 3;
   }
 
   // Public entry point for the archetype switcher UI: rebuilds every cfg
