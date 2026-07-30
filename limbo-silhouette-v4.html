@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v20 — 新增方塊頭 + 長尾巴型(新肢體類型驗證)</title>
+<title>剪影走路/跑步循環 v21 — 通用背後掛載點 + 貓尾巴配件示範</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v20</div>
-    <h1>新增方塊頭 + 長尾巴型(新肢體類型驗證)</h1>
-    <p class="sub">這版正式實作上一輪評估過的兩個提案。方塊頭:延伸方塊身體的圓角矩形繪圖邏輯到頭部,但頭部本身不是支點承載件(沒有其他肢體會 pivot 進頭部),所以不需要新的 containment 數學,只需要新增 `drawHeadShape()` 並確認 headR 對兩種形狀都代表同一件事(半高距離)——疊加層符號跟正面情緒符號的錨點都驗證過落在方塊頭的平頂正上方,乾淨不偏移。長尾巴型:維持直立雙足骨架完全不變,新增尾巴作為第五個附加肢體,根部支點用跟其他肢體同一套「支點圓盤是否落在橢圓內」驗證,但這次不是套現成比例——直接沿用原本估的支點位置(髖部同高度)算出來竟然是負值(貼到軀幹邊緣外面),數字驗證先抓到這個問題,調整成根部往上移到接近下背部的高度後才拿到 +3.28px 的健康餘裕,才動手寫進去。尾巴姿態做了 6 組核心動作(走路擺動、跑步擺動、停下的呼吸連動微擺、坐下沿地面後掃、躺下沿地面延伸、跳躍上翹),前 4 組(走路/跑步/停下/跳躍)都是共用同一個 `drawCharacter` 渲染路徑,只是切換擺動角度跟幅度參數,不需要另外寫渲染邏輯;坐下另外寫了一行呼叫。趴下跟正面朝向的姿勢刻意不做尾巴(正面時尾巴會被軀幹整個擋住,不需要處理),範圍界定清楚。實際工作量比對:方塊頭複雜度低,幾乎是複製上一輪的模式;長尾巴型明顯比任何先前原型都花更多心力——光是找到一組真正合格的支點位置就經過好幾輪數字搜尋,跟原本評估的「明顯高於前面任何原型」相符。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v21</div>
+    <h1>通用背後掛載點 + 貓尾巴配件示範</h1>
+    <p class="sub">上一輪的「長尾巴型」是把尾巴焊死在一個獨立原型(tailed)裡,只有那個原型能有尾巴。這一輪改成通用機制:每個姿態渲染函式(drawCharacter/drawCharacterSit/drawReclined/drawProneFrame/drawJumpFrame/drawTurnPivotMove/drawFrontDejected,共 7 個)現在都會回傳一個 <code>mounts</code> 物件,內含背後掛載點的世界座標跟當下角度——呼叫端(stepFsm)完全不需要知道現在是哪個原型、哪個動作,只要讀這個座標就能在上面掛配件。掛載點位置直接沿用上一輪幫恐龍尾巴根部找到的驗證結果(相對髖部 dx=-6, dy=5,對應該原型 torsoRX=12/torsoRY=11),但改成用比例套用到每個原型自己的 torsoRX/torsoRY(跟 hipHalfWNear 等既有支點同一套技巧),而不是直接複製那組絕對數字——因為不同原型的軀幹大小不同,絕對座標在小軀幹的原型上可能貼出邊界。10 種原型全部重新數字驗證過(見 verify_backmount.js),最小餘裕 +1.47px(petite/slenderPetite),全部過關。貓尾巴是這個機制的示範配件,刻意比恐龍尾巴簡單:不跟步態相位掛鉤,只有自己的一個獨立微幅擺動時鐘疊加在掛載點角度上,垂放方向跟著身體姿勢走。轉正面/舉手歡呼等正面朝向的姿勢回傳 <code>mounts.back = null</code>(背後掛載點在正面視角會被軀幹完全擋住,跟恐龍尾巴當初排除正面姿勢是同一個理由),用勾選框切換貓尾巴可以直接在下面「狀態機驅動」畫布上,對照不同原型/不同動作測試同一個配件是否正確跟著掛載點走。</p>
   </header>
 
   <div class="compare">
@@ -85,8 +85,12 @@
           <option value="tailed">長尾巴型</option>
         </select>
       </label>
+      <label class="toggle">
+        <input id="catTailToggle" type="checkbox" style="accent-color:var(--accent);"> 貓尾巴配件(背後掛載點示範)
+      </label>
     </div>
     <p class="note">切換原型會重建所有支點/角度座標並把狀態機重置回「停下不走」(側身疊加層一併清除),走路/跑步/情境預覽三個上方畫布也會跟著換成新原型的比例——同一套狀態機、過渡曲線、疊加層架構,五種原型共用,只有下面列出的幾何/角度數值換了一組。</p>
+    <p class="note">貓尾巴勾選後套用在「狀態機驅動」這個畫布上,跟哪一種原型無關——它只讀取每個姿態渲染函式回傳的背後掛載點座標(位置 + 當下傾斜角度),不知道也不需要知道現在是哪個原型、哪個動作。切換原型或動作時尾巴會自動跟著新的掛載點座標移動;正面朝向的姿勢(轉正面、舉手歡呼等)刻意不顯示尾巴,因為背後掛載點在正面視角會被軀幹完全擋住。</p>
     <canvas id="stageFsm" width="480" height="360" style="max-width:320px; margin:0 auto;"></canvas>
     <div class="controls" style="margin-top:12px; padding-top:12px; gap:10px; flex-wrap:wrap;">
       <button id="fsmWalkBtn" type="button" data-target="walk">慢走</button>
@@ -313,6 +317,39 @@
     return { x: hipX + x, y: hipY - y };
   }
 
+  // Rotates a point (px,py) the same way ctx.translate(cx,cy) + rotate(angle)
+  // + translate(-cx,-cy) rotates anything subsequently drawn through that ctx.
+  // Needed because a couple of pose functions (drawReclined, drawProneFrame)
+  // wrap their ENTIRE draw in exactly that transform to tip the rig over --
+  // any mount point they compute in their own local (pre-tip) coordinates has
+  // to go through this same rotation before being handed to a caller outside
+  // that ctx.save()/restore() block, or the returned coordinate would silently
+  // disagree with where the accessory actually needs to sit on screen.
+  function rotatePointAround(px, py, cx, cy, angle){
+    const dx = px - cx, dy = py - cy;
+    return {
+      x: cx + dx * Math.cos(angle) - dy * Math.sin(angle),
+      y: cy + dx * Math.sin(angle) + dy * Math.cos(angle)
+    };
+  }
+
+  // ---------- generic back-mount point (component N) ----------
+  // A SINGLE attachment point near the lower back, meant for ANY back-worn
+  // accessory (tail, backpack, cape, ...) -- decoupled from archetype, pose,
+  // and from any specific accessory. Position reuses the exact (dx,dy) found
+  // for the retired dinosaur-tail prototype's root (dx=-6, dy=5 against that
+  // archetype's own torsoRX=12/torsoRY=11), expressed as a ratio of each
+  // archetype's own torsoRX/torsoRY -- the SAME technique already used for
+  // every other pivot in ARCHETYPE_RATIOS (hipHalfWNear etc.), which keeps
+  // the SAME relative position inside the torso ellipse regardless of that
+  // archetype's actual size. Re-verified numerically for all 10 archetypes
+  // (see verify_backmount.js) rather than assumed: smallest clearance is
+  // +1.47px (petite/slenderPetite) for a disk radius of 2 (a width-4
+  // accessory root, thinner than the dino tail's width-5/radius-2.5), so the
+  // reused position is safe everywhere, not just on the archetype it was
+  // originally found for.
+  const BACKMOUNT_DX_RATIO = -6 / 12, BACKMOUNT_DY_RATIO = 5 / 11;
+
   // Single-segment limbs, round torso. Every limb pivot is placed strictly
   // inside the torso ellipse's fill area (verified numerically -- see
   // verify_containment.js -- with 9-55% clearance depending on the pivot).
@@ -366,6 +403,7 @@
     const hipFarPt = rotateAroundHip(baseX, hipY, -cfg.hipHalfWFar, 0, lean);
     const shNearPt = rotateAroundHip(baseX, hipY, cfg.shHalfWNear, shoulderDy, lean);
     const shFarPt = rotateAroundHip(baseX, hipY, -cfg.shHalfWFar, shoulderDy, lean);
+    const backPt = rotateAroundHip(baseX, hipY, cfg.backMountDx, cfg.backMountDy, lean);
 
     // right side = near/front (fully visible), left side = far/back (tucked
     // behind the torso at the join) -- fixed for the whole animation
@@ -405,6 +443,12 @@
     ctx.fill();
 
     drawLimb(armNear, cfg.armW);
+
+    // mounts: attachment points already computed above in this exact frame
+    // (post-lean, post-bob) -- an accessory system reads these without
+    // needing to know Theta/cfg/archetype at all. See the component-N
+    // comment near rotateAroundHip.
+    return { back: { x: backPt.x, y: backPt.y, angle: lean } };
   }
 
   function drawBackground(ctx, w, h){
@@ -581,6 +625,10 @@
     ctx.beginPath(); ctx.arc(baseX + cfg.headR * 0.48, headCy - cfg.headR * 0.04, eyeR, 0, Math.PI * 2); ctx.fill();
 
     capsule(ctx, armNear.baseX, armNear.baseY, armNear.endX, armNear.endY, cfg.armW, SIL);
+
+    // no lean while seated, so the mount's angle is just 0 -- see drawCharacter
+    const backPt = rotateAroundHip(baseX, hipY, cfg.backMountDx, cfg.backMountDy, 0);
+    return { back: { x: backPt.x, y: backPt.y, angle: 0 } };
   }
 
   // ---------- component D: lying-down pose (side view, static) ----------
@@ -604,8 +652,16 @@
     ctx.translate(baseX, baseY);
     ctx.rotate(rotAngle);
     ctx.translate(-baseX, -baseY);
-    drawCharacter(ctx, baseX, baseY, LIE_THETA, tweenCfg, false);
+    const inner = drawCharacter(ctx, baseX, baseY, LIE_THETA, tweenCfg, false);
     ctx.restore();
+
+    // drawCharacter's returned mount is in the PRE-tip local frame (it has
+    // no idea this whole draw just got wrapped in ctx.rotate) -- carry it
+    // through the same rotation via rotatePointAround so the coordinate
+    // handed back actually matches where the accessory needs to sit on the
+    // real, unrotated canvas.
+    const back = rotatePointAround(inner.back.x, inner.back.y, baseX, baseY, rotAngle);
+    return { back: { x: back.x, y: back.y, angle: inner.back.angle + rotAngle } };
   }
 
   // ---------- component K: prone / face-plant (mirror of lying down) ----------
@@ -668,6 +724,14 @@
     drawLimb(armNear, cfg.armW);
 
     ctx.restore();
+
+    // Same wrapped-rotation situation as drawReclined: compute the mount in
+    // this function's own local (pre-tip) frame, using the identical
+    // lean=0 convention drawCharacter uses for its rotateAroundHip calls,
+    // then carry it through the same rotAngle the draw itself was wrapped in.
+    const backLocal = rotateAroundHip(baseX, hipY, cfg.backMountDx, cfg.backMountDy, 0);
+    const back = rotatePointAround(backLocal.x, backLocal.y, baseX, baseY, rotAngle);
+    return { back: { x: back.x, y: back.y, angle: rotAngle } };
   }
 
   // ---------- component F: jump (side view, one-shot) ----------
@@ -705,7 +769,7 @@
   }
   function drawJumpFrame(ctx, baseX, baseY, state){
     const cfg = Object.assign({}, JUMP_CFG, { legLen: JUMP_CFG.legLen + state.legLenDelta, leanBias: state.lean });
-    drawCharacter(ctx, baseX, baseY - state.height, 0, cfg, false);
+    return drawCharacter(ctx, baseX, baseY - state.height, 0, cfg, false);
   }
 
   // ---------- component G: dejected pose parameters + tremble effect ----------
@@ -1046,6 +1110,13 @@
     if (extra.symbol){
       withBow(() => drawSymbolMark(ctx, extra.symbol, baseX, headCy - cfg.headR - (extra.symbolGap || 8), extra.symbolScale || 1, extra.symbolAlpha !== undefined ? extra.symbolAlpha : 1, extra.symbolSpin || 0));
     }
+
+    // No back mount here, on purpose: this rig faces the viewer, so a
+    // back-worn accessory would be directly behind the torso along the
+    // depth axis this silhouette can't represent -- the exact same scope
+    // boundary already documented for the dinosaur tail ("正面朝向的姿勢
+    // 刻意不做尾巴"). A caller must check mounts.back for null before using it.
+    return { back: null };
   }
 
   // ---------- component J: front action group (full performances) ----------
@@ -1215,6 +1286,9 @@
     capsule(ctx, armR.baseX, armR.baseY, armR.endX, armR.endY, cfg.armW, SIL);
 
     drawTrembleLines(ctx, baseX, torsoCy, cfg.torsoRY * 1.8, breathT, cfg.trembleAmp * q);
+
+    // front-facing -- see the identical comment in drawTurnPivotMove
+    return { back: null };
   }
 
   // ---------- component L: multi-archetype support ----------
@@ -1346,7 +1420,8 @@
     neckGap: 4.5 / 7.5,
     sitSeatH: 4 / 17, sitThighShin: 8.2 / 17, sitArmLen: 10 / 15, sitLegW: 5.8 / 6.2, sitArmW: 2.9 / 3.2,
     dejSeatH: 5.5 / 17, dejThighShin: 7.2 / 17, dejLegW: 5.6 / 6.2, dejArmLen: 9 / 15, dejArmW: 2.8 / 3.2, dejNeckGapOfNeckGap: 1.6 / 4.5,
-    jumpCrouch: 3.2 / 17, jumpPeak: 15 / 17, jumpTuck: 6 / 17, jumpRecover: 2.0 / 17
+    jumpCrouch: 3.2 / 17, jumpPeak: 15 / 17, jumpTuck: 6 / 17, jumpRecover: 2.0 / 17,
+    backMountDx: BACKMOUNT_DX_RATIO, backMountDy: BACKMOUNT_DY_RATIO
   };
 
   function buildArchetype(id){
@@ -1380,7 +1455,11 @@
       // drawTail() no-ops everywhere else without an extra flag to check.
       tailLen: p.hasTail ? p.tailLen : 0, tailW: p.tailW || 0,
       tailRootDx: p.tailRootDx || 0, tailRootDy: p.tailRootDy || 0,
-      tailBaseDeg: -110, tailAmp: 18
+      tailBaseDeg: -110, tailAmp: 18,
+      // generic back-mount point -- see the component-N comment above
+      // rotateAroundHip's definition. Independent of hasTail/tailLen:
+      // every archetype gets this, not just 'tailed'.
+      backMountDx: R.backMountDx * p.torsoRX, backMountDy: R.backMountDy * p.torsoRY
     };
     RUN_CFG = Object.assign({}, WALK_CFG, {
       legAmp: 42 * Math.PI / 180, armAmp: 40 * Math.PI / 180,
@@ -1640,53 +1719,53 @@
     if (via === 'walkToRun'){
       const cfg = lerpCfg(WALK_CFG, RUN_CFG, smoothstep(p));
       fsm.theta += dt * 0.9 * cfg.speedMul;
-      drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
+      return drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
     } else if (via === 'runToWalk'){
       const cfg = lerpCfg(RUN_CFG, WALK_CFG, smoothstep(p));
       fsm.theta += dt * 0.9 * cfg.speedMul;
-      drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
+      return drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
     } else if (via === 'decelStop'){
       const ampScale = 1 - smoothstep(p);
       fsm.theta += dt * 0.9 * WALK_CFG.speedMul * Math.max(ampScale, 0);
-      drawCharacter(ctx, cx, groundY, fsm.theta, gaitAmpCfg(WALK_CFG, ampScale), true);
+      return drawCharacter(ctx, cx, groundY, fsm.theta, gaitAmpCfg(WALK_CFG, ampScale), true);
     } else if (via === 'idleToWalk'){
       const ampScale = smoothstep(p);
       fsm.theta += dt * 0.9 * WALK_CFG.speedMul * Math.max(ampScale, 0.02);
-      drawCharacter(ctx, cx, groundY, fsm.theta, gaitAmpCfg(WALK_CFG, ampScale), true);
+      return drawCharacter(ctx, cx, groundY, fsm.theta, gaitAmpCfg(WALK_CFG, ampScale), true);
     } else if (via === 'toSit'){
       fsm.breathT += dt;
-      drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(smoothstep(p)));
+      return drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(smoothstep(p)));
     } else if (via === 'fromSit'){
       fsm.breathT += dt;
-      drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(1 - smoothstep(p)));
+      return drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(1 - smoothstep(p)));
     } else if (via === 'toLie'){
       fsm.breathT += dt;
-      drawReclined(ctx, cx, groundY, smoothstep(p), LIE_CFG);
+      return drawReclined(ctx, cx, groundY, smoothstep(p), LIE_CFG);
     } else if (via === 'fromLie'){
       fsm.breathT += dt;
-      drawReclined(ctx, cx, groundY, 1 - smoothstep(p), LIE_CFG);
+      return drawReclined(ctx, cx, groundY, 1 - smoothstep(p), LIE_CFG);
     } else if (via === 'toProne'){
-      drawProneFrame(ctx, cx, groundY, smoothstep(p), PRONE_CFG);
+      return drawProneFrame(ctx, cx, groundY, smoothstep(p), PRONE_CFG);
     } else if (via === 'fromProne'){
-      drawProneFrame(ctx, cx, groundY, 1 - smoothstep(p), PRONE_CFG);
+      return drawProneFrame(ctx, cx, groundY, 1 - smoothstep(p), PRONE_CFG);
     } else if (via === 'jumpRise'){
-      drawJumpFrame(ctx, cx, groundY, jumpRiseState(p));
+      return drawJumpFrame(ctx, cx, groundY, jumpRiseState(p));
     } else if (via === 'jumpFall'){
-      drawJumpFrame(ctx, cx, groundY, jumpFallState(p));
+      return drawJumpFrame(ctx, cx, groundY, jumpFallState(p));
     } else if (via === 'toFront'){
       fsm.breathT += dt;
-      drawTurnPivotMove(ctx, cx, groundY, p, 0, 0, fsm.breathT);
+      return drawTurnPivotMove(ctx, cx, groundY, p, 0, 0, fsm.breathT);
     } else if (via === 'fromFront'){
       fsm.breathT += dt;
-      drawTurnPivotMove(ctx, cx, groundY, 1 - p, 0, 0, fsm.breathT);
+      return drawTurnPivotMove(ctx, cx, groundY, 1 - p, 0, 0, fsm.breathT);
     } else if (via === 'toCheer'){
       fsm.breathT += dt;
       const q = smoothstep(p);
-      drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG * q, -CHEER_ARM_DEG * q, fsm.breathT);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG * q, -CHEER_ARM_DEG * q, fsm.breathT);
     } else if (via === 'fromCheer'){
       fsm.breathT += dt;
       const q = smoothstep(p);
-      drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG * (1 - q), -CHEER_ARM_DEG * (1 - q), fsm.breathT);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG * (1 - q), -CHEER_ARM_DEG * (1 - q), fsm.breathT);
     } else if (via === 'sitToLie'){
       // Chained, not two separate hops -- but critically, ONE unified ease
       // spanning the whole compound motion, not two independently-restarted
@@ -1710,59 +1789,59 @@
       fsm.breathT += dt;
       const compoundE = 2 * smoothstep(p);
       if (compoundE < 1){
-        drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(1 - compoundE));
+        return drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(1 - compoundE));
       } else {
-        drawReclined(ctx, cx, groundY, compoundE - 1, LIE_CFG);
+        return drawReclined(ctx, cx, groundY, compoundE - 1, LIE_CFG);
       }
     } else if (via === 'lieToSit'){
       // reverse of sitToLie, same unified-compoundE reasoning
       fsm.breathT += dt;
       const compoundE = 2 * smoothstep(p);
       if (compoundE < 1){
-        drawReclined(ctx, cx, groundY, 1 - compoundE, LIE_CFG);
+        return drawReclined(ctx, cx, groundY, 1 - compoundE, LIE_CFG);
       } else {
-        drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(compoundE - 1));
+        return drawCharacterSit(ctx, cx, groundY, fsm.breathT, sitMorphCfg(compoundE - 1));
       }
     } else if (via === 'toWave'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('wave', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromWave'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('wave', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toBow'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('bow', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromBow'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('bow', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toNod'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('nod', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromNod'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('nod', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toFrontHappy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('happy', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromFrontHappy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('happy', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toFrontConfused'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('confused', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromFrontConfused'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('confused', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toFrontSurprised'){
       fsm.breathT += dt;
       // 'surprised' (and 'scared', below) use a one-shot settle-then-hold
@@ -1773,57 +1852,57 @@
       // by the time a player actually triggers this pose it's typically
       // already past the settle window and the recoil would never show.
       const ps = frontEmotionPose('surprised', smoothstep(p), fsm.t);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromFrontSurprised'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('surprised', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toFrontDozing'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dozing', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromFrontDozing'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dozing', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toFrontAngry'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('angry', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromFrontAngry'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('angry', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toFrontDejected'){
       fsm.breathT += dt;
-      drawFrontDejected(ctx, cx, groundY, smoothstep(p), fsm.breathT);
+      return drawFrontDejected(ctx, cx, groundY, smoothstep(p), fsm.breathT);
     } else if (via === 'fromFrontDejected'){
       fsm.breathT += dt;
-      drawFrontDejected(ctx, cx, groundY, 1 - smoothstep(p), fsm.breathT);
+      return drawFrontDejected(ctx, cx, groundY, 1 - smoothstep(p), fsm.breathT);
     } else if (via === 'toFrontIrritated'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('irritated', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromFrontIrritated'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('irritated', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toFrontDizzy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dizzy', smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromFrontDizzy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dizzy', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'toFrontScared'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('scared', smoothstep(p), fsm.t); // see toFrontSurprised comment -- needs transition-local time, not the global breathing clock
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (via === 'fromFrontScared'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('scared', 1 - smoothstep(p), fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     }
   }
 
@@ -1831,99 +1910,128 @@
     if (state === 'walk'){
       fsm.theta += dt * 0.9 * WALK_CFG.speedMul;
       const cfg = fsm.overlay ? applyOverlayPoseTweak(WALK_CFG, fsm.overlay, fsm.overlayT) : WALK_CFG;
-      drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
+      const mounts = drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
       if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, fsm.theta, cfg, fsm.overlay, fsm.overlayT);
+      return mounts;
     } else if (state === 'run'){
       fsm.theta += dt * 0.9 * RUN_CFG.speedMul;
       const cfg = fsm.overlay ? applyOverlayPoseTweak(RUN_CFG, fsm.overlay, fsm.overlayT) : RUN_CFG;
-      drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
+      const mounts = drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
       if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, fsm.theta, cfg, fsm.overlay, fsm.overlayT);
+      return mounts;
     } else if (state === 'idleStop'){
       fsm.breathT += dt;
       const baseCfg = Object.assign({}, STILL_SIDE_CFG, { bobAmp: 1.0 });
       const cfg = fsm.overlay ? applyOverlayPoseTweak(baseCfg, fsm.overlay, fsm.overlayT) : baseCfg;
       const theta = fsm.breathT * 0.4;
-      drawCharacter(ctx, cx, groundY, theta, cfg, false);
+      const mounts = drawCharacter(ctx, cx, groundY, theta, cfg, false);
       if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, theta, cfg, fsm.overlay, fsm.overlayT);
+      return mounts;
     } else if (state === 'sit'){
       fsm.breathT += dt;
-      drawCharacterSit(ctx, cx, groundY, fsm.breathT, SIT_CFG);
+      return drawCharacterSit(ctx, cx, groundY, fsm.breathT, SIT_CFG);
     } else if (state === 'lie'){
       fsm.breathT += dt;
       const breathP = 1 - 0.015 * (0.5 + 0.5 * Math.cos(fsm.breathT * 0.5));
-      drawReclined(ctx, cx, groundY, breathP, LIE_CFG);
+      return drawReclined(ctx, cx, groundY, breathP, LIE_CFG);
     } else if (state === 'prone'){
       fsm.breathT += dt;
       const breathP = 1 - 0.015 * (0.5 + 0.5 * Math.cos(fsm.breathT * 0.5));
-      drawProneFrame(ctx, cx, groundY, breathP, PRONE_CFG);
+      return drawProneFrame(ctx, cx, groundY, breathP, PRONE_CFG);
     } else if (state === 'jump'){
-      drawJumpFrame(ctx, cx, groundY, { height: JUMP_PEAK_HEIGHT, legLenDelta: -JUMP_LEG_TUCK, lean: 0 });
+      return drawJumpFrame(ctx, cx, groundY, { height: JUMP_PEAK_HEIGHT, legLenDelta: -JUMP_LEG_TUCK, lean: 0 });
     } else if (state === 'front'){
       fsm.breathT += dt;
-      drawTurnPivotMove(ctx, cx, groundY, 1, 0, 0, fsm.breathT);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, 0, 0, fsm.breathT);
     } else if (state === 'frontCheer'){
       fsm.breathT += dt;
-      drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG, -CHEER_ARM_DEG, fsm.breathT);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, CHEER_ARM_DEG, -CHEER_ARM_DEG, fsm.breathT);
     } else if (state === 'frontWave'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('wave', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontBow'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('bow', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontNod'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('nod', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontHappy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('happy', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontConfused'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('confused', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontSurprised'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('surprised', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontDozing'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dozing', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontAngry'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('angry', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontDejected'){
       fsm.breathT += dt;
-      drawFrontDejected(ctx, cx, groundY, 1, fsm.breathT);
+      return drawFrontDejected(ctx, cx, groundY, 1, fsm.breathT);
     } else if (state === 'frontIrritated'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('irritated', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontDizzy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dizzy', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     } else if (state === 'frontScared'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('scared', 1, fsm.breathT);
-      drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
     }
+  }
+
+  // ---------- component O: back-mount accessory demo (cat tail) ----------
+  // Proof that the generic backMount point (component N) works completely
+  // independently of archetype AND of pose: this reads only the {x,y,angle}
+  // a pose function just returned, and knows nothing about which archetype,
+  // which state, or even whether a transition is mid-flight. Deliberately
+  // simpler than the retired dinosaur tail (drawTail) per the "先簡化"
+  // direction -- no gait-phase swing at all, just a small idle sway driven
+  // by its own independent clock (accessoryT, advanced unconditionally in
+  // stepFsm below), added ON TOP of the mount's own angle so the tail keeps
+  // "hanging off the body" through whatever lean/tip the current pose has,
+  // rather than swinging in a fixed screen direction.
+  let ACCESSORY_CAT_TAIL = false;
+  let accessoryT = 0;
+  const CAT_TAIL_LEN = 10, CAT_TAIL_W = 4, CAT_TAIL_BASE_DEG = -12, CAT_TAIL_SWAY_DEG = 8;
+  function drawCatTailAccessory(ctx, mount){
+    if (!mount) return; // self-occluded (front-facing states) -- see the
+                         // "return { back: null }" comment in drawTurnPivotMove
+    const sway = CAT_TAIL_SWAY_DEG * Math.sin(accessoryT * 1.6);
+    const a = mount.angle + (CAT_TAIL_BASE_DEG + sway) * Math.PI / 180;
+    const endX = mount.x + CAT_TAIL_LEN * Math.sin(a);
+    const endY = mount.y + CAT_TAIL_LEN * Math.cos(a);
+    capsule(ctx, mount.x, mount.y, endX, endY, CAT_TAIL_W, SIL);
   }
 
   function stepFsm(dt, stage){
     const ctx = stage.ctx, cx = stage.w / 2, groundY = stage.h - 30;
     drawBackground(ctx, stage.w, stage.h);
     drawGroundShadow(ctx, cx, groundY, 14);
+    accessoryT += dt;
 
+    let mounts;
     if (fsm.transitioning){
       fsm.t += dt;
       const dur = TRANSITION_DUR[fsm.edgeVia];
       const p = Math.min(fsm.t / dur, 1);
-      drawTransitionFrame(ctx, cx, groundY, fsm.edgeVia, p, dt);
+      mounts = drawTransitionFrame(ctx, cx, groundY, fsm.edgeVia, p, dt);
       if (fsm.t >= dur) onArriveAt(fsm.edgeTo);
     } else {
       fsm.holdT += dt;
@@ -1932,9 +2040,11 @@
       // as a decelStop/idleToWalk transition starts just means the symbol's
       // fade-in begins once the base state is reached, not before
       if (fsm.overlay && OVERLAY_SIDE_STATES[fsm.currentState]) fsm.overlayT += dt;
-      drawStableFrame(ctx, cx, groundY, fsm.currentState, dt);
+      mounts = drawStableFrame(ctx, cx, groundY, fsm.currentState, dt);
       tryStartNextEdge(); // lets a delayed auto-edge (e.g. jump's landing) fire once ready
     }
+
+    if (ACCESSORY_CAT_TAIL && mounts) drawCatTailAccessory(ctx, mounts.back);
   }
 
   function fsmStatusText(){
@@ -2013,6 +2123,9 @@
   document.getElementById('archetypeSelect').addEventListener('change', function(){
     applyArchetype(this.value);
     overlayBtns.forEach(function(b){ b.classList.remove('active'); });
+  });
+  document.getElementById('catTailToggle').addEventListener('change', function(){
+    ACCESSORY_CAT_TAIL = this.checked;
   });
 })();
 </script>
