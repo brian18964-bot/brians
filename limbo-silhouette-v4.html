@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v26 — 新增全橢圓型 + 全圓形型</title>
+<title>剪影走路/跑步循環 v27 — 模糊原型的眼睛保持銳利</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v26</div>
-    <h1>新增全橢圓型 + 全圓形型</h1>
-    <p class="sub">兩個都是純橢圓/膠囊形狀語言(沒有 limbShape/torsoShape/headShape 覆寫),跟 chubby/bighead/blob 完全同一套 containment 數學,不需要重新推導——只需要重新算一次新比例下的支點包覆跟舉手類動作的頭部淨空(見 verify_ellipse_circle.js)。全橢圓型:軀幹是站立的長橢圓(torsoRX=10, torsoRY=14,比寬更高,不同於 chubby 的寬橢圓 13/10),四肢厚實圓潤(armW=4.5, legW=6.5)。全圓形型:軀幹趨近正圓(torsoRX=torsoRY=11),頭偏大(headR=8)但四肢短粗,是目前最「渾圓可愛」的比例。兩者基準 128/150/130 舉手角度都不夠用(跟 bighead/chubby/longBox/blob 同一種「大頭+短臂」風險),全橢圓型收窄成 118/122/95(scared 原本只調到 105 度時餘裕僅 9.0%,判定太薄再收一次到 95 度、餘裕拉到 22.7% 才收工),全圓形型收窄成 116/118/100,全部重新驗證轉正。13 種原型 × 16 種姿勢,zero console 錯誤。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v27</div>
+    <h1>模糊原型的眼睛保持銳利</h1>
+    <p class="sub">「圓潤模糊型」的後續加強:身體/四肢維持模糊,眼睛保持銳利,呈現「從虛無中凝視」的對比。做法:<code>drawCharacter</code>/<code>drawCharacterSit</code>/<code>drawTurnPivotMove</code> 三個會畫眼睛的函式,在 <code>BLUR_EDGES</code> 為真時跳過內部畫眼睛的那幾行,改成把眼睛座標/半徑(或是打瞌睡狀態的閉眼線段)算好放進回傳值的新欄位 <code>eyes</code>——跟 <code>mounts</code>/<code>symbol</code> 完全同一套「算好就回傳、呼叫端最後畫」模式,非模糊原型一行都不用改,眼睛還是照舊畫在身體裡面。分層順序:眼睛畫在「身體合成完之後、配件之前」——眼睛是臉部本身特徵不是穿戴物,理論上該最先確立,之後帽子等配件才依正常穿戴邏輯疊上去,跟情緒符號畫在最上層完全不衝突。最需要注意的正面轉身雙眼跟鞠躬旋轉,直接重用 headTop 掛載點已經驗證過的同一條轉換鏈(先套 headTiltRad、再套 bowRad 的 <code>rotatePointAround</code> + <code>carryMountThroughRotation</code> 組合),沒有發明新技巧;<code>drawReclined</code> 額外多包一層旋轉(躺下姿勢),新增 <code>carryEyesThroughRotation</code> 比照現有的 <code>carryMountThroughRotation</code> 把眼睛也一併轉正。已用截圖驗證鞠躬(bowDeg 旋轉)、正面轉身、打瞌睡(headTilt+閉眼)、躺下(~90 度大幅旋轉)四種情境,銳利雙眼都正確跟隨;切回其他原型畫面完全不受影響。13 種原型 × 16 種姿勢,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -354,6 +354,26 @@
     return { x: p.x, y: p.y, angle: mount.angle + angle };
   }
 
+  // Same idea as carryMountThroughRotation but for an eyes descriptor array
+  // (see drawCharacter/drawCharacterSit/drawTurnPivotMove's own "eyes"
+  // return field) -- used by drawReclined/drawProneFrame, which wrap
+  // drawCharacter's ENTIRE draw in a ctx.rotate to tip the rig over, so any
+  // eye position it returned is in the pre-tip local frame and needs the
+  // same rotation carried through before a caller draws it on the real,
+  // unrotated canvas. Radius is rotation-invariant, only positions move.
+  function carryEyesThroughRotation(eyes, cx, cy, angle){
+    if (!eyes) return undefined;
+    return eyes.map(function(eye){
+      if (eye.closed){
+        const p1 = rotatePointAround(eye.lineX1, eye.lineY1, cx, cy, angle);
+        const p2 = rotatePointAround(eye.lineX2, eye.lineY2, cx, cy, angle);
+        return { closed: true, lineX1: p1.x, lineY1: p1.y, lineX2: p2.x, lineY2: p2.y };
+      }
+      const p = rotatePointAround(eye.x, eye.y, cx, cy, angle);
+      return { x: p.x, y: p.y, r: eye.r, closed: false };
+    });
+  }
+
   // ---------- generic back-mount point (component N) ----------
   // A SINGLE attachment point near the lower back, meant for ANY back-worn
   // accessory (tail, backpack, cape, ...) -- decoupled from archetype, pose,
@@ -460,12 +480,18 @@
 
     drawHeadShape(ctx, headPt.x, headPt.y, cfg.headR, cfg.headCornerR);
 
-    // eye: small, toward the front of the face (character faces +x)
+    // eye: small, toward the front of the face (character faces +x). Not
+    // drawn inline when BLUR_EDGES is active -- see the eyes descriptor
+    // added to the return value below (component-R "eyes stay sharp"
+    // treatment); every other archetype keeps this exact draw, unchanged.
     const eyeR = cfg.headR * 0.14;
-    ctx.fillStyle = EYE_COLOR;
-    ctx.beginPath();
-    ctx.arc(headPt.x + cfg.headR * 0.48, headPt.y - cfg.headR * 0.04, eyeR, 0, Math.PI * 2);
-    ctx.fill();
+    const eyeX = headPt.x + cfg.headR * 0.48, eyeY = headPt.y - cfg.headR * 0.04;
+    if (!BLUR_EDGES){
+      ctx.fillStyle = EYE_COLOR;
+      ctx.beginPath();
+      ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     drawLimb(armNear, cfg.armW);
 
@@ -492,7 +518,13 @@
       back: { x: backPt.x, y: backPt.y, angle: lean },
       headTop: { x: headTopPt.x, y: headTopPt.y, angle: lean },
       handNear: { x: armNear.endX, y: armNear.endY, angle: Math.PI - armNear.angle },
-      handFar: { x: armFar.endX, y: armFar.endY, angle: Math.PI - armFar.angle }
+      handFar: { x: armFar.endX, y: armFar.endY, angle: Math.PI - armFar.angle },
+      // single side-view eye, already in final screen coordinates (headPt
+      // is post-lean) -- no transform chain needed here, unlike
+      // drawTurnPivotMove's version, since this function never wraps its
+      // own draw in an extra ctx.rotate the way drawReclined/drawProneFrame
+      // wrap drawCharacter's call.
+      eyes: [{ x: eyeX, y: eyeY, r: eyeR, closed: false }]
     };
   }
 
@@ -710,8 +742,11 @@
 
     drawHeadShape(ctx, baseX, headCy, cfg.headR, cfg.headCornerR);
     const eyeR = cfg.headR * 0.14;
-    ctx.fillStyle = EYE_COLOR;
-    ctx.beginPath(); ctx.arc(baseX + cfg.headR * 0.48, headCy - cfg.headR * 0.04, eyeR, 0, Math.PI * 2); ctx.fill();
+    const eyeX = baseX + cfg.headR * 0.48, eyeY = headCy - cfg.headR * 0.04;
+    if (!BLUR_EDGES){
+      ctx.fillStyle = EYE_COLOR;
+      ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2); ctx.fill();
+    }
 
     capsule(ctx, armNear.baseX, armNear.baseY, armNear.endX, armNear.endY, cfg.armW, SIL);
 
@@ -726,7 +761,8 @@
       back: { x: backPt.x, y: backPt.y, angle: 0 },
       headTop: { x: baseX, y: headCy - cfg.headR, angle: 0 },
       handNear: { x: armNear.endX, y: armNear.endY, angle: Math.PI - cfg.armRestAngle },
-      handFar: { x: armFar.endX, y: armFar.endY, angle: Math.PI - cfg.armRestAngle }
+      handFar: { x: armFar.endX, y: armFar.endY, angle: Math.PI - cfg.armRestAngle },
+      eyes: [{ x: eyeX, y: eyeY, r: eyeR, closed: false }]
     };
   }
 
@@ -762,7 +798,8 @@
       back: carryMountThroughRotation(inner.back, baseX, baseY, rotAngle),
       headTop: carryMountThroughRotation(inner.headTop, baseX, baseY, rotAngle),
       handNear: carryMountThroughRotation(inner.handNear, baseX, baseY, rotAngle),
-      handFar: carryMountThroughRotation(inner.handFar, baseX, baseY, rotAngle)
+      handFar: carryMountThroughRotation(inner.handFar, baseX, baseY, rotAngle),
+      eyes: carryEyesThroughRotation(inner.eyes, baseX, baseY, rotAngle)
     };
   }
 
@@ -1208,16 +1245,22 @@
       ctx.translate(baseX, headCy);
       if (headTiltDeg) ctx.rotate(headTiltDeg * Math.PI / 180);
       drawHeadShape(ctx, 0, 0, cfg.headR, cfg.headCornerR);
-      if (!eyesClosed){
-        ctx.fillStyle = EYE_COLOR;
-        ctx.beginPath(); ctx.arc(eye1Dx, eye1Dy, eyeR, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(eye2Dx, eye2Dy, eyeR * e, 0, Math.PI * 2); ctx.fill();
-      } else {
-        ctx.strokeStyle = EYE_COLOR;
-        ctx.lineWidth = 1.3;
-        ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(eye1Dx - eyeR, eye1Dy); ctx.lineTo(eye1Dx + eyeR, eye1Dy); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(eye2Dx - eyeR, eye2Dy); ctx.lineTo(eye2Dx + eyeR, eye2Dy); ctx.stroke();
+      // eyes are NOT drawn here when BLUR_EDGES is active -- see the
+      // component-R-adjacent "eyes stay sharp" comment near this function's
+      // return statement. Every other archetype keeps this exact inline
+      // draw, unchanged.
+      if (!BLUR_EDGES){
+        if (!eyesClosed){
+          ctx.fillStyle = EYE_COLOR;
+          ctx.beginPath(); ctx.arc(eye1Dx, eye1Dy, eyeR, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(eye2Dx, eye2Dy, eyeR * e, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.strokeStyle = EYE_COLOR;
+          ctx.lineWidth = 1.3;
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(eye1Dx - eyeR, eye1Dy); ctx.lineTo(eye1Dx + eyeR, eye1Dy); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(eye2Dx - eyeR, eye2Dy); ctx.lineTo(eye2Dx + eyeR, eye2Dy); ctx.stroke();
+        }
       }
       ctx.restore();
     });
@@ -1260,6 +1303,38 @@
     const handFarPreBow = { x: armFar.endX, y: armFar.endY, angle: Math.PI - armAngleFarDeg * Math.PI / 180 };
     const bowRad = bowDeg * Math.PI / 180;
 
+    // eyes descriptor (only meaningful when BLUR_EDGES suppressed the
+    // inline draw above): eye1Dx/eye1Dy/eye2Dx/eye2Dy are local offsets
+    // from the head center, in the SAME local frame drawHeadShape/the
+    // inline eyes used (pre-headTilt, pre-bow) -- so each eye's FINAL
+    // on-screen point needs the identical two-step transform headTop
+    // already goes through: rotatePointAround by headTiltRad (the head's
+    // own local rotation), then carryMountThroughRotation by bowRad (the
+    // whole-upper-body bow rotation). Reusing that exact chain here rather
+    // than inventing a new one is what keeps this correct under both
+    // transforms at once, not just one or the other.
+    function faceLocalToScreen(localX, localY){
+      const tilted = rotatePointAround(localX, localY, 0, 0, headTiltRad);
+      const preBow = { x: baseX + tilted.x, y: headCy + tilted.y };
+      return rotatePointAround(preBow.x, preBow.y, baseX, hipY, bowRad);
+    }
+    let eyesData;
+    if (!eyesClosed){
+      const e1 = faceLocalToScreen(eye1Dx, eye1Dy);
+      const e2 = faceLocalToScreen(eye2Dx, eye2Dy);
+      eyesData = [
+        { x: e1.x, y: e1.y, r: eyeR, closed: false },
+        { x: e2.x, y: e2.y, r: eyeR * e, closed: false }
+      ];
+    } else {
+      const e1a = faceLocalToScreen(eye1Dx - eyeR, eye1Dy), e1b = faceLocalToScreen(eye1Dx + eyeR, eye1Dy);
+      const e2a = faceLocalToScreen(eye2Dx - eyeR, eye2Dy), e2b = faceLocalToScreen(eye2Dx + eyeR, eye2Dy);
+      eyesData = [
+        { closed: true, lineX1: e1a.x, lineY1: e1a.y, lineX2: e1b.x, lineY2: e1b.y },
+        { closed: true, lineX1: e2a.x, lineY1: e2a.y, lineX2: e2b.x, lineY2: e2b.y }
+      ];
+    }
+
     // No back mount here, on purpose: this rig faces the viewer, so a
     // back-worn accessory would be directly behind the torso along the
     // depth axis this silhouette can't represent -- the exact same scope
@@ -1271,7 +1346,8 @@
       back: null,
       headTop: carryMountThroughRotation(headTopPreBow, baseX, hipY, bowRad),
       handNear: carryMountThroughRotation(handNearPreBow, baseX, hipY, bowRad),
-      handFar: carryMountThroughRotation(handFarPreBow, baseX, hipY, bowRad)
+      handFar: carryMountThroughRotation(handFarPreBow, baseX, hipY, bowRad),
+      eyes: eyesData
     };
   }
 
@@ -2294,6 +2370,39 @@
   // special-casing.
   function mountOutward(mount){ return { x: Math.sin(mount.angle), y: -Math.cos(mount.angle) }; }
 
+  // ---------- "eyes stay sharp" (blur-edge archetype follow-up) ----------
+  // drawCharacter/drawCharacterSit/drawTurnPivotMove skip their own inline
+  // eye draw whenever BLUR_EDGES is active (see the `if (!BLUR_EDGES)`
+  // guard around each), and instead return an `eyes` array as part of their
+  // normal mounts object -- same "compute once, let the caller draw it"
+  // pattern as mounts/symbol. This function is that caller-side draw,
+  // called on the REAL canvas (never routed through the offscreen blur
+  // buffer) so the eye reads crisp against the blurred body around it. Each
+  // entry is either a filled circle ({x,y,r}) or, for the front action
+  // group's dozing pose, a closed-eye line segment ({lineX1,lineY1,lineX2,
+  // lineY2}) -- both forms already carry whatever headTilt/bow/lie-recline
+  // rotation applied, so this function itself does no transform math, only
+  // drawing.
+  function drawSharpEyes(ctx, eyes){
+    if (!eyes) return;
+    for (const eye of eyes){
+      if (eye.closed){
+        ctx.strokeStyle = EYE_COLOR;
+        ctx.lineWidth = 1.3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(eye.lineX1, eye.lineY1);
+        ctx.lineTo(eye.lineX2, eye.lineY2);
+        ctx.stroke();
+      } else if (eye.r > 0){ // r=0 is the "not born yet" side of the turn-pivot 1-eye-to-2 grow
+        ctx.fillStyle = EYE_COLOR;
+        ctx.beginPath();
+        ctx.arc(eye.x, eye.y, eye.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
   let ACCESSORY_CAT_TAIL = false, ACCESSORY_HAT = false, ACCESSORY_PROP = false;
   let accessoryT = 0;
 
@@ -2418,6 +2527,13 @@
     });
 
     if (mounts){
+      // sharp eyes drawn first, right after the (possibly blurred) body and
+      // before any accessory -- eyes are a facial feature, not something
+      // "worn", so they establish the face before a hat/etc that might
+      // legitimately sit near/over it draws on top. Only needed when
+      // BLUR_EDGES suppressed the inline draw; every other archetype
+      // already has its eye as part of the body itself.
+      if (BLUR_EDGES) drawSharpEyes(ctx, mounts.eyes);
       if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(ctx, mounts.back);
       if (ACCESSORY_HAT) drawHatAccessory(ctx, mounts.headTop);
       if (ACCESSORY_PROP){
@@ -2454,15 +2570,18 @@
     drawBackground(walk.ctx, walk.w, walk.h);
     const walkGroundY = walk.h - 30;
     drawGroundShadow(walk.ctx, walk.w/2, walkGroundY, 15);
-    drawCharacterMaybeBlurred(walk, walkBuf, (ctx) => drawCharacter(ctx, walk.w/2, walkGroundY, ThetaWalk, WALK_CFG, warpOn));
+    const walkMounts = drawCharacterMaybeBlurred(walk, walkBuf, (ctx) => drawCharacter(ctx, walk.w/2, walkGroundY, ThetaWalk, WALK_CFG, warpOn));
+    if (BLUR_EDGES) drawSharpEyes(walk.ctx, walkMounts.eyes);
 
     drawBackground(run.ctx, run.w, run.h);
     const runGroundY = run.h - 30;
     drawGroundShadow(run.ctx, run.w/2, runGroundY, 15);
-    drawCharacterMaybeBlurred(run, runBuf, (ctx) => drawCharacter(ctx, run.w/2, runGroundY, ThetaRun, RUN_CFG, warpOn));
+    const runMounts = drawCharacterMaybeBlurred(run, runBuf, (ctx) => drawCharacter(ctx, run.w/2, runGroundY, ThetaRun, RUN_CFG, warpOn));
+    if (BLUR_EDGES) drawSharpEyes(run.ctx, runMounts.eyes);
 
     drawCalendarRow(context.ctx, context.w, context.h);
-    drawCharacterMaybeBlurred(context, contextBuf, (ctx) => drawCharacter(ctx, context.w * 0.28, context.h - 24, ThetaWalk, WALK_CFG, warpOn));
+    const contextMounts = drawCharacterMaybeBlurred(context, contextBuf, (ctx) => drawCharacter(ctx, context.w * 0.28, context.h - 24, ThetaWalk, WALK_CFG, warpOn));
+    if (BLUR_EDGES) drawSharpEyes(context.ctx, contextMounts.eyes);
 
     stepFsm(dt, fsmCanvas);
     fsmStatus.textContent = fsmStatusText();
