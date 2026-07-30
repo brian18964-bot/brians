@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v24 — 新增方塊長型(終界使者風格)、恐龍尾巴正式除名</title>
+<title>剪影走路/跑步循環 v25 — 新增圓潤模糊型(邊緣柔化原型)</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v24</div>
-    <h1>新增方塊長型(終界使者風格)、恐龍尾巴正式除名</h1>
-    <p class="sub">恐龍尾巴原型(tailed)正式從原型清單移除(已被上一輪的通用背後掛載點系統取代,尾巴本身作為配件仍可掛在任何原型上)——底層 <code>drawTail()</code>/tailLen 等機制保留但不再被任何原型使用,純粹是無害的閒置基礎設施。新增「方塊長型」(參考終界使者比例):torsoRX=7、torsoRY=16,是目前所有原型裡最窄最高的軀幹;armLen=22、legLen=24,比先前最長的瘦高型(18/20)更長;headR=6 的小方塊頭。延續既有驗證方法論:寫了 verify_longbox.js 重新算過側面/正面轉身的全部支點包覆(最小餘裕 +2.88px)跟舉手類動作的頭部淨空(用「手臂終點到頭部中心的最短距離」公式)。過程中發現自己上一輪沿用的 SDF 圓角矩形公式漏了一項(<code>min(max(qx,qy),0)</code>),只在偏離角落的位置低估安全餘裕,不影響先前已出貨結果的正確性,但這次直接修正後才繼續調參。基準的 128/150/130 舉手角度在這個原型上不夠用——surprised 跟 scared 兩個角度會讓手臂穿進頭部(分別 -3.3%、-24.7% 的負餘裕),比照 bighead/chubby 的做法收窄成 112/118/100,重新驗證後全部轉正。10 種原型(移除 tailed、新增 longBox)× 16 種姿勢,含配件開啟,zero console 錯誤。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v25</div>
+    <h1>新增圓潤模糊型(邊緣柔化原型)</h1>
+    <p class="sub">絨毛質感評估的後續:噴槍毛邊質感需要點陣紋理+全新不定形形狀語言,判定不值得投入;純粹的邊緣柔化(模糊)則保留現有橢圓/膠囊形狀語言,技術上可行且風險低,但不做成套用在全部原型的通用開關(跟原型比例是兩件獨立的事,套用範圍太廣不好掌控),改成只烘進 1 個新原型「圓潤模糊型」——其他 10 個原型的渲染路徑完全不受影響。做法:整隻角色先畫到一張離屏 canvas 合成成完整不透明剪影,再對這張離屏 canvas 整體套一次 <code>ctx.filter='blur(3px)'</code> 畫回主畫布(component R,<code>drawCharacterMaybeBlurred</code>)——只模糊最終合成後的輪廓,不會有個別形狀重疊處的雙重模糊接縫。這個新原型的比例是重新設計的(不是沿用既有原型的骨架比例):軀幹 torsoRX/torsoRY 接近 1:1(13/12,趨近圓形),頭部偏大(headR=9)但四肢短粗(armLen=10, legLen=9, armW=5.5, legW=7.5),外形更接近圓潤絨毛玩偶。比照 longBox 的驗證方法論重跑一次(verify_blob.js):基準 128/150/130 舉手角度一樣不夠用(surprised -5.1%、scared -36.2% 負餘裕),收窄成 108/100/88 後全部轉正,最小支點餘裕 +1.69px。配件(帽子/道具/尾巴)刻意維持銳利,直接畫在合成後的主畫布上,不進離屏緩衝——毛玩偶身體模糊、配件銳利的對比是刻意的視覺選擇。效能:用 180 幀取樣量測,一般原型平均每幀 16.57ms,這個原型平均 17.63ms、最大單幀 33.4ms(一次性的幀延遲,不是持續卡頓)——有實測數字可以參考,不是憑空保證零成本。11 種原型全部驗證過 zero console 錯誤,切回其他原型畫面/效能完全不受影響(離屏路徑只在這一個原型啟用時才會執行)。</p>
   </header>
 
   <div class="compare">
@@ -83,6 +83,7 @@
           <option value="slenderPetite">細瘦小頭型</option>
           <option value="squareHead">方塊頭(全身方塊)</option>
           <option value="longBox">方塊長型(終界使者風格)</option>
+          <option value="blob">圓潤模糊型(邊緣柔化)</option>
         </select>
       </label>
       <label class="toggle">
@@ -518,10 +519,54 @@
     return { ctx, w, h };
   }
 
+  // ---------- component R: blur-edge archetype support ----------
+  // A detached (never appended to the DOM) canvas the same size as a real
+  // stage, used ONLY when the active archetype opts into edge-blurring
+  // (p.blurEdges -- see the 'blob' archetype). Same DPR-scaling technique
+  // as setupCanvas so drawing code doesn't need to know or care whether
+  // it's drawing to a real stage or this buffer -- it's still just a ctx
+  // with the same logical w/h coordinate space.
+  function setupOffscreen(w, h){
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = w * DPR; canvas.height = h * DPR;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(DPR, DPR);
+    return { canvas, ctx, w, h };
+  }
+
+  // Draws the character via `drawFn` (called with a ctx), optionally routed
+  // through the offscreen buffer + a canvas blur filter first. When
+  // BLUR_EDGES is false (every archetype except 'blob'), this is a
+  // zero-overhead passthrough -- drawFn(stage.ctx) directly, byte-identical
+  // to how every archetype drew before this existed, so the other 9
+  // archetypes' rendering path and performance are completely unaffected.
+  // Only when the active archetype sets blurEdges does this do the extra
+  // work: clear the buffer, draw the character into IT instead of the
+  // visible canvas, then composite the whole buffer onto the visible canvas
+  // through ctx.filter='blur(...)' in a single drawImage call -- blurring
+  // the ALREADY-COMPOSITED silhouette once, rather than blurring each
+  // capsule/ellipse individually (which would leave visible seams where
+  // overlapping blurred shapes double up), see the feasibility writeup.
+  function drawCharacterMaybeBlurred(stage, offscreen, drawFn){
+    if (!BLUR_EDGES){ return drawFn(stage.ctx); }
+    offscreen.ctx.clearRect(0, 0, offscreen.w, offscreen.h);
+    const result = drawFn(offscreen.ctx);
+    stage.ctx.save();
+    stage.ctx.filter = `blur(${BLUR_RADIUS}px)`;
+    stage.ctx.drawImage(offscreen.canvas, 0, 0, stage.w, stage.h);
+    stage.ctx.restore();
+    return result;
+  }
+
   const walk = setupCanvas(document.getElementById('stageWalk'));
   const run = setupCanvas(document.getElementById('stageRun'));
   const context = setupCanvas(document.getElementById('stageContext'));
   const fsmCanvas = setupCanvas(document.getElementById('stageFsm'));
+  const walkBuf = setupOffscreen(walk.w, walk.h);
+  const runBuf = setupOffscreen(run.w, run.h);
+  const contextBuf = setupOffscreen(context.w, context.h);
+  const fsmBuf = setupOffscreen(fsmCanvas.w, fsmCanvas.h);
 
   function drawCalendarRow(ctx, w, h){
     ctx.fillStyle = '#f4f1ea';
@@ -1073,6 +1118,11 @@
   // (bighead/chubby need a smaller angle or a shorter surprised/scared
   // fling to keep the same kind of clearance on their proportions).
   let CHEER_ARM_DEG, SURPRISED_FLUNG_DEG, SCARED_GUARD_DEG;
+  // set per-archetype in buildArchetype from p.blurEdges/p.blurRadius --
+  // see drawCharacterMaybeBlurred's own comment (component R) for how these
+  // two flip the render path for exactly one archetype without touching
+  // anything about how the other 9 draw.
+  let BLUR_EDGES = false, BLUR_RADIUS = 0;
 
   // `extra` (optional, 8th arg) is what the front action group (component J)
   // uses to layer richer performance detail on top of the same turned rig:
@@ -1556,6 +1606,35 @@
       torsoRX: 7, torsoRY: 16, torsoCornerR: 2.2, limbShape: 'box', torsoShape: 'roundedRect',
       headShape: 'roundedSquare', headCornerR: 1.9,
       cheerArmDeg: 112, surprisedFlungDeg: 118, scaredGuardDeg: 100
+    },
+    // Feasibility follow-up from the fuzzy/blurred-edge visual request: NOT
+    // a fur/noise texture (see the writeup -- that needs raster assets and
+    // a different shape language entirely, out of scope), just the "cheap
+    // middle ground" -- the EXISTING ellipse/capsule shape vocabulary,
+    // rendered through drawCharacterMaybeBlurred (component R) instead of
+    // straight to the visible canvas, so its edges read as soft/plush
+    // instead of crisp vector lines. Deliberately baked into ONE archetype
+    // (blurEdges: true) rather than a global toggle, per the follow-up
+    // decision -- every other archetype's render path has zero additional
+    // indirection (drawCharacterMaybeBlurred is a straight passthrough when
+    // BLUR_EDGES is false, see its own comment).
+    //
+    // Proportions were designed fresh (not reusing another archetype's
+    // ratios) for a rounder, plusher read: torsoRX/torsoRY are close to
+    // equal (13/12, near-circular) rather than any existing archetype's
+    // more elongated torso, headR=9 is large relative to the short stubby
+    // limbs (armLen=10, legLen=9), and armW/legW are thick (5.5/7.5) for a
+    // soft round silhouette even before blurring. Same verification pass as
+    // longBox (see verify_blob.js): smallest pivot margin +1.69px (shNear),
+    // baseline 128/150/130 raised-arm angles fail here too (surprised
+    // -5.1%, scared -36.2% -- the big head + short reach combination is the
+    // same risk profile as bighead/chubby), pulled in to 108/100/88 and
+    // reverified (smallest raised-arm clearance 31.2% of headR).
+    blob: {
+      label: '圓潤模糊型(邊緣柔化)', headR: 9, armLen: 10, legLen: 9, armW: 5.5, legW: 7.5,
+      torsoRX: 13, torsoRY: 12,
+      cheerArmDeg: 108, surprisedFlungDeg: 100, scaredGuardDeg: 88,
+      blurEdges: true, blurRadius: 3
     }
   };
 
@@ -1692,6 +1771,8 @@
     HAT_HEIGHT = R.hatHeight * p.headR;
     HAT_BASE_W = R.hatBaseW * p.headR;
     HAT_SYMBOL_MARGIN = R.hatSymbolMargin * p.headR;
+    BLUR_EDGES = !!p.blurEdges;
+    BLUR_RADIUS = p.blurRadius || 0;
   }
 
   // Public entry point for the archetype switcher UI: rebuilds every cfg
@@ -2277,23 +2358,33 @@
     drawGroundShadow(ctx, cx, groundY, 14);
     accessoryT += dt;
 
-    let mounts;
-    if (fsm.transitioning){
-      fsm.t += dt;
-      const dur = TRANSITION_DUR[fsm.edgeVia];
-      const p = Math.min(fsm.t / dur, 1);
-      mounts = drawTransitionFrame(ctx, cx, groundY, fsm.edgeVia, p, dt);
-      if (fsm.t >= dur) onArriveAt(fsm.edgeTo);
-    } else {
-      fsm.holdT += dt;
-      // overlay only accumulates its own clock while actually visible (a
-      // side-view base state, not mid-transition) -- toggling it on right
-      // as a decelStop/idleToWalk transition starts just means the symbol's
-      // fade-in begins once the base state is reached, not before
-      if (fsm.overlay && OVERLAY_SIDE_STATES[fsm.currentState]) fsm.overlayT += dt;
-      mounts = drawStableFrame(ctx, cx, groundY, fsm.currentState, dt);
-      tryStartNextEdge(); // lets a delayed auto-edge (e.g. jump's landing) fire once ready
-    }
+    // Body draw routed through drawCharacterMaybeBlurred -- see component R
+    // -- so a blur-edge archetype gets the offscreen-buffer treatment while
+    // every other archetype draws straight to `ctx` exactly as before.
+    // Accessories are drawn AFTER this, straight onto the real `ctx`
+    // regardless of blur mode -- they're a separate demo system, not part
+    // of the blur-edge archetype's own identity, so they stay sharp on
+    // purpose rather than being pulled into the same offscreen pass.
+    const mounts = drawCharacterMaybeBlurred(stage, fsmBuf, function(bodyCtx){
+      if (fsm.transitioning){
+        fsm.t += dt;
+        const dur = TRANSITION_DUR[fsm.edgeVia];
+        const p = Math.min(fsm.t / dur, 1);
+        const m = drawTransitionFrame(bodyCtx, cx, groundY, fsm.edgeVia, p, dt);
+        if (fsm.t >= dur) onArriveAt(fsm.edgeTo);
+        return m;
+      } else {
+        fsm.holdT += dt;
+        // overlay only accumulates its own clock while actually visible (a
+        // side-view base state, not mid-transition) -- toggling it on right
+        // as a decelStop/idleToWalk transition starts just means the symbol's
+        // fade-in begins once the base state is reached, not before
+        if (fsm.overlay && OVERLAY_SIDE_STATES[fsm.currentState]) fsm.overlayT += dt;
+        const m = drawStableFrame(bodyCtx, cx, groundY, fsm.currentState, dt);
+        tryStartNextEdge(); // lets a delayed auto-edge (e.g. jump's landing) fire once ready
+        return m;
+      }
+    });
 
     if (mounts){
       if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(ctx, mounts.back);
@@ -2332,15 +2423,15 @@
     drawBackground(walk.ctx, walk.w, walk.h);
     const walkGroundY = walk.h - 30;
     drawGroundShadow(walk.ctx, walk.w/2, walkGroundY, 15);
-    drawCharacter(walk.ctx, walk.w/2, walkGroundY, ThetaWalk, WALK_CFG, warpOn);
+    drawCharacterMaybeBlurred(walk, walkBuf, (ctx) => drawCharacter(ctx, walk.w/2, walkGroundY, ThetaWalk, WALK_CFG, warpOn));
 
     drawBackground(run.ctx, run.w, run.h);
     const runGroundY = run.h - 30;
     drawGroundShadow(run.ctx, run.w/2, runGroundY, 15);
-    drawCharacter(run.ctx, run.w/2, runGroundY, ThetaRun, RUN_CFG, warpOn);
+    drawCharacterMaybeBlurred(run, runBuf, (ctx) => drawCharacter(ctx, run.w/2, runGroundY, ThetaRun, RUN_CFG, warpOn));
 
     drawCalendarRow(context.ctx, context.w, context.h);
-    drawCharacter(context.ctx, context.w * 0.28, context.h - 24, ThetaWalk, WALK_CFG, warpOn);
+    drawCharacterMaybeBlurred(context, contextBuf, (ctx) => drawCharacter(ctx, context.w * 0.28, context.h - 24, ThetaWalk, WALK_CFG, warpOn));
 
     stepFsm(dt, fsmCanvas);
     fsmStatus.textContent = fsmStatusText();
