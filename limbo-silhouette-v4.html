@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v23 — 修正情緒符號被頭部配件遮住</title>
+<title>剪影走路/跑步循環 v24 — 新增方塊長型(終界使者風格)、恐龍尾巴正式除名</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v23</div>
-    <h1>修正情緒符號被頭部配件遮住</h1>
-    <p class="sub">回報問題:戴上小帽子後,頭頂情緒符號會被蓋住看不到。根因有兩個疊加:(1) 繪製順序——符號原本在姿態渲染函式內部就畫完了,帽子在 <code>stepFsm</code> 拿到 <code>mounts</code> 之後才畫,帽子永遠蓋在符號上面;(2) 空間重疊——帽子高度(9)跟符號間距(5~15)本來就是同一個量級,單純左右移是繞開這一頂帽子的形狀,換更高更寬的配件還是會擋到。採用方案 C:把符號繪製整個抽出姿態函式,side-overlay 符號改成 <code>overlaySymbolDescriptor()</code> 純函式(不畫東西,只回傳 kind/scale/alpha/gap),正面表情符號同樣從 <code>extra.symbol</code> 轉成 <code>symbolDescriptorFromExtra()</code> 描述子附掛在 <code>mounts.symbol</code> 上,兩條路徑最終都在 <code>stepFsm</code> 裡「畫完帽子之後」才畫符號,而且距離用 <code>Math.max(符號原本調好的 gap, 有戴帽子 ? HAT_HEIGHT + 安全邊界 : 0)</code>——沒戴帽子時這個 max 必定等於原本的 gap(因為第二項是 0),所有原本調好的數值完全不變;戴了帽子才會被推高到帽子上方。順便修正了 <code>HAT_HEIGHT</code>/<code>HAT_BASE_W</code> 原本 10 種原型共用同一個絕對值的問題,改成跟 neckGap 同樣的比例縮放技巧(乘上各原型自己的 headR),大頭原型的帽子不再顯得過小、小頭原型不再顯得誇張。10 種原型 × 9 種側身情緒 × 9 種正面情緒,戴帽子/不戴帽子都跑過,zero console 錯誤。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v24</div>
+    <h1>新增方塊長型(終界使者風格)、恐龍尾巴正式除名</h1>
+    <p class="sub">恐龍尾巴原型(tailed)正式從原型清單移除(已被上一輪的通用背後掛載點系統取代,尾巴本身作為配件仍可掛在任何原型上)——底層 <code>drawTail()</code>/tailLen 等機制保留但不再被任何原型使用,純粹是無害的閒置基礎設施。新增「方塊長型」(參考終界使者比例):torsoRX=7、torsoRY=16,是目前所有原型裡最窄最高的軀幹;armLen=22、legLen=24,比先前最長的瘦高型(18/20)更長;headR=6 的小方塊頭。延續既有驗證方法論:寫了 verify_longbox.js 重新算過側面/正面轉身的全部支點包覆(最小餘裕 +2.88px)跟舉手類動作的頭部淨空(用「手臂終點到頭部中心的最短距離」公式)。過程中發現自己上一輪沿用的 SDF 圓角矩形公式漏了一項(<code>min(max(qx,qy),0)</code>),只在偏離角落的位置低估安全餘裕,不影響先前已出貨結果的正確性,但這次直接修正後才繼續調參。基準的 128/150/130 舉手角度在這個原型上不夠用——surprised 跟 scared 兩個角度會讓手臂穿進頭部(分別 -3.3%、-24.7% 的負餘裕),比照 bighead/chubby 的做法收窄成 112/118/100,重新驗證後全部轉正。10 種原型(移除 tailed、新增 longBox)× 16 種姿勢,含配件開啟,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -82,7 +82,7 @@
           <option value="slenderTall">細長型</option>
           <option value="slenderPetite">細瘦小頭型</option>
           <option value="squareHead">方塊頭(全身方塊)</option>
-          <option value="tailed">長尾巴型</option>
+          <option value="longBox">方塊長型(終界使者風格)</option>
         </select>
       </label>
       <label class="toggle">
@@ -1525,22 +1525,37 @@
       headShape: 'roundedSquare', headCornerR: 2.4,
       cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130
     },
-    // Humanoid-plus-tail (option A from the feasibility assessment): keeps
-    // the upright biped skeleton completely unchanged, adds ONE new
-    // appendage. Tail root pivot containment (torso ellipse rx=12,ry=11)
-    // was searched numerically in verify_head_and_tail.js -- attaching
-    // AT hip level had negative margin even at the narrowest tested width;
-    // moving the root up 5 units above hip level (tailRootDy=5, in the same
-    // "up is positive" convention rotateAroundHip already uses) opened up
-    // enough room for a healthy +3.28px margin at tailW=5, dx=-6.
-    // Per-state tail angle/amplitude overrides are set directly in
-    // buildArchetype (see the WALK_CFG/RUN_CFG/etc block below) rather than
-    // here, since they're POSE data, not archetype-identity data -- this
-    // matches how legAmp/armAmp differ per state already.
-    tailed: {
-      label: '長尾巴型', headR: 7, armLen: 13, legLen: 15, armW: 3.2, legW: 6.5,
-      torsoRX: 12, torsoRY: 11, cheerArmDeg: 128, surprisedFlungDeg: 150, scaredGuardDeg: 130,
-      hasTail: true, tailLen: 16, tailW: 5, tailRootDx: -6, tailRootDy: 5
+    // Retired: the dinosaur-tail archetype ('tailed') that used to live here
+    // has been formally dropped from the archetype list per the follow-up
+    // decision -- the tail concept was superseded by the generic back-mount
+    // accessory system (component N/O), which any archetype can use instead
+    // of baking a tail into one specific archetype. drawTail()/tailLen/
+    // tailW/tailRootDx/tailRootDy remain in the codebase (harmless, already-
+    // verified, opt-in-only infrastructure -- every remaining archetype
+    // simply never sets hasTail, so tailLen stays 0 and drawTail() no-ops),
+    // just no longer wired to an archetype entry here.
+    //
+    // Box-bodied, extreme-proportion archetype (Enderman-style reference):
+    // narrower and taller than any prior box archetype (torsoRX=7 vs
+    // square/squareHead's 11; torsoRY=16 vs their 11.2), with the longest
+    // limbs of any archetype (armLen=22, legLen=24 vs the previous max of
+    // tall's 18/20) and a small box head (headR=6, smaller than every
+    // archetype except petite/slenderPetite's 5.5). Every pivot containment
+    // check (side-view hip/shoulder near+far, front-turn target hip/
+    // shoulder, back-mount) and the raised-arm/head clearance formula (see
+    // verify_longbox.js) were re-run against this archetype's own numbers
+    // rather than assumed safe from a "same technique as square" argument --
+    // smallest pivot margin is +2.88px (hipNear), smallest raised-arm
+    // clearance is 30.2% of headR (scared). The baseline 128/150/130
+    // raised-arm angles do NOT clear here (surprised come out at -3.3%,
+    // scared at -24.7% -- both genuinely merge with the small head at this
+    // reach), so all three are pulled in (112/118/100), same kind of
+    // per-archetype retuning bighead/chubby already needed.
+    longBox: {
+      label: '方塊長型(終界使者風格)', headR: 6, armLen: 22, legLen: 24, armW: 2.4, legW: 3.4,
+      torsoRX: 7, torsoRY: 16, torsoCornerR: 2.2, limbShape: 'box', torsoShape: 'roundedRect',
+      headShape: 'roundedSquare', headCornerR: 1.9,
+      cheerArmDeg: 112, surprisedFlungDeg: 118, scaredGuardDeg: 100
     }
   };
 
@@ -1591,9 +1606,12 @@
       armK: 0.30, armH2: 0.045, armH2Off: -0.5,
       speedMul: 1,
       // tail geometry (fixed regardless of state) + this state's own
-      // swing -- see drawTail()/the 'tailed' archetype comment above.
-      // tailLen stays falsy (0) for every archetype except 'tailed', so
-      // drawTail() no-ops everywhere else without an extra flag to check.
+      // swing -- see drawTail()'s own comment. tailLen stays falsy (0)
+      // unless an archetype opts in with hasTail: true (none currently do,
+      // since the 'tailed' archetype was retired in favor of the generic
+      // back-mount accessory system -- see the ARCHETYPES comment above
+      // longBox), so drawTail() no-ops for every current archetype without
+      // an extra flag to check.
       tailLen: p.hasTail ? p.tailLen : 0, tailW: p.tailW || 0,
       tailRootDx: p.tailRootDx || 0, tailRootDy: p.tailRootDy || 0,
       tailBaseDeg: -110, tailAmp: 18,
