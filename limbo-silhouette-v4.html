@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v22 — 三組掛載點(背後/頭部/手部)完整規格</title>
+<title>剪影走路/跑步循環 v23 — 修正情緒符號被頭部配件遮住</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v22</div>
-    <h1>三組掛載點(背後/頭部/手部)完整規格</h1>
-    <p class="sub">上一輪只做了背後掛載點。這一輪把頭部掛載點(頭頂中心)跟手部掛載點(雙手末端)補齊,7 個姿態渲染函式現在統一回傳 <code>{ back, headTop, handNear, handFar }</code>,每個都是 <code>{x, y, angle}</code>。headTop 直接沿用每個函式裡已經算好的頭部中心點(headPt/headCy),只是延伸 headR 的距離,不重新算頭部支點;hand 掛載點直接重用 limbFK/limbEnd 已經算出的手臂末端座標,不重新計算。過程中發現一個真正的符號錯誤並修正:手臂擺動角度用的是「往下掛」慣例(sin/cos 對應角度 0 = 垂直向下),跟背後/頭部掛載點用的「向外」慣例在 <code>rotatePointAround</code> 的旋轉下合成方式不同(向外慣例用加法合成,往下掛慣例其實要用減法)——混用會在大角度旋轉(躺下、趴下、鞠躬)時安靜地指錯方向。統一改成全部四個掛載點都用同一種「向外」慣例(<code>mountOutward()</code>:OUT(angle)=(sin angle, −cos angle)),手部角度存成 <code>PI − 原始擺動角度</code>做轉換,並用旋轉合成的代數證明+ 數值驗證確認過(見 verify_head_hand_mounts.js),連帶修正了上一輪貓尾巴配件裡同一個混用慣例造成的方向誤差。三個示範配件——貓尾巴(背後)、小帽子(頭部)、手持道具(雙手)——現在共用同一套 <code>mountOutward()</code> 規格,10 種原型 × 14 種姿勢全跑過,zero console 錯誤,可以用下面「狀態機驅動」畫布的三個勾選框對照不同原型/動作測試。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v23</div>
+    <h1>修正情緒符號被頭部配件遮住</h1>
+    <p class="sub">回報問題:戴上小帽子後,頭頂情緒符號會被蓋住看不到。根因有兩個疊加:(1) 繪製順序——符號原本在姿態渲染函式內部就畫完了,帽子在 <code>stepFsm</code> 拿到 <code>mounts</code> 之後才畫,帽子永遠蓋在符號上面;(2) 空間重疊——帽子高度(9)跟符號間距(5~15)本來就是同一個量級,單純左右移是繞開這一頂帽子的形狀,換更高更寬的配件還是會擋到。採用方案 C:把符號繪製整個抽出姿態函式,side-overlay 符號改成 <code>overlaySymbolDescriptor()</code> 純函式(不畫東西,只回傳 kind/scale/alpha/gap),正面表情符號同樣從 <code>extra.symbol</code> 轉成 <code>symbolDescriptorFromExtra()</code> 描述子附掛在 <code>mounts.symbol</code> 上,兩條路徑最終都在 <code>stepFsm</code> 裡「畫完帽子之後」才畫符號,而且距離用 <code>Math.max(符號原本調好的 gap, 有戴帽子 ? HAT_HEIGHT + 安全邊界 : 0)</code>——沒戴帽子時這個 max 必定等於原本的 gap(因為第二項是 0),所有原本調好的數值完全不變;戴了帽子才會被推高到帽子上方。順便修正了 <code>HAT_HEIGHT</code>/<code>HAT_BASE_W</code> 原本 10 種原型共用同一個絕對值的問題,改成跟 neckGap 同樣的比例縮放技巧(乘上各原型自己的 headR),大頭原型的帽子不再顯得過小、小頭原型不再顯得誇張。10 種原型 × 9 種側身情緒 × 9 種正面情緒,戴帽子/不戴帽子都跑過,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -995,23 +995,10 @@
   let OVERLAY_SYMBOL_GAP;
   const OVERLAY_SIDE_STATES = { walk: true, run: true, idleStop: true };
 
-  // Mirrors drawCharacter's own hipY/lean/head-axis formula exactly (same
-  // reason torsoAxisLens exists: any divergence from the live rig's own
-  // math reads as a pop). Kept side-by-side with drawCharacter rather than
-  // having drawCharacter export its internals, since this is the only
-  // other place that needs just the head point.
-  function computeHeadPointSide(baseX, baseY, Theta, cfg){
-    const bob = cfg.bobAmp * (0.5 + 0.5 * Math.cos(2 * Theta));
-    const lean = cfg.leanBias + cfg.leanAmp * Math.sin(2 * Theta + Math.PI * 0.15);
-    const hipY = baseY - cfg.legLen - bob;
-    const { headAxisLen } = torsoAxisLens(cfg);
-    return rotateAroundHip(baseX, hipY, 0, headAxisLen, lean);
-  }
-
   // Tiny, restrained deltas layered on top of whichever base gait cfg is
   // playing -- see the art-rule comment above. confused/surprised get no
   // cfg change at all (the symbol's own small sway/pop, in
-  // drawOverlayEmotion, carries those two). `overlayT` (seconds since this
+  // overlaySymbolDescriptor, carries those two). `overlayT` (seconds since this
   // overlay was turned on) drives the handful of time-varying tweaks
   // (irritated's sway, dizzy's wobble, scared's one-shot recoil-then-
   // freeze) -- all of them still small enough to read as "不經意流露".
@@ -1037,10 +1024,18 @@
     return cfg;
   }
 
-  function drawOverlayEmotion(ctx, baseX, baseY, Theta, cfg, overlay, overlayT){
-    const sym = OVERLAY_SYMBOL[overlay];
-    if (!sym) return;
-    const headPt = computeHeadPointSide(baseX, baseY, Theta, cfg);
+  // Pure descriptor builder -- no ctx, no drawing, no baseX/baseY/Theta/cfg
+  // needed either (this used to compute headPt itself via
+  // computeHeadPointSide and draw directly there; the caller now positions
+  // the symbol off the SAME headTop mount an accessory would use instead).
+  // Keeps the exact same visual tuning (fadeIn/scale/dx/bob/gap formulas),
+  // just split apart from the draw call so stepFsm can pick the symbol's
+  // FINAL distance from the head -- factoring in whether a hat is equipped
+  // -- before anything is drawn, and can draw hat-before-symbol for correct
+  // z-order.
+  function overlaySymbolDescriptor(overlay, overlayT){
+    const kind = OVERLAY_SYMBOL[overlay];
+    if (!kind) return null;
     const fadeIn = Math.min(overlayT / 0.3, 1);
     let scale = 1.0, dx = 0;
     if ((overlay === 'surprised' || overlay === 'scared') && overlayT < 0.25){
@@ -1051,7 +1046,7 @@
     }
     const bob = Math.sin(overlayT * 3) * 0.5;
     const gap = OVERLAY_SYMBOL_GAP[overlay] || 5;
-    drawSymbolMark(ctx, sym, headPt.x + dx, headPt.y - cfg.headR - gap + bob, scale, fadeIn);
+    return { kind, scale, alpha: fadeIn, gap, dx, bob, rotation: 0 };
   }
 
   // ---------- component H: turn-to-front (part-move, adopted) + cheer overlay ----------
@@ -1178,9 +1173,18 @@
     withBow(() => drawLimb(armNear, cfg.armW));
     if (farAfterTorso) withBow(() => drawLimb(armFar, cfg.armW));
 
-    if (extra.symbol){
-      withBow(() => drawSymbolMark(ctx, extra.symbol, baseX, headCy - cfg.headR - (extra.symbolGap || 8), extra.symbolScale || 1, extra.symbolAlpha !== undefined ? extra.symbolAlpha : 1, extra.symbolSpin || 0));
-    }
+    // extra.symbol is NOT drawn here anymore -- it used to be drawn inline
+    // (wrapped in withBow, so it inherited bow rotation but NOT
+    // headTiltDeg), which put it on a fixed z-order BEFORE any accessory a
+    // caller might draw afterward (e.g. a hat), so an opaque accessory
+    // drawn on top could silently cover it with no way to reserve space for
+    // taller accessories without hard-coding their height in here. The
+    // caller now builds a symbol descriptor (symbolDescriptorFromExtra) from
+    // this same `extra` object and draws it AFTER every mount-based
+    // accessory, anchored on the headTop mount below -- which DOES include
+    // headTiltDeg (a deliberate, more-correct behavior change from the old
+    // fixed-position draw: a symbol above a tilted head should tilt with
+    // it, same as a hat now does).
 
     // headTop: the head shape itself is drawn at local (0,0) with radius
     // cfg.headR (see the drawHeadShape call above) inside a translate-to-
@@ -1345,6 +1349,25 @@
       return { armNear: 0, armFar: 0, extra: { headDip: 1.8 * Math.sin(loopT * 6) * q } };
     }
     return { armNear: 0, armFar: 0, extra: {} };
+  }
+
+  // Converts frontEmotionPose's `extra.symbol*` fields into the same
+  // descriptor shape overlaySymbolDescriptor produces -- used by every
+  // drawTurnPivotMove call site below so the caller (which already has
+  // `extra` in scope right after calling frontEmotionPose) can attach it to
+  // the returned mounts object instead of drawTurnPivotMove drawing the
+  // symbol itself. Returns null when `extra` has no symbol (wave/bow/nod,
+  // or plain turn/cheer calls that never had `extra` set at all).
+  function symbolDescriptorFromExtra(extra){
+    if (!extra || !extra.symbol) return null;
+    return {
+      kind: extra.symbol,
+      scale: extra.symbolScale || 1,
+      alpha: extra.symbolAlpha !== undefined ? extra.symbolAlpha : 1,
+      gap: extra.symbolGap || 8,
+      rotation: extra.symbolSpin || 0,
+      dx: 0, bob: 0
+    };
   }
   const FRONT_EMOTION_DUR = 0.5, FRONT_DEJECTED_DUR = 0.6;
 
@@ -1532,7 +1555,14 @@
     sitSeatH: 4 / 17, sitThighShin: 8.2 / 17, sitArmLen: 10 / 15, sitLegW: 5.8 / 6.2, sitArmW: 2.9 / 3.2,
     dejSeatH: 5.5 / 17, dejThighShin: 7.2 / 17, dejLegW: 5.6 / 6.2, dejArmLen: 9 / 15, dejArmW: 2.8 / 3.2, dejNeckGapOfNeckGap: 1.6 / 4.5,
     jumpCrouch: 3.2 / 17, jumpPeak: 15 / 17, jumpTuck: 6 / 17, jumpRecover: 2.0 / 17,
-    backMountDx: BACKMOUNT_DX_RATIO, backMountDy: BACKMOUNT_DY_RATIO
+    backMountDx: BACKMOUNT_DX_RATIO, backMountDy: BACKMOUNT_DY_RATIO,
+    // hat accessory proportions -- ratio of the original hard-coded
+    // HAT_HEIGHT=9/HAT_BASE_W=7 (tuned against longlimb's headR=7.5) to
+    // that same headR, applied the same way every other headR-scaled value
+    // here is (neckGap etc.): a bigger head gets a proportionally bigger
+    // hat instead of the same absolute size looking undersized on it.
+    hatHeight: 9 / 7.5, hatBaseW: 7 / 7.5,
+    hatSymbolMargin: 3 / 7.5
   };
 
   function buildArchetype(id){
@@ -1641,6 +1671,9 @@
     SURPRISED_FLUNG_DEG = p.surprisedFlungDeg;
     SCARED_GUARD_DEG = p.scaredGuardDeg;
     OVERLAY_SYMBOL_GAP = { happy: 10 * (p.headR / 7.5) };
+    HAT_HEIGHT = R.hatHeight * p.headR;
+    HAT_BASE_W = R.hatBaseW * p.headR;
+    HAT_SYMBOL_MARGIN = R.hatSymbolMargin * p.headR;
   }
 
   // Public entry point for the archetype switcher UI: rebuilds every cfg
@@ -1916,43 +1949,43 @@
     } else if (via === 'toWave'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('wave', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromWave'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('wave', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toBow'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('bow', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromBow'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('bow', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toNod'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('nod', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromNod'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('nod', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toFrontHappy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('happy', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromFrontHappy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('happy', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toFrontConfused'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('confused', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromFrontConfused'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('confused', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toFrontSurprised'){
       fsm.breathT += dt;
       // 'surprised' (and 'scared', below) use a one-shot settle-then-hold
@@ -1963,27 +1996,27 @@
       // by the time a player actually triggers this pose it's typically
       // already past the settle window and the recoil would never show.
       const ps = frontEmotionPose('surprised', smoothstep(p), fsm.t);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromFrontSurprised'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('surprised', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toFrontDozing'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dozing', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromFrontDozing'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dozing', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toFrontAngry'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('angry', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromFrontAngry'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('angry', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toFrontDejected'){
       fsm.breathT += dt;
       return drawFrontDejected(ctx, cx, groundY, smoothstep(p), fsm.breathT);
@@ -1993,27 +2026,27 @@
     } else if (via === 'toFrontIrritated'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('irritated', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromFrontIrritated'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('irritated', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toFrontDizzy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dizzy', smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromFrontDizzy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dizzy', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'toFrontScared'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('scared', smoothstep(p), fsm.t); // see toFrontSurprised comment -- needs transition-local time, not the global breathing clock
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (via === 'fromFrontScared'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('scared', 1 - smoothstep(p), fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     }
   }
 
@@ -2022,22 +2055,22 @@
       fsm.theta += dt * 0.9 * WALK_CFG.speedMul;
       const cfg = fsm.overlay ? applyOverlayPoseTweak(WALK_CFG, fsm.overlay, fsm.overlayT) : WALK_CFG;
       const mounts = drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
-      if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, fsm.theta, cfg, fsm.overlay, fsm.overlayT);
-      return mounts;
+      const symbol = fsm.overlay ? overlaySymbolDescriptor(fsm.overlay, fsm.overlayT) : null;
+      return Object.assign({}, mounts, { symbol });
     } else if (state === 'run'){
       fsm.theta += dt * 0.9 * RUN_CFG.speedMul;
       const cfg = fsm.overlay ? applyOverlayPoseTweak(RUN_CFG, fsm.overlay, fsm.overlayT) : RUN_CFG;
       const mounts = drawCharacter(ctx, cx, groundY, fsm.theta, cfg, true);
-      if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, fsm.theta, cfg, fsm.overlay, fsm.overlayT);
-      return mounts;
+      const symbol = fsm.overlay ? overlaySymbolDescriptor(fsm.overlay, fsm.overlayT) : null;
+      return Object.assign({}, mounts, { symbol });
     } else if (state === 'idleStop'){
       fsm.breathT += dt;
       const baseCfg = Object.assign({}, STILL_SIDE_CFG, { bobAmp: 1.0 });
       const cfg = fsm.overlay ? applyOverlayPoseTweak(baseCfg, fsm.overlay, fsm.overlayT) : baseCfg;
       const theta = fsm.breathT * 0.4;
       const mounts = drawCharacter(ctx, cx, groundY, theta, cfg, false);
-      if (fsm.overlay) drawOverlayEmotion(ctx, cx, groundY, theta, cfg, fsm.overlay, fsm.overlayT);
-      return mounts;
+      const symbol = fsm.overlay ? overlaySymbolDescriptor(fsm.overlay, fsm.overlayT) : null;
+      return Object.assign({}, mounts, { symbol });
     } else if (state === 'sit'){
       fsm.breathT += dt;
       return drawCharacterSit(ctx, cx, groundY, fsm.breathT, SIT_CFG);
@@ -2060,50 +2093,50 @@
     } else if (state === 'frontWave'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('wave', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontBow'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('bow', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontNod'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('nod', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontHappy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('happy', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontConfused'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('confused', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontSurprised'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('surprised', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontDozing'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dozing', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontAngry'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('angry', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontDejected'){
       fsm.breathT += dt;
       return drawFrontDejected(ctx, cx, groundY, 1, fsm.breathT);
     } else if (state === 'frontIrritated'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('irritated', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontDizzy'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('dizzy', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     } else if (state === 'frontScared'){
       fsm.breathT += dt;
       const ps = frontEmotionPose('scared', 1, fsm.breathT);
-      return drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra);
+      return Object.assign({}, drawTurnPivotMove(ctx, cx, groundY, 1, ps.armNear, ps.armFar, fsm.breathT, ps.extra), { symbol: symbolDescriptorFromExtra(ps.extra) });
     }
   }
 
@@ -2155,7 +2188,12 @@
   // along OUT(mount.angle) -- "straight up off the top of the head" in the
   // mount's own local frame, tilting with the head exactly as far as the
   // mount itself already tilts (lean, or a front-facing headTiltDeg/bow).
-  const HAT_HEIGHT = 9, HAT_BASE_W = 7;
+  // HAT_HEIGHT/HAT_BASE_W/HAT_SYMBOL_MARGIN are `let`, not `const` -- scaled
+  // per archetype in buildArchetype (ratio of headR, same technique as
+  // neckGap etc.) rather than one fixed absolute size for every head, so a
+  // bighead archetype's hat doesn't look undersized and a petite
+  // archetype's doesn't look oversized relative to its own head.
+  let HAT_HEIGHT, HAT_BASE_W, HAT_SYMBOL_MARGIN;
   function drawHatAccessory(ctx, mount){
     if (!mount) return;
     const out = mountOutward(mount);
@@ -2193,6 +2231,28 @@
     ctx.fill();
   }
 
+  // Emotion symbol, drawn from a descriptor (overlaySymbolDescriptor for the
+  // side-overlay layer, symbolDescriptorFromExtra for the front action
+  // group) rather than inline inside a pose function -- this is what fixes
+  // the "hat covers the symbol" report: it draws AFTER every mount-based
+  // accessory (see the call order in stepFsm below, hat before this), and
+  // its distance from the head is Math.max(the symbol's own tuned gap,
+  // HAT_HEIGHT + HAT_SYMBOL_MARGIN if a hat is currently equipped) -- with
+  // no hat, this is exactly the old tuned gap, unchanged; with a hat, the
+  // symbol gets pushed above the hat's actual (per-archetype-scaled) apex
+  // instead of a value hard-coded for one specific accessory's height. Any
+  // future head accessory just needs its own `Math.max(..., itsHeight +
+  // margin)` term added to this one line -- nothing here or in the symbol
+  // descriptors themselves needs to change.
+  function drawMountSymbol(ctx, mounts, symbol){
+    if (!symbol || !mounts || !mounts.headTop) return;
+    const gap = Math.max(symbol.gap, ACCESSORY_HAT ? HAT_HEIGHT + HAT_SYMBOL_MARGIN : 0);
+    const out = mountOutward(mounts.headTop);
+    const x = mounts.headTop.x + out.x * gap + (symbol.dx || 0);
+    const y = mounts.headTop.y + out.y * gap + (symbol.bob || 0);
+    drawSymbolMark(ctx, symbol.kind, x, y, symbol.scale, symbol.alpha, symbol.rotation);
+  }
+
   function stepFsm(dt, stage){
     const ctx = stage.ctx, cx = stage.w / 2, groundY = stage.h - 30;
     drawBackground(ctx, stage.w, stage.h);
@@ -2224,6 +2284,7 @@
         drawPropAccessory(ctx, mounts.handNear);
         drawPropAccessory(ctx, mounts.handFar);
       }
+      drawMountSymbol(ctx, mounts, mounts.symbol);
     }
   }
 
