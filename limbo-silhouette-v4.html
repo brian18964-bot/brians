@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v31 — 全原型配件可見度審查 + 情緒符號比例縮放修正</title>
+<title>剪影走路/跑步循環 v32 — 雙元件對稱掛載點批次二:兔耳/熊耳/惡魔角/鹿角/雙天線</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v31</div>
-    <h1>全原型配件可見度審查 + 情緒符號比例縮放修正</h1>
-    <p class="sub">上一輪(v30)针對圓角方形頭系列做了「可見度百分比」parity 修正(圓角方形頭從 38.5% 拉回跟圓形頭一樣的 56.3%),但回報顯示配件在實際使用中仍讀起來像被蓋住。重新審查後發現問題不在 parity 本身失敗,而在 parity 目標訂得太保守:56.3% 在連續數學上是「有露出」,但三角形尖端從幾乎貼齊的邊界擠出來,天生只會露出極薄一截(triangle-vs-flat-boundary 的幾何特性,不是誤差)——圓形頭其實也一樣薄,只是先前只跟圓角方形頭比較、沒注意到圓形頭自己的基準也不夠清楚。這輪針對全部 17 種原型(不只圓角方形頭系列)重新解值,目標從「兩種頭型打平」改成「兩種頭型都拉到明確可辨識」:<code>EAR_HEIGHT_RATIO</code> 從 0.65 提高到 0.85(耳朵整體拉高,而非只調根部比例),圓形頭 <code>EAR_BASE_RATIO</code> 重新解到 0.647、圓角方形頭 <code>EAR_BASE_RATIO_SQUARE</code> 解到 0.745,兩者皆命中 70% 可見度。用最小 headR 的兩種頭型(petite 圓形 R=5.5、longBox 方形 R=6)驗證包覆餘裕仍為正(0.83px / 1.53px)、耳尖淨空幾乎翻倍(3.27px / 3.57px,對比上一輪的 ~2px)。8 個代表性原型(兩種頭型 × 最小/最大 headR)的修正前後截圖確認肉眼清楚可辨,不只是數字達標。<br><br>審查過程中也發現一個獨立、範圍更廣的既有 bug:情緒符號跟頭部的間距(<code>symbolGap</code>)幾乎沒有依 headR 縮放——側視 overlay 的 9 種符號裡只有「開心」有做 headR 比例縮放,其餘 8 種都是寫死的絕對像素值;正面表情群組的 8 種符號則完全沒有任何縮放,即使程式碼註解本身宣稱「有依 headR 縮放」。這代表 headR 較大的原型(大頭娃娃、大頭模糊型、圓潤模糊型等)符號間距早該按比例放大卻沒有,越大頭的原型符號跟頭部/配件擠壓的風險越高。已修正為 <code>OVERLAY_SYMBOL_GAP_BASE</code>(9 種側視符號)與 <code>symbolDescriptorFromExtra</code>(8 種正面符號)兩處都統一乘上 <code>headR/7.5</code>。同時把 <code>drawMountSymbol</code> 的間距公式從「只認帽子」的 <code>Math.max(symbol.gap, 帽子高度...)</code>,通用化成 <code>headAccessoryClearance()</code>——貓耳也納入計算,任何頭部配件現在都能自動撐開符號間距,不需要每加一種配件就手動改一行。全部 17 種原型 × 21 種姿勢,四個配件同時開啟,zero console 錯誤;另外針對 headR 最大的 4 個原型(大頭娃娃/大頭模糊型/圓潤模糊型/矮胖圓滾滾)專門截圖驗證符號與貓耳同時開啟時仍保持清楚分離、無重疊。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v32</div>
+    <h1>雙元件對稱掛載點批次二:兔耳/熊耳/惡魔角/鹿角/雙天線</h1>
+    <p class="sub">雙元件對稱掛載點機制(<code>deriveSymmetricHeadPair</code>)在貓耳示範跟兩輪可見度/符號間距修正後已確認穩定,這輪依序完成剩下 5 項配件,同一套錨點衍生 + 可見度驗證方法論(<code>solve_new_accessories.js</code>,evalCase 目標從「餘裕是否為正」升級成「可見度是否足以清楚辨識」的做法沿用上一輪)套用到每一項,只換形狀/比例。<b>兔耳</b>:改用 <code>capsule()</code> 圓頭膠囊而非三角形,又長又細才像兔耳,heightRatio=1.3(比貓耳的 0.85 高不少),兩種頭型都解到 75% 可見度。<b>惡魔角</b>:短膠囊往外側傾斜 20 度(<code>drawHornCapsule</code> 的 side 參數控制左右鏡像傾斜方向,不是兩支角同方向歪,而是左右外八),模擬角往臉的兩側後掠彎出去的感覺。<b>鹿角</b>:主幹沿用跟貓耳/兔耳一樣的純 OUT 方向驗證,額外在主幹 55% 高度處分叉出一小段側枝(再用一次跟惡魔角同樣的側偏技巧)——側枝經過運算保證其 OUT 軸投影必然低於主幹頂點(0.55+0.4×cos25°≈0.91<1),不需要對側枝另外重新解可見度。<b>雙天線</b>:重用手持道具配件本來就有的「膠囊桿 + 圓珠」技巧,只是掛載點換成頭部衍生錨點。<b>熊耳</b>:唯一不是「尖端型」的配件,圓形凸起本身的視覺邏輯跟三角形不同(半埋在頭部輪廓裡本來就是熊耳該有的樣子,不會像三角形半埋那樣看起來像壞掉),可見度目標刻意訂得比其他 4 項低(55% vs 65-75%)。第一版 radiusRatio=0.45 數字上達標但截圖顯示在最小 headR 的原型(petite/longBox)上只剩兩個很淡的凸起,重演貓耳 v1 的教訓——同一個百分比套在小的絕對半徑上還是小,不是数字的問題;retune 到 radiusRatio=0.65(半徑加大,而非拉高可見度目標)才在小頭原型上也讀起來清楚。全部 5 項配件皆針對 17 種原型逐一驗證包覆餘裕為正(最緊的是熊耳 petite/slenderPetite 的 0.96px),並在 headR 最大的 bigHeadBlur 上逐一截圖確認跟情緒符號同時開啟時仍清楚分離(<code>headAccessoryClearance()</code> 通用機制自動涵蓋這 5 項新配件,不需要額外手動接線)。全部 17 種原型 × 21 種姿勢、九個配件(舊 4 + 新 5)同時開啟,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -104,9 +104,24 @@
       <label class="toggle">
         <input id="catEarsToggle" type="checkbox" style="accent-color:var(--accent);"> 貓耳配件(雙元件對稱掛載點示範)
       </label>
+      <label class="toggle">
+        <input id="bunnyEarsToggle" type="checkbox" style="accent-color:var(--accent);"> 兔耳配件
+      </label>
+      <label class="toggle">
+        <input id="bearEarsToggle" type="checkbox" style="accent-color:var(--accent);"> 熊耳配件
+      </label>
+      <label class="toggle">
+        <input id="devilHornsToggle" type="checkbox" style="accent-color:var(--accent);"> 惡魔角配件
+      </label>
+      <label class="toggle">
+        <input id="deerAntlersToggle" type="checkbox" style="accent-color:var(--accent);"> 鹿角配件
+      </label>
+      <label class="toggle">
+        <input id="dualAntennaToggle" type="checkbox" style="accent-color:var(--accent);"> 雙天線配件
+      </label>
     </div>
     <p class="note">切換原型會重建所有支點/角度座標並把狀態機重置回「停下不走」(側身疊加層一併清除),走路/跑步/情境預覽三個上方畫布也會跟著換成新原型的比例——同一套狀態機、過渡曲線、疊加層架構,五種原型共用,只有下面列出的幾何/角度數值換了一組。</p>
-    <p class="note">四個配件勾選框都套用在「狀態機驅動」這個畫布上,跟哪一種原型無關——各自只讀取渲染函式回傳的對應掛載點座標(位置 + 當下角度),不知道也不需要知道現在是哪個原型、哪個動作。切換原型或動作時配件會自動跟著新的掛載點座標移動;貓尾巴用背後掛載點(正面朝向的姿勢刻意不顯示,因為背後掛載點在正面視角會被軀幹完全擋住),小帽子用頭部掛載點(所有姿勢都顯示,包含正面),手持道具用雙手掛載點(所有姿勢都顯示),貓耳則是從頭部掛載點衍生出的左右對稱新錨點(所有姿勢都顯示,包含正面,不分近/遠側)。</p>
+    <p class="note">全部九個配件勾選框都套用在「狀態機驅動」這個畫布上,跟哪一種原型無關——各自只讀取渲染函式回傳的對應掛載點座標(位置 + 當下角度),不知道也不需要知道現在是哪個原型、哪個動作。切換原型或動作時配件會自動跟著新的掛載點座標移動;貓尾巴用背後掛載點(正面朝向的姿勢刻意不顯示,因為背後掛載點在正面視角會被軀幹完全擋住),小帽子用頭部掛載點(所有姿勢都顯示,包含正面),手持道具用雙手掛載點(所有姿勢都顯示),貓耳/兔耳/熊耳/惡魔角/鹿角/雙天線這 6 項都是從頭部掛載點衍生出的左右對稱新錨點(所有姿勢都顯示,包含正面,不分近/遠側),差別只在錨點比例跟繪製的形狀(三角形/膠囊/圓形/分叉膠囊)。</p>
     <canvas id="stageFsm" width="480" height="360" style="max-width:320px; margin:0 auto;"></canvas>
     <div class="controls" style="margin-top:12px; padding-top:12px; gap:10px; flex-wrap:wrap;">
       <button id="fsmWalkBtn" type="button" data-target="walk">慢走</button>
@@ -2598,6 +2613,8 @@
   }
 
   let ACCESSORY_CAT_TAIL = false, ACCESSORY_HAT = false, ACCESSORY_PROP = false, ACCESSORY_CAT_EARS = false;
+  let ACCESSORY_BUNNY_EARS = false, ACCESSORY_BEAR_EARS = false, ACCESSORY_DEVIL_HORNS = false,
+      ACCESSORY_DEER_ANTLERS = false, ACCESSORY_DUAL_ANTENNA = false;
   let accessoryT = 0;
 
   // Cat tail (back mount): deliberately simpler than the retired dinosaur
@@ -2694,6 +2711,191 @@
     drawEarTriangle(ctx, pair.right, earHeight, earBaseW);
   }
 
+  // Shape-aware base ratio helper, generalized from cat ears' inline
+  // ternary -- every dual-symmetric-anchor accessory below reuses this
+  // instead of repeating the HEAD_SHAPE check at each call site.
+  function shapeAwareRatio(circleValue, squareValue){
+    return HEAD_SHAPE === 'roundedSquare' ? squareValue : circleValue;
+  }
+
+  // Bunny ears -- second dual-symmetric-anchor demo accessory. Same anchor
+  // derivation as cat ears, but a tall thin rounded-cap capsule (the
+  // existing capsule() primitive, which already respects LIMB_SHAPE so a
+  // box-limbed archetype's bunny ears read box-ish too, consistent with the
+  // rest of that archetype's silhouette) instead of a triangle -- bunny
+  // ears read as long and rounded, not spiky. Solved for a 75% visibility
+  // target (see solve_new_accessories.js) at heightRatio=1.3, checked on
+  // the smallest headR per shape (petite/longBox): insideMargin
+  // 1.38px/1.95px, clearance 5.36px/5.85px.
+  const BUNNY_EAR_BASE_RATIO = 0.634, BUNNY_EAR_BASE_RATIO_SQUARE = 0.675, BUNNY_EAR_HALF_W_RATIO = 0.4;
+  const BUNNY_EAR_HEIGHT_RATIO = 1.3, BUNNY_EAR_WIDTH_RATIO = 0.22;
+  function bunnyEarApexBeyondHeadTop(headR){
+    const baseRatio = shapeAwareRatio(BUNNY_EAR_BASE_RATIO, BUNNY_EAR_BASE_RATIO_SQUARE);
+    return BUNNY_EAR_HEIGHT_RATIO * headR - (1 - baseRatio) * headR;
+  }
+  function drawBunnyEarsAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const baseRatio = shapeAwareRatio(BUNNY_EAR_BASE_RATIO, BUNNY_EAR_BASE_RATIO_SQUARE);
+    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, BUNNY_EAR_HALF_W_RATIO);
+    const height = BUNNY_EAR_HEIGHT_RATIO * headR, width = BUNNY_EAR_WIDTH_RATIO * headR;
+    for (const mount of [pair.left, pair.right]){
+      const out = mountOutward(mount);
+      const apexX = mount.x + out.x * height, apexY = mount.y + out.y * height;
+      capsule(ctx, mount.x, mount.y, apexX, apexY, width, SIL);
+    }
+  }
+
+  // Bear ears -- small rounded bumps rather than a spike, so the
+  // visibility bar is deliberately lower (55% vs the spiky accessories'
+  // 65-75%): a half-buried round bump still reads correctly as a bear ear
+  // (that's what real bear ears look like against the skull), unlike a
+  // half-buried triangle which just looks broken. The anchor point IS the
+  // circle's own center (not its base), so the "height" fed into the
+  // shared apex-beyond-headTop formula is simply the radius.
+  //
+  // First pass used radiusRatio=0.45 at the same 55% visibility target --
+  // numerically fine (insideMargin/clearance both positive) but
+  // screenshot review showed the same lesson learned from cat ears v1: a
+  // small percentage of a small absolute radius is still a small absolute
+  // bump, and on petite/longBox it read as barely more than two faint
+  // notches. Re-tuned to radiusRatio=0.65 (bigger circle -- more absolute
+  // material regardless of %) at the SAME 55% visibility target (a round
+  // bump doesn't need the spikes' higher bar, just a bigger radius to work
+  // with): insideMargin 0.96px/1.75px, clearance 1.97px/2.15px on
+  // petite/longBox -- confirmed a clearly readable rounded bump on both
+  // shapes by re-screenshotting, not just the improved numbers.
+  const BEAR_EAR_BASE_RATIO = 0.568, BEAR_EAR_BASE_RATIO_SQUARE = 0.708, BEAR_EAR_HALF_W_RATIO = 0.6;
+  const BEAR_EAR_RADIUS_RATIO = 0.65;
+  function bearEarApexBeyondHeadTop(headR){
+    const baseRatio = shapeAwareRatio(BEAR_EAR_BASE_RATIO, BEAR_EAR_BASE_RATIO_SQUARE);
+    return BEAR_EAR_RADIUS_RATIO * headR - (1 - baseRatio) * headR;
+  }
+  function drawBearEarsAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const baseRatio = shapeAwareRatio(BEAR_EAR_BASE_RATIO, BEAR_EAR_BASE_RATIO_SQUARE);
+    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, BEAR_EAR_HALF_W_RATIO);
+    const radius = BEAR_EAR_RADIUS_RATIO * headR;
+    ctx.fillStyle = SIL;
+    for (const mount of [pair.left, pair.right]){
+      ctx.beginPath();
+      ctx.arc(mount.x, mount.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Devil horns -- a short capsule tilted DEVIL_HORN_TILT_DEG away from
+  // pure OUT (splayed outward from the head's centerline, like real horns
+  // curving away from the face) rather than straight up -- same capsule
+  // primitive as bunny ears, just shorter/thinner and rotated. The tilt is
+  // signed per side (left tilts further left, right further right,
+  // mirrored around the head's own centerline) since tilting both the same
+  // way would just look like one horn sheared sideways, not a pair. Solved
+  // at tiltDeg=20 (steeper tilts pushed insideMargin uncomfortably thin on
+  // the smaller square archetypes without meaningfully changing the
+  // visible silhouette): insideMargin 0.98px/0.96px, clearance
+  // 1.97px/2.15px on petite/longBox at 65% visibility.
+  const DEVIL_HORN_BASE_RATIO = 0.653, DEVIL_HORN_BASE_RATIO_SQUARE = 0.841, DEVIL_HORN_HALF_W_RATIO = 0.5;
+  const DEVIL_HORN_HEIGHT_RATIO = 0.55, DEVIL_HORN_WIDTH_RATIO = 0.16, DEVIL_HORN_TILT_DEG = 20;
+  function devilHornApexBeyondHeadTop(headR){
+    const baseRatio = shapeAwareRatio(DEVIL_HORN_BASE_RATIO, DEVIL_HORN_BASE_RATIO_SQUARE);
+    const height = DEVIL_HORN_HEIGHT_RATIO * headR;
+    return height * Math.cos(DEVIL_HORN_TILT_DEG * Math.PI / 180) - (1 - baseRatio) * headR;
+  }
+  // side: -1 tilts away from centerline on the left anchor, +1 on the
+  // right -- mirrored so the pair splays outward rather than both leaning
+  // the same direction.
+  function drawHornCapsule(ctx, mount, height, width, tiltDeg, side){
+    if (!mount) return;
+    const out = mountOutward(mount);
+    const perp = { x: -out.y, y: out.x };
+    const t = tiltDeg * Math.PI / 180;
+    const dirX = out.x * Math.cos(t) + side * perp.x * Math.sin(t);
+    const dirY = out.y * Math.cos(t) + side * perp.y * Math.sin(t);
+    const apexX = mount.x + dirX * height, apexY = mount.y + dirY * height;
+    capsule(ctx, mount.x, mount.y, apexX, apexY, width, SIL);
+  }
+  function drawDevilHornsAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const baseRatio = shapeAwareRatio(DEVIL_HORN_BASE_RATIO, DEVIL_HORN_BASE_RATIO_SQUARE);
+    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, DEVIL_HORN_HALF_W_RATIO);
+    const height = DEVIL_HORN_HEIGHT_RATIO * headR, width = DEVIL_HORN_WIDTH_RATIO * headR;
+    drawHornCapsule(ctx, pair.left, height, width, DEVIL_HORN_TILT_DEG, -1);
+    drawHornCapsule(ctx, pair.right, height, width, DEVIL_HORN_TILT_DEG, 1);
+  }
+
+  // Deer antlers -- a main stem (verified exactly like bunny ears/cat ears:
+  // apex along pure OUT) plus one small forking branch partway up, angled
+  // outward via the same signed-tilt technique as devil horns. Only the
+  // main stem needs its own visibility verification: the branch forks from
+  // a point already at DEER_ANTLER_BRANCH_FORK_RATIO of the way up an
+  // already-cleared stem and only reaches a modest fraction further
+  // (DEER_ANTLER_BRANCH_LEN_RATIO of the stem's own height, at
+  // DEER_ANTLER_BRANCH_TILT_DEG outward), so its OUT-axis reach stays
+  // below the stem's own tip by construction (0.55 + 0.4*cos(25deg) ~=
+  // 0.91 < 1) -- verified arithmetically, not by a separate solve. Main
+  // stem solved at heightRatio=1.2: insideMargin 1.17px/1.80px, clearance
+  // 4.95px/5.40px on petite/longBox at 75% visibility.
+  const DEER_ANTLER_BASE_RATIO = 0.646, DEER_ANTLER_BASE_RATIO_SQUARE = 0.700, DEER_ANTLER_HALF_W_RATIO = 0.45;
+  const DEER_ANTLER_HEIGHT_RATIO = 1.2, DEER_ANTLER_WIDTH_RATIO = 0.18;
+  const DEER_ANTLER_BRANCH_FORK_RATIO = 0.55, DEER_ANTLER_BRANCH_LEN_RATIO = 0.4,
+        DEER_ANTLER_BRANCH_TILT_DEG = 25, DEER_ANTLER_BRANCH_WIDTH_RATIO = 0.13;
+  function deerAntlerApexBeyondHeadTop(headR){
+    const baseRatio = shapeAwareRatio(DEER_ANTLER_BASE_RATIO, DEER_ANTLER_BASE_RATIO_SQUARE);
+    return DEER_ANTLER_HEIGHT_RATIO * headR - (1 - baseRatio) * headR;
+  }
+  function drawDeerAntlerStem(ctx, mount, headR, side){
+    if (!mount) return;
+    const out = mountOutward(mount);
+    const perp = { x: -out.y, y: out.x };
+    const height = DEER_ANTLER_HEIGHT_RATIO * headR, width = DEER_ANTLER_WIDTH_RATIO * headR;
+    const apexX = mount.x + out.x * height, apexY = mount.y + out.y * height;
+    capsule(ctx, mount.x, mount.y, apexX, apexY, width, SIL);
+    const forkX = mount.x + out.x * height * DEER_ANTLER_BRANCH_FORK_RATIO,
+          forkY = mount.y + out.y * height * DEER_ANTLER_BRANCH_FORK_RATIO;
+    const t = DEER_ANTLER_BRANCH_TILT_DEG * Math.PI / 180;
+    const branchLen = height * DEER_ANTLER_BRANCH_LEN_RATIO;
+    const dirX = out.x * Math.cos(t) + side * perp.x * Math.sin(t);
+    const dirY = out.y * Math.cos(t) + side * perp.y * Math.sin(t);
+    const branchX = forkX + dirX * branchLen, branchY = forkY + dirY * branchLen;
+    capsule(ctx, forkX, forkY, branchX, branchY, DEER_ANTLER_BRANCH_WIDTH_RATIO * headR, SIL);
+  }
+  function drawDeerAntlersAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const baseRatio = shapeAwareRatio(DEER_ANTLER_BASE_RATIO, DEER_ANTLER_BASE_RATIO_SQUARE);
+    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, DEER_ANTLER_HALF_W_RATIO);
+    drawDeerAntlerStem(ctx, pair.left, headR, -1);
+    drawDeerAntlerStem(ctx, pair.right, headR, 1);
+  }
+
+  // Dual antenna -- thin stem + small ball tip, same "pole + disc"
+  // technique drawPropAccessory already uses for the hand-held flag prop.
+  // Solved at heightRatio=1.4 (total reach INCLUDING the ball, so the
+  // ball's own radius is already absorbed into that one ratio rather than
+  // being a separate additive term): insideMargin 1.67px/2.10px, clearance
+  // 5.78px/6.30px on petite/longBox at 75% visibility.
+  const DUAL_ANTENNA_BASE_RATIO = 0.628, DUAL_ANTENNA_BASE_RATIO_SQUARE = 0.650, DUAL_ANTENNA_HALF_W_RATIO = 0.3;
+  const DUAL_ANTENNA_HEIGHT_RATIO = 1.4, DUAL_ANTENNA_WIDTH_RATIO = 0.1, DUAL_ANTENNA_BALL_RADIUS_RATIO = 0.16;
+  function dualAntennaApexBeyondHeadTop(headR){
+    const baseRatio = shapeAwareRatio(DUAL_ANTENNA_BASE_RATIO, DUAL_ANTENNA_BASE_RATIO_SQUARE);
+    return DUAL_ANTENNA_HEIGHT_RATIO * headR - (1 - baseRatio) * headR;
+  }
+  function drawDualAntennaAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const baseRatio = shapeAwareRatio(DUAL_ANTENNA_BASE_RATIO, DUAL_ANTENNA_BASE_RATIO_SQUARE);
+    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, DUAL_ANTENNA_HALF_W_RATIO);
+    const height = DUAL_ANTENNA_HEIGHT_RATIO * headR, width = DUAL_ANTENNA_WIDTH_RATIO * headR;
+    const ballR = DUAL_ANTENNA_BALL_RADIUS_RATIO * headR;
+    ctx.fillStyle = SIL;
+    for (const mount of [pair.left, pair.right]){
+      const out = mountOutward(mount);
+      const tipX = mount.x + out.x * height, tipY = mount.y + out.y * height;
+      capsule(ctx, mount.x, mount.y, tipX, tipY, width, SIL);
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, ballR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // Party hat (headTop mount): a small filled triangle extending straight
   // along OUT(mount.angle) -- "straight up off the top of the head" in the
   // mount's own local frame, tilting with the head exactly as far as the
@@ -2768,6 +2970,11 @@
     let h = 0;
     if (ACCESSORY_HAT) h = Math.max(h, HAT_HEIGHT + HAT_SYMBOL_MARGIN);
     if (ACCESSORY_CAT_EARS) h = Math.max(h, earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
+    if (ACCESSORY_BUNNY_EARS) h = Math.max(h, bunnyEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
+    if (ACCESSORY_BEAR_EARS) h = Math.max(h, bearEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
+    if (ACCESSORY_DEVIL_HORNS) h = Math.max(h, devilHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
+    if (ACCESSORY_DEER_ANTLERS) h = Math.max(h, deerAntlerApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
+    if (ACCESSORY_DUAL_ANTENNA) h = Math.max(h, dualAntennaApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
     return h;
   }
   function drawMountSymbol(ctx, mounts, symbol){
@@ -2829,9 +3036,16 @@
       // archetype gets a light independent softening pass on top of these
       // four; every other archetype draws straight to `ctx` exactly as
       // before.
-      if (ACCESSORY_CAT_EARS || ACCESSORY_CAT_TAIL || ACCESSORY_HAT || ACCESSORY_PROP){
+      if (ACCESSORY_CAT_EARS || ACCESSORY_CAT_TAIL || ACCESSORY_HAT || ACCESSORY_PROP ||
+          ACCESSORY_BUNNY_EARS || ACCESSORY_BEAR_EARS || ACCESSORY_DEVIL_HORNS ||
+          ACCESSORY_DEER_ANTLERS || ACCESSORY_DUAL_ANTENNA){
         drawAccessoriesMaybeSoftened(stage, accessoryBuf, function(accCtx){
           if (ACCESSORY_CAT_EARS) drawCatEarsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
+          if (ACCESSORY_BUNNY_EARS) drawBunnyEarsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
+          if (ACCESSORY_BEAR_EARS) drawBearEarsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
+          if (ACCESSORY_DEVIL_HORNS) drawDevilHornsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
+          if (ACCESSORY_DEER_ANTLERS) drawDeerAntlersAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
+          if (ACCESSORY_DUAL_ANTENNA) drawDualAntennaAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
           if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(accCtx, mounts.back);
           if (ACCESSORY_HAT) drawHatAccessory(accCtx, mounts.headTop);
           if (ACCESSORY_PROP){
@@ -2935,6 +3149,21 @@
   });
   document.getElementById('catEarsToggle').addEventListener('change', function(){
     ACCESSORY_CAT_EARS = this.checked;
+  });
+  document.getElementById('bunnyEarsToggle').addEventListener('change', function(){
+    ACCESSORY_BUNNY_EARS = this.checked;
+  });
+  document.getElementById('bearEarsToggle').addEventListener('change', function(){
+    ACCESSORY_BEAR_EARS = this.checked;
+  });
+  document.getElementById('devilHornsToggle').addEventListener('change', function(){
+    ACCESSORY_DEVIL_HORNS = this.checked;
+  });
+  document.getElementById('deerAntlersToggle').addEventListener('change', function(){
+    ACCESSORY_DEER_ANTLERS = this.checked;
+  });
+  document.getElementById('dualAntennaToggle').addEventListener('change', function(){
+    ACCESSORY_DUAL_ANTENNA = this.checked;
   });
 })();
 </script>
