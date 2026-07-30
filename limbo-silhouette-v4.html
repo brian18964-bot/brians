@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v32 — 雙元件對稱掛載點批次二:兔耳/熊耳/惡魔角/鹿角/雙天線</title>
+<title>剪影走路/跑步循環 v33 — 修正熊耳蓋住眼睛 + 尺寸過大</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v32</div>
-    <h1>雙元件對稱掛載點批次二:兔耳/熊耳/惡魔角/鹿角/雙天線</h1>
-    <p class="sub">雙元件對稱掛載點機制(<code>deriveSymmetricHeadPair</code>)在貓耳示範跟兩輪可見度/符號間距修正後已確認穩定,這輪依序完成剩下 5 項配件,同一套錨點衍生 + 可見度驗證方法論(<code>solve_new_accessories.js</code>,evalCase 目標從「餘裕是否為正」升級成「可見度是否足以清楚辨識」的做法沿用上一輪)套用到每一項,只換形狀/比例。<b>兔耳</b>:改用 <code>capsule()</code> 圓頭膠囊而非三角形,又長又細才像兔耳,heightRatio=1.3(比貓耳的 0.85 高不少),兩種頭型都解到 75% 可見度。<b>惡魔角</b>:短膠囊往外側傾斜 20 度(<code>drawHornCapsule</code> 的 side 參數控制左右鏡像傾斜方向,不是兩支角同方向歪,而是左右外八),模擬角往臉的兩側後掠彎出去的感覺。<b>鹿角</b>:主幹沿用跟貓耳/兔耳一樣的純 OUT 方向驗證,額外在主幹 55% 高度處分叉出一小段側枝(再用一次跟惡魔角同樣的側偏技巧)——側枝經過運算保證其 OUT 軸投影必然低於主幹頂點(0.55+0.4×cos25°≈0.91<1),不需要對側枝另外重新解可見度。<b>雙天線</b>:重用手持道具配件本來就有的「膠囊桿 + 圓珠」技巧,只是掛載點換成頭部衍生錨點。<b>熊耳</b>:唯一不是「尖端型」的配件,圓形凸起本身的視覺邏輯跟三角形不同(半埋在頭部輪廓裡本來就是熊耳該有的樣子,不會像三角形半埋那樣看起來像壞掉),可見度目標刻意訂得比其他 4 項低(55% vs 65-75%)。第一版 radiusRatio=0.45 數字上達標但截圖顯示在最小 headR 的原型(petite/longBox)上只剩兩個很淡的凸起,重演貓耳 v1 的教訓——同一個百分比套在小的絕對半徑上還是小,不是数字的問題;retune 到 radiusRatio=0.65(半徑加大,而非拉高可見度目標)才在小頭原型上也讀起來清楚。全部 5 項配件皆針對 17 種原型逐一驗證包覆餘裕為正(最緊的是熊耳 petite/slenderPetite 的 0.96px),並在 headR 最大的 bigHeadBlur 上逐一截圖確認跟情緒符號同時開啟時仍清楚分離(<code>headAccessoryClearance()</code> 通用機制自動涵蓋這 5 項新配件,不需要額外手動接線)。全部 17 種原型 × 21 種姿勢、九個配件(舊 4 + 新 5)同時開啟,zero console 錯誤。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v33</div>
+    <h1>修正熊耳蓋住眼睛 + 尺寸過大</h1>
+    <p class="sub">上一輪(v32)出貨的熊耳有兩個問題:眼睛被蓋住、尺寸過度誇張。根因定位:先確認是否為繪製順序問題——結果不是。眼睛(<code>EYE_COLOR</code> 淺色實心圓)一律在配件之前畫完,包含模糊型原型專用的 <code>drawSharpEyes</code> 路徑,這個順序本身正確且是刻意設計(配件是「戴在最外層」的東西),貓耳/兔耳/惡魔角/鹿角/雙天線這 5 項配件從來沒有出過這個問題。真正的根因是純幾何:v32 為了讓熊耳在小頭原型上讀起來更清楚,把半徑從 0.45 拉大到 0.65、根部也往頭部中心挪低(baseRatio 0.644→0.568),兩個改動疊加後,圓形凸起的實際涵蓋範圍大到直接伸進臉部——用 <code>verify_bear_eye_safety.js</code> 直接算出圓形頭上錨點到眼睛的距離只有 0.541R(側視)/0.563R(正視),小於 0.65R 的半徑,確認真的整個蓋過去了(方形頭剛好差 0.03-0.04R 涉險過關,純運氣不是分開的個案)。<br><br>修正方向不是回退到 v1 的 0.45,而是重新設計:放棄「加大半徑」這條路,改成「錨點位置往上、往內收(比照貓耳的高位窄距,baseRatio 0.65/0.75、halfW 從 0.6 收到 0.45)+ 半徑大幅縮小到 0.28」——兩個改動的共同效果是把熊耳從「臉頰兩側的大凸起」變成「頭頂的小巧點綴」,順帶把錨點徹底移出臉部範圍,不只是縮小而已。修正後用同一支驗證腳本明確算出眼睛安全餘裕(錨點到眼睛距離減去半徑)在兩種頭型、側視跟正視兩種眼睛公式下都落在 +0.28R 到 +0.39R,不是勉強擦邊;包覆餘裕(耳朵根部是否仍在頭部輪廓內)對全部 17 種原型逐一驗證,最緊的 petite/slenderPetite 仍有 +1.15px。修正前後截圖(6 種原型、側視+正視)確認眼睛完全恢復可見、熊耳尺寸收斂成小巧點綴感。全部 17 種原型 × 21 種姿勢、九個配件同時開啟,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -2753,19 +2753,43 @@
   // circle's own center (not its base), so the "height" fed into the
   // shared apex-beyond-headTop formula is simply the radius.
   //
-  // First pass used radiusRatio=0.45 at the same 55% visibility target --
-  // numerically fine (insideMargin/clearance both positive) but
-  // screenshot review showed the same lesson learned from cat ears v1: a
-  // small percentage of a small absolute radius is still a small absolute
-  // bump, and on petite/longBox it read as barely more than two faint
-  // notches. Re-tuned to radiusRatio=0.65 (bigger circle -- more absolute
-  // material regardless of %) at the SAME 55% visibility target (a round
-  // bump doesn't need the spikes' higher bar, just a bigger radius to work
-  // with): insideMargin 0.96px/1.75px, clearance 1.97px/2.15px on
-  // petite/longBox -- confirmed a clearly readable rounded bump on both
-  // shapes by re-screenshotting, not just the improved numbers.
-  const BEAR_EAR_BASE_RATIO = 0.568, BEAR_EAR_BASE_RATIO_SQUARE = 0.708, BEAR_EAR_HALF_W_RATIO = 0.6;
-  const BEAR_EAR_RADIUS_RATIO = 0.65;
+  // History: v1 used radiusRatio=0.45 (55% visibility target) -- numerically
+  // fine but screenshot review showed the cat-ears-v1 lesson again: a small
+  // percentage of a small absolute radius is still visually small, so
+  // petite/longBox read as barely more than two faint notches. v2 chased a
+  // bigger, bolder bump by raising radiusRatio to 0.65 AND lowering
+  // baseRatio (root planted closer to head center) to keep visibility at
+  // the same 55% target. That shipped, then broke: on circle heads the
+  // enlarged, lowered circle's radius reached all the way into the FACE,
+  // overlapping the eye position and painting over it (eyes are drawn
+  // BEFORE accessories -- see the draw-order comment at drawSharpEyes and
+  // in stepFsm -- by design every accessory draws on top of whatever's
+  // already there, which is correct for accessories that stay near the
+  // head's own boundary, but a big low-anchored circle is a different
+  // failure mode none of the thin spike-shaped accessories could ever hit).
+  // Verified by direct calculation (verify_bear_eye_safety.js), not
+  // assumed from the screenshot alone: v2's circle-head anchor
+  // (baseRatio=0.568, halfW=0.6) sits 0.541R from the side-view eye and
+  // 0.563R from the front-view eye, both LESS than the 0.65R radius --
+  // confirmed geometric overlap, not a draw-order bug (square heads
+  // happened to just barely clear at +0.03-0.04R, thin luck, not a
+  // separate case).
+  //
+  // v3 abandons the "bigger radius, same visibility target" direction
+  // entirely and goes back to a genuinely SMALL decorative bump, placed
+  // high and narrow like the cat-ears anchor (baseRatio~0.65-0.75, half of
+  // v1/v2's halfW=0.6) rather than low and wide -- both changes push the
+  // anchor away from the face/eye zone as a side effect of "looks like an
+  // ear sitting on TOP of the head" instead of "a cheek-level blob", not
+  // just a shrink. radiusRatio=0.28 (well under both v1 and v2). Verified
+  // both properties explicitly, not just re-eyeballed: insideMargin stays
+  // positive across all 17 archetypes (worst 1.15px, petite/slenderPetite)
+  // AND the eye-safety margin (anchor-to-eye distance minus radius) is
+  // +0.28R to +0.39R across both head shapes and both the side-view and
+  // front-view eye formulas -- comfortable clearance, not a repeat of the
+  // v2 near-miss.
+  const BEAR_EAR_BASE_RATIO = 0.65, BEAR_EAR_BASE_RATIO_SQUARE = 0.75, BEAR_EAR_HALF_W_RATIO = 0.45;
+  const BEAR_EAR_RADIUS_RATIO = 0.28;
   function bearEarApexBeyondHeadTop(headR){
     const baseRatio = shapeAwareRatio(BEAR_EAR_BASE_RATIO, BEAR_EAR_BASE_RATIO_SQUARE);
     return BEAR_EAR_RADIUS_RATIO * headR - (1 - baseRatio) * headR;
