@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v21 — 通用背後掛載點 + 貓尾巴配件示範</title>
+<title>剪影走路/跑步循環 v22 — 三組掛載點(背後/頭部/手部)完整規格</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v21</div>
-    <h1>通用背後掛載點 + 貓尾巴配件示範</h1>
-    <p class="sub">上一輪的「長尾巴型」是把尾巴焊死在一個獨立原型(tailed)裡,只有那個原型能有尾巴。這一輪改成通用機制:每個姿態渲染函式(drawCharacter/drawCharacterSit/drawReclined/drawProneFrame/drawJumpFrame/drawTurnPivotMove/drawFrontDejected,共 7 個)現在都會回傳一個 <code>mounts</code> 物件,內含背後掛載點的世界座標跟當下角度——呼叫端(stepFsm)完全不需要知道現在是哪個原型、哪個動作,只要讀這個座標就能在上面掛配件。掛載點位置直接沿用上一輪幫恐龍尾巴根部找到的驗證結果(相對髖部 dx=-6, dy=5,對應該原型 torsoRX=12/torsoRY=11),但改成用比例套用到每個原型自己的 torsoRX/torsoRY(跟 hipHalfWNear 等既有支點同一套技巧),而不是直接複製那組絕對數字——因為不同原型的軀幹大小不同,絕對座標在小軀幹的原型上可能貼出邊界。10 種原型全部重新數字驗證過(見 verify_backmount.js),最小餘裕 +1.47px(petite/slenderPetite),全部過關。貓尾巴是這個機制的示範配件,刻意比恐龍尾巴簡單:不跟步態相位掛鉤,只有自己的一個獨立微幅擺動時鐘疊加在掛載點角度上,垂放方向跟著身體姿勢走。轉正面/舉手歡呼等正面朝向的姿勢回傳 <code>mounts.back = null</code>(背後掛載點在正面視角會被軀幹完全擋住,跟恐龍尾巴當初排除正面姿勢是同一個理由),用勾選框切換貓尾巴可以直接在下面「狀態機驅動」畫布上,對照不同原型/不同動作測試同一個配件是否正確跟著掛載點走。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v22</div>
+    <h1>三組掛載點(背後/頭部/手部)完整規格</h1>
+    <p class="sub">上一輪只做了背後掛載點。這一輪把頭部掛載點(頭頂中心)跟手部掛載點(雙手末端)補齊,7 個姿態渲染函式現在統一回傳 <code>{ back, headTop, handNear, handFar }</code>,每個都是 <code>{x, y, angle}</code>。headTop 直接沿用每個函式裡已經算好的頭部中心點(headPt/headCy),只是延伸 headR 的距離,不重新算頭部支點;hand 掛載點直接重用 limbFK/limbEnd 已經算出的手臂末端座標,不重新計算。過程中發現一個真正的符號錯誤並修正:手臂擺動角度用的是「往下掛」慣例(sin/cos 對應角度 0 = 垂直向下),跟背後/頭部掛載點用的「向外」慣例在 <code>rotatePointAround</code> 的旋轉下合成方式不同(向外慣例用加法合成,往下掛慣例其實要用減法)——混用會在大角度旋轉(躺下、趴下、鞠躬)時安靜地指錯方向。統一改成全部四個掛載點都用同一種「向外」慣例(<code>mountOutward()</code>:OUT(angle)=(sin angle, −cos angle)),手部角度存成 <code>PI − 原始擺動角度</code>做轉換,並用旋轉合成的代數證明+ 數值驗證確認過(見 verify_head_hand_mounts.js),連帶修正了上一輪貓尾巴配件裡同一個混用慣例造成的方向誤差。三個示範配件——貓尾巴(背後)、小帽子(頭部)、手持道具(雙手)——現在共用同一套 <code>mountOutward()</code> 規格,10 種原型 × 14 種姿勢全跑過,zero console 錯誤,可以用下面「狀態機驅動」畫布的三個勾選框對照不同原型/動作測試。</p>
   </header>
 
   <div class="compare">
@@ -88,9 +88,15 @@
       <label class="toggle">
         <input id="catTailToggle" type="checkbox" style="accent-color:var(--accent);"> 貓尾巴配件(背後掛載點示範)
       </label>
+      <label class="toggle">
+        <input id="hatToggle" type="checkbox" style="accent-color:var(--accent);"> 小帽子配件(頭部掛載點示範)
+      </label>
+      <label class="toggle">
+        <input id="propToggle" type="checkbox" style="accent-color:var(--accent);"> 手持道具配件(手部掛載點示範)
+      </label>
     </div>
     <p class="note">切換原型會重建所有支點/角度座標並把狀態機重置回「停下不走」(側身疊加層一併清除),走路/跑步/情境預覽三個上方畫布也會跟著換成新原型的比例——同一套狀態機、過渡曲線、疊加層架構,五種原型共用,只有下面列出的幾何/角度數值換了一組。</p>
-    <p class="note">貓尾巴勾選後套用在「狀態機驅動」這個畫布上,跟哪一種原型無關——它只讀取每個姿態渲染函式回傳的背後掛載點座標(位置 + 當下傾斜角度),不知道也不需要知道現在是哪個原型、哪個動作。切換原型或動作時尾巴會自動跟著新的掛載點座標移動;正面朝向的姿勢(轉正面、舉手歡呼等)刻意不顯示尾巴,因為背後掛載點在正面視角會被軀幹完全擋住。</p>
+    <p class="note">三個配件勾選框都套用在「狀態機驅動」這個畫布上,跟哪一種原型無關——各自只讀取渲染函式回傳的對應掛載點座標(位置 + 當下角度),不知道也不需要知道現在是哪個原型、哪個動作。切換原型或動作時配件會自動跟著新的掛載點座標移動;貓尾巴用背後掛載點(正面朝向的姿勢刻意不顯示,因為背後掛載點在正面視角會被軀幹完全擋住),小帽子用頭部掛載點(所有姿勢都顯示,包含正面),手持道具用雙手掛載點(所有姿勢都顯示)。</p>
     <canvas id="stageFsm" width="480" height="360" style="max-width:320px; margin:0 auto;"></canvas>
     <div class="controls" style="margin-top:12px; padding-top:12px; gap:10px; flex-wrap:wrap;">
       <button id="fsmWalkBtn" type="button" data-target="walk">慢走</button>
@@ -333,6 +339,18 @@
     };
   }
 
+  // Carries one {x,y,angle} mount through the same wrapped ctx-rotation
+  // rotatePointAround handles for a single point -- used by drawReclined/
+  // drawProneFrame to move ALL FOUR mounts (not just back) through their
+  // whole-rig tip in one call each. Passes null through unchanged (a
+  // front-facing pose's back mount, see drawTurnPivotMove) instead of
+  // throwing on a missing point.
+  function carryMountThroughRotation(mount, cx, cy, angle){
+    if (!mount) return null;
+    const p = rotatePointAround(mount.x, mount.y, cx, cy, angle);
+    return { x: p.x, y: p.y, angle: mount.angle + angle };
+  }
+
   // ---------- generic back-mount point (component N) ----------
   // A SINGLE attachment point near the lower back, meant for ANY back-worn
   // accessory (tail, backpack, cape, ...) -- decoupled from archetype, pose,
@@ -404,6 +422,10 @@
     const shNearPt = rotateAroundHip(baseX, hipY, cfg.shHalfWNear, shoulderDy, lean);
     const shFarPt = rotateAroundHip(baseX, hipY, -cfg.shHalfWFar, shoulderDy, lean);
     const backPt = rotateAroundHip(baseX, hipY, cfg.backMountDx, cfg.backMountDy, lean);
+    // headTop reuses headDy (the exact axis length already used for headPt,
+    // two lines up) extended by headR -- same pivot, same rotateAroundHip
+    // call, no new geometry derived.
+    const headTopPt = rotateAroundHip(baseX, hipY, 0, headDy + cfg.headR, lean);
 
     // right side = near/front (fully visible), left side = far/back (tucked
     // behind the torso at the join) -- fixed for the whole animation
@@ -446,9 +468,29 @@
 
     // mounts: attachment points already computed above in this exact frame
     // (post-lean, post-bob) -- an accessory system reads these without
-    // needing to know Theta/cfg/archetype at all. See the component-N
-    // comment near rotateAroundHip.
-    return { back: { x: backPt.x, y: backPt.y, angle: lean } };
+    // needing to know Theta/cfg/archetype at all. See the component-N/P
+    // comment near rotateAroundHip. handNear/handFar reuse armNear/armFar's
+    // own .angle field (limbFK already computed it as exactly the sin/cos
+    // angle endX/endY were derived from -- not lean-rotated, matching how
+    // the swing itself renders, see limbFK's own definition) rather than
+    // re-deriving an angle from the endpoint coordinates.
+    // handNear/handFar.angle: armNear.angle/armFar.angle are in limbFK's own
+    // "hang" convention (endX=base+len*sin(a), endY=base+len*cos(a) -- angle
+    // 0 = straight down). Every mount's angle field uses the OTHER
+    // convention instead (see mountOutward's definition below: OUT(angle) =
+    // (sin(angle), -cos(angle)), verified to compose correctly via simple
+    // addition under carryMountThroughRotation/rotatePointAround, which the
+    // "hang" convention does NOT -- it composes via subtraction). PI-angle
+    // is the exact conversion between the two (verified: OUT(PI-a) equals
+    // the hang-convention's own (sin a, cos a) direction), so this reuses
+    // armNear/armFar's own angle field, just re-expressed in the mounts
+    // system's convention rather than recomputed from scratch.
+    return {
+      back: { x: backPt.x, y: backPt.y, angle: lean },
+      headTop: { x: headTopPt.x, y: headTopPt.y, angle: lean },
+      handNear: { x: armNear.endX, y: armNear.endY, angle: Math.PI - armNear.angle },
+      handFar: { x: armFar.endX, y: armFar.endY, angle: Math.PI - armFar.angle }
+    };
   }
 
   function drawBackground(ctx, w, h){
@@ -628,7 +670,17 @@
 
     // no lean while seated, so the mount's angle is just 0 -- see drawCharacter
     const backPt = rotateAroundHip(baseX, hipY, cfg.backMountDx, cfg.backMountDy, 0);
-    return { back: { x: backPt.x, y: backPt.y, angle: 0 } };
+    // headTop reuses headCy (already computed above for drawHeadShape itself)
+    // -- just the same point offset by headR, no new pivot math.
+    // handNear/handFar reuse armNear/armFar's own endX/endY and the SAME
+    // angle already used to compute them (cfg.armRestAngle) -- see the
+    // component-N/P comment near rotateAroundHip's definition.
+    return {
+      back: { x: backPt.x, y: backPt.y, angle: 0 },
+      headTop: { x: baseX, y: headCy - cfg.headR, angle: 0 },
+      handNear: { x: armNear.endX, y: armNear.endY, angle: Math.PI - cfg.armRestAngle },
+      handFar: { x: armFar.endX, y: armFar.endY, angle: Math.PI - cfg.armRestAngle }
+    };
   }
 
   // ---------- component D: lying-down pose (side view, static) ----------
@@ -655,13 +707,16 @@
     const inner = drawCharacter(ctx, baseX, baseY, LIE_THETA, tweenCfg, false);
     ctx.restore();
 
-    // drawCharacter's returned mount is in the PRE-tip local frame (it has
-    // no idea this whole draw just got wrapped in ctx.rotate) -- carry it
-    // through the same rotation via rotatePointAround so the coordinate
-    // handed back actually matches where the accessory needs to sit on the
-    // real, unrotated canvas.
-    const back = rotatePointAround(inner.back.x, inner.back.y, baseX, baseY, rotAngle);
-    return { back: { x: back.x, y: back.y, angle: inner.back.angle + rotAngle } };
+    // drawCharacter's returned mounts are in the PRE-tip local frame (it has
+    // no idea this whole draw just got wrapped in ctx.rotate) -- carry all
+    // four through the same rotation so the coordinates handed back actually
+    // match where an accessory needs to sit on the real, unrotated canvas.
+    return {
+      back: carryMountThroughRotation(inner.back, baseX, baseY, rotAngle),
+      headTop: carryMountThroughRotation(inner.headTop, baseX, baseY, rotAngle),
+      handNear: carryMountThroughRotation(inner.handNear, baseX, baseY, rotAngle),
+      handFar: carryMountThroughRotation(inner.handFar, baseX, baseY, rotAngle)
+    };
   }
 
   // ---------- component K: prone / face-plant (mirror of lying down) ----------
@@ -725,13 +780,29 @@
 
     ctx.restore();
 
-    // Same wrapped-rotation situation as drawReclined: compute the mount in
-    // this function's own local (pre-tip) frame, using the identical
-    // lean=0 convention drawCharacter uses for its rotateAroundHip calls,
-    // then carry it through the same rotAngle the draw itself was wrapped in.
+    // Same wrapped-rotation situation as drawReclined: compute each mount in
+    // this function's own local (pre-tip) frame -- reusing headCy (already
+    // computed above for drawHeadShape itself) for headTop, and armNear/
+    // armFar's own endX/endY + the same armDeg both were built from for the
+    // hand mounts -- then carry all four through the same rotAngle the draw
+    // itself was wrapped in.
     const backLocal = rotateAroundHip(baseX, hipY, cfg.backMountDx, cfg.backMountDy, 0);
-    const back = rotatePointAround(backLocal.x, backLocal.y, baseX, baseY, rotAngle);
-    return { back: { x: back.x, y: back.y, angle: rotAngle } };
+    const armDegRad = armDeg * Math.PI / 180;
+    const localMounts = {
+      back: { x: backLocal.x, y: backLocal.y, angle: 0 },
+      headTop: { x: baseX, y: headCy - cfg.headR, angle: 0 },
+      // PI-angle: converts the "hang" convention armDegRad was built in to
+      // the mounts system's own convention -- see the identical comment in
+      // drawCharacter's return statement.
+      handNear: { x: armNear.endX, y: armNear.endY, angle: Math.PI - armDegRad },
+      handFar: { x: armFar.endX, y: armFar.endY, angle: Math.PI - armDegRad }
+    };
+    return {
+      back: carryMountThroughRotation(localMounts.back, baseX, baseY, rotAngle),
+      headTop: carryMountThroughRotation(localMounts.headTop, baseX, baseY, rotAngle),
+      handNear: carryMountThroughRotation(localMounts.handNear, baseX, baseY, rotAngle),
+      handFar: carryMountThroughRotation(localMounts.handFar, baseX, baseY, rotAngle)
+    };
   }
 
   // ---------- component F: jump (side view, one-shot) ----------
@@ -1111,12 +1182,41 @@
       withBow(() => drawSymbolMark(ctx, extra.symbol, baseX, headCy - cfg.headR - (extra.symbolGap || 8), extra.symbolScale || 1, extra.symbolAlpha !== undefined ? extra.symbolAlpha : 1, extra.symbolSpin || 0));
     }
 
+    // headTop: the head shape itself is drawn at local (0,0) with radius
+    // cfg.headR (see the drawHeadShape call above) inside a translate-to-
+    // (baseX,headCy)-then-optionally-rotate-by-headTiltDeg block -- so
+    // "straight up from head center, in the SAME local frame drawHeadShape
+    // used" is local (0,-headR), which needs the identical headTiltDeg
+    // rotation applied (a hat should tilt WITH a tilted head) before adding
+    // the (baseX,headCy) translation back in. Unlike the side-overlay
+    // symbol layer (which deliberately skips this for small lean angles),
+    // a physically-tilted head genuinely relocates where "top" is, so this
+    // mount does the full rotation rather than approximating.
+    const headTiltRad = headTiltDeg * Math.PI / 180;
+    const headTopLocal = rotatePointAround(0, -cfg.headR, 0, 0, headTiltRad);
+    const headTopPreBow = { x: baseX + headTopLocal.x, y: headCy + headTopLocal.y, angle: headTiltRad };
+    // hand mounts: armNear/armFar's own endX/endY, reusing the exact
+    // angleDeg each was built from (armAngleNearDeg/armAngleFarDeg, the
+    // function's own params) rather than re-deriving anything -- PI-angle
+    // converts from the "hang" convention those params are in to the mounts
+    // system's own convention, see the comment in drawCharacter's return.
+    const handNearPreBow = { x: armNear.endX, y: armNear.endY, angle: Math.PI - armAngleNearDeg * Math.PI / 180 };
+    const handFarPreBow = { x: armFar.endX, y: armFar.endY, angle: Math.PI - armAngleFarDeg * Math.PI / 180 };
+    const bowRad = bowDeg * Math.PI / 180;
+
     // No back mount here, on purpose: this rig faces the viewer, so a
     // back-worn accessory would be directly behind the torso along the
     // depth axis this silhouette can't represent -- the exact same scope
     // boundary already documented for the dinosaur tail ("正面朝向的姿勢
-    // 刻意不做尾巴"). A caller must check mounts.back for null before using it.
-    return { back: null };
+    // 刻意不做尾巴"). Head/hands stay fully visible from the front, though,
+    // so those three mounts are real here. A caller must check mounts.back
+    // for null before using it.
+    return {
+      back: null,
+      headTop: carryMountThroughRotation(headTopPreBow, baseX, hipY, bowRad),
+      handNear: carryMountThroughRotation(handNearPreBow, baseX, hipY, bowRad),
+      handFar: carryMountThroughRotation(handFarPreBow, baseX, hipY, bowRad)
+    };
   }
 
   // ---------- component J: front action group (full performances) ----------
@@ -1287,8 +1387,19 @@
 
     drawTrembleLines(ctx, baseX, torsoCy, cfg.torsoRY * 1.8, breathT, cfg.trembleAmp * q);
 
-    // front-facing -- see the identical comment in drawTurnPivotMove
-    return { back: null };
+    // front-facing -- see the identical comment in drawTurnPivotMove.
+    // headTop reuses headCy (already computed above for drawHeadShape
+    // itself). handNear/handFar reuse armR/armL's own endX/endY and the
+    // exact angle each was built from (armWrapAngle*mirror) -- armR (the
+    // +dx side) maps to "near" to match drawTurnPivotMove's own near=+dx
+    // convention in its front-facing (turnP=1) orientation, keeping the
+    // near/far labeling consistent across every front-facing render path.
+    return {
+      back: null,
+      headTop: { x: baseX, y: headCy - cfg.headR, angle: 0 },
+      handNear: { x: armR.endX, y: armR.endY, angle: Math.PI - armWrapAngle },
+      handFar: { x: armL.endX, y: armL.endY, angle: Math.PI + armWrapAngle }
+    };
   }
 
   // ---------- component L: multi-archetype support ----------
@@ -1996,28 +2107,90 @@
     }
   }
 
-  // ---------- component O: back-mount accessory demo (cat tail) ----------
-  // Proof that the generic backMount point (component N) works completely
-  // independently of archetype AND of pose: this reads only the {x,y,angle}
-  // a pose function just returned, and knows nothing about which archetype,
-  // which state, or even whether a transition is mid-flight. Deliberately
-  // simpler than the retired dinosaur tail (drawTail) per the "先簡化"
-  // direction -- no gait-phase swing at all, just a small idle sway driven
-  // by its own independent clock (accessoryT, advanced unconditionally in
-  // stepFsm below), added ON TOP of the mount's own angle so the tail keeps
-  // "hanging off the body" through whatever lean/tip the current pose has,
-  // rather than swinging in a fixed screen direction.
-  let ACCESSORY_CAT_TAIL = false;
+  // ---------- component O: mount-driven accessory demos ----------
+  // Proof that all three generic mounts (component N: back; component P:
+  // headTop/handNear/handFar) work completely independently of archetype
+  // AND of pose: every accessory below reads only the {x,y,angle} a pose
+  // function just returned, and knows nothing about which archetype, which
+  // state, or even whether a transition is mid-flight.
+  //
+  // mountOutward(mount): every mount's angle uses ONE convention -- OUT(a) =
+  // (sin(a), -cos(a)) is the direction the attachment naturally extends
+  // AWAY from the body (up through the head for headTop, further from the
+  // shoulder for hand mounts, up the spine for back). This is NOT the same
+  // convention limbFK/limbEnd use for arm swing angles (endX=base+len*
+  // sin(a), endY=base+len*cos(a), angle 0 = hanging straight down) -- the
+  // two conventions compose differently under a wrapped ctx.rotate (proven
+  // numerically: OUT composes via simple addition, the "hang" convention
+  // via subtraction), so every hand mount above is deliberately stored as
+  // PI-minus-the-original-swing-angle to convert into THIS convention.
+  // Picking one convention for all three mount types, verified to compose
+  // correctly everywhere a mount gets carried through an outer rotation
+  // (drawReclined/drawProneFrame/drawTurnPivotMove's bow), is what makes a
+  // single accessory formula usable on any mount without per-mount-type
+  // special-casing.
+  function mountOutward(mount){ return { x: Math.sin(mount.angle), y: -Math.cos(mount.angle) }; }
+
+  let ACCESSORY_CAT_TAIL = false, ACCESSORY_HAT = false, ACCESSORY_PROP = false;
   let accessoryT = 0;
+
+  // Cat tail (back mount): deliberately simpler than the retired dinosaur
+  // tail (drawTail) per the "先簡化" direction -- no gait-phase swing at
+  // all, just a small idle sway driven by its own independent clock. A
+  // tail HANGS from its mount rather than extending outward from it, so it
+  // draws along -OUT(mount.angle) (the "hang" convention direction, offset
+  // by CAT_TAIL_BASE_DEG/sway) rather than +OUT.
   const CAT_TAIL_LEN = 10, CAT_TAIL_W = 4, CAT_TAIL_BASE_DEG = -12, CAT_TAIL_SWAY_DEG = 8;
   function drawCatTailAccessory(ctx, mount){
     if (!mount) return; // self-occluded (front-facing states) -- see the
                          // "return { back: null }" comment in drawTurnPivotMove
     const sway = CAT_TAIL_SWAY_DEG * Math.sin(accessoryT * 1.6);
-    const a = mount.angle + (CAT_TAIL_BASE_DEG + sway) * Math.PI / 180;
+    const a = (CAT_TAIL_BASE_DEG + sway) * Math.PI / 180 - mount.angle;
     const endX = mount.x + CAT_TAIL_LEN * Math.sin(a);
     const endY = mount.y + CAT_TAIL_LEN * Math.cos(a);
     capsule(ctx, mount.x, mount.y, endX, endY, CAT_TAIL_W, SIL);
+  }
+
+  // Party hat (headTop mount): a small filled triangle extending straight
+  // along OUT(mount.angle) -- "straight up off the top of the head" in the
+  // mount's own local frame, tilting with the head exactly as far as the
+  // mount itself already tilts (lean, or a front-facing headTiltDeg/bow).
+  const HAT_HEIGHT = 9, HAT_BASE_W = 7;
+  function drawHatAccessory(ctx, mount){
+    if (!mount) return;
+    const out = mountOutward(mount);
+    const perp = { x: -out.y, y: out.x }; // rotate OUT by 90 deg for the hat's base width
+    const apexX = mount.x + out.x * HAT_HEIGHT, apexY = mount.y + out.y * HAT_HEIGHT;
+    ctx.fillStyle = SIL;
+    ctx.beginPath();
+    ctx.moveTo(apexX, apexY);
+    ctx.lineTo(mount.x - perp.x * HAT_BASE_W / 2, mount.y - perp.y * HAT_BASE_W / 2);
+    ctx.lineTo(mount.x + perp.x * HAT_BASE_W / 2, mount.y + perp.y * HAT_BASE_W / 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Flag prop (hand mounts): a thin pole + small flag disc extending along
+  // OUT(mount.angle) -- since a hand mount's angle was built specifically so
+  // OUT equals the arm's own hang/extend direction (see the PI-minus-angle
+  // comment above), this reads as a natural straight-line continuation of
+  // the forearm, in whichever direction that arm is currently held.
+  const PROP_POLE_LEN = 8, PROP_FLAG_R = 3;
+  function drawPropAccessory(ctx, mount){
+    if (!mount) return;
+    const out = mountOutward(mount);
+    const tipX = mount.x + out.x * PROP_POLE_LEN, tipY = mount.y + out.y * PROP_POLE_LEN;
+    ctx.strokeStyle = SIL;
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(mount.x, mount.y);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    ctx.fillStyle = SIL;
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, PROP_FLAG_R, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function stepFsm(dt, stage){
@@ -2044,7 +2217,14 @@
       tryStartNextEdge(); // lets a delayed auto-edge (e.g. jump's landing) fire once ready
     }
 
-    if (ACCESSORY_CAT_TAIL && mounts) drawCatTailAccessory(ctx, mounts.back);
+    if (mounts){
+      if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(ctx, mounts.back);
+      if (ACCESSORY_HAT) drawHatAccessory(ctx, mounts.headTop);
+      if (ACCESSORY_PROP){
+        drawPropAccessory(ctx, mounts.handNear);
+        drawPropAccessory(ctx, mounts.handFar);
+      }
+    }
   }
 
   function fsmStatusText(){
@@ -2126,6 +2306,12 @@
   });
   document.getElementById('catTailToggle').addEventListener('change', function(){
     ACCESSORY_CAT_TAIL = this.checked;
+  });
+  document.getElementById('hatToggle').addEventListener('change', function(){
+    ACCESSORY_HAT = this.checked;
+  });
+  document.getElementById('propToggle').addEventListener('change', function(){
+    ACCESSORY_PROP = this.checked;
   });
 })();
 </script>
