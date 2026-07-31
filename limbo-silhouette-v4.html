@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v36 — 配件註冊系統重構:腳邊是手部配件的收納狀態,寵物優先權</title>
+<title>剪影走路/跑步循環 v37 — 單手持握改為預設、稀有度欄位預留</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v36</div>
-    <h1>配件註冊系統重構:腳邊是手部配件的收納狀態,寵物優先權</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v37</div>
+    <h1>單手持握改為預設、稀有度欄位預留</h1>
+    <p class="sub"><b>單手持握改為預設值</b>:<code>HAND_ACCESSORY_REGISTRY</code> 新增 <code>holdStyle: 'single' | 'dual'</code>,省略時預設 <code>'single'</code>(原本規劃是省略預設 <code>'dual'</code>,但接下來要擴充到近百款手部配件,絕大多數都是單手拿的東西,雙手才是少數例外——預設 <code>'dual'</code> 代表每一款單手配件都要記得手動標,漏標會靜默變成錯誤的雙手效果;反過來預設 <code>'single'</code>,只有真正該雙手的少數例外需要標,漏標退回到絕大多數情況下本來就正確的單手,風險方向對了)。<code>stepFsm</code> 的繪製呼叫對應改成:<code>handNear</code> 永遠畫(單手固定用這一側,側身/正面都是同一個穩定掛載點,不需要額外判斷該用哪隻手),<code>handFar</code> 只有 <code>holdStyle === 'dual'</code> 才畫。劍/水壺這兩項示範都不是「本來就該成對配戴」的物件,兩者都沒有標註 <code>holdStyle</code>,直接吃預設值變成單手,語意上也剛好正確。既有的 <code>ACCESSORY_PROP</code>(手持道具勾選框,獨立於 <code>HAND_ACCESSORY_REGISTRY</code> 之外的掛載點示範)維持雙手不動,不在這次調整範圍——它的用途是示範兩個手部掛載點都能運作,反轉成單手會失去這個示範目的。雙手各拿不同東西的複合型配件(長弓、盾牌+武器)這輪不處理,之後真的要做時再幫那筆資料加新欄位即可,不需要現在預留額外資料結構。腳邊收納邏輯不受影響——<code>footMount</code> 本來就只有一個座標點(不是雙手各一份),單手配件收納後一樣只出現一份。<br><br><b>稀有度欄位預留</b>:<code>HEAD_ACCESSORY_REGISTRY</code>(24 款)、<code>HAND_ACCESSORY_REGISTRY</code>、<code>PET_REGISTRY</code> 每一筆都加上 <code>rarity: null</code>(呼應角色原型既有的 B/A/S/SSS 分級,明確標成「尚未指定」而非省略,方便之後稽核哪些還沒分級)。目前沒有任何程式碼讀取這個欄位,純資料預留,不影響任何現有畫面。視覺呈現(光暈/邊框等)刻意不現在做,也不把視覺參數塞進配件資料本身——之後要做的話另外建一個獨立的 <code>RARITY_STYLE</code> 對照表,用 <code>rarity</code> 字串查表取視覺參數,配件資料維持只描述「畫什麼」。背部配件(貓尾巴)目前還是單一布林開關、沒有註冊表結構,<code>rarity</code> 沒有地方掛,需要先經歷跟手部配件同一輪「開關→註冊表」的轉換——這是另一個獨立任務,記錄在案,這輪不處理。<br><br><b>驗證</b>:側身走路姿態下劍清楚只出現在其中一隻手(另一手維持自然垂放),正面歡呼姿態下 <code>ACCESSORY_PROP</code> 仍雙手皆有(確認未受影響)。全部 17 種原型 × 21 種姿勢回歸測試(手部配件+寵物輪替搭配頭部配件/貓尾巴/道具同時開啟)zero console 錯誤。</p>
     <p class="sub"><b>定位修正</b>:腳邊掛載點不是獨立配件插槽,而是手部配件轉正面時的收納狀態——上一輪的 <code>FOOT_ACCESSORY_REGISTRY</code>(獨立選單、含劍/水壺/寵物三項)拆成 <code>HAND_ACCESSORY_REGISTRY</code>(手持配件,每項可選配一個 <code>footStow: {placement, draw, apex}</code> 決定轉正面時怎麼收納)跟 <code>PET_REGISTRY</code>(寵物,獨立於手部配件之外)。劍/水壺兩項示範資料原封不動搬進對應手部配件的 <code>footStow</code>,沒有 <code>footStow</code> 的配件維持在手上顯示、不會消失,跟既有的手持道具勾選框行為一致。<br><br><b>單一優先權函式</b> <code>resolveFootDisplay()</code>:寵物存在就回傳寵物,否則回傳目前手部配件的 <code>footStow</code>(沒有則回傳 <code>null</code>),取代原本分散的判斷式。寵物贏過收納物的優先權不是巧合寫死兩次,而是同一個函式的回傳值同時決定「腳邊畫什麼」跟「手上該不該收起來」(<code>handHeldVisible</code> 用參照比對自己的 <code>footStow</code> 是不是等於 <code>resolveFootDisplay()</code> 的回傳值),兩處判斷永遠不會兜不起來。當寵物佔用腳邊時,手部配件不收納、直接留在手上顯示,不會憑空消失——單一插槽,不做雙插槽共存,理由是連單一配件在模糊原型上要清楚可辨識都已經需要額外邊距(見 v35),寵物又規劃為極稀有,兩者同時持有的情境不值得把每個配件的驗證量再乘以二。<br><br><b>寵物側身顯示(新機制)</b>:上一輪腳邊掛載點的「僅完全轉正面才出現」規則其實也套用在寵物身上,側身時原本是空的,跟這輪要補的定位不符,於是新增 <code>petSideMount</code>——比照貓尾巴 <code>back</code> 掛載點同款「跟隨軀幹的固定偏移」寫法,直接算在 <code>drawCharacter</code>(涵蓋走路/快走/停下三種側身姿勢)裡,不追蹤逐幀擺動的腳步,寵物固定跟在角色軀幹後方(遠離前擺的近側手腳,不需要逐幀算跟擺動肢體的距離)。偏移量隨這個 cfg 自己的 <code>legLen</code> 縮放(側身沒有髖寬可用,側身的碰撞風險主要來自遠腿擺動幅度,不是髖寬),同樣加了 <code>BLUR_RADIUS*2</code>的模糊淨空。三種代表性原型(標準長腿、矮胖圓滾滾、方胖模糊型)× 三種側身姿勢 × 每個姿勢 4 個不同步態相位,共 36 張截圖驗證,包含快走(擺動幅度最大)在內都沒有跟遠腿重疊。<br><br><b>除錯過程</b>:第一次改完寫回歸測試時,「劍持有中 + 拿到寵物 → 劍應該留在手上」這個情境截圖看起來完全沒有配件,一度以為是重構邏輯錯了;插入暫時性除錯計數器逐層排查(<code>drawInMountFrame</code> 呼叫次數、<code>resolveFootDisplay()</code> 實際回傳值)後,證實邏輯完全正確、掛載點座標也正確——真正原因是測試腳本本身的時序 bug:先點「停下」再點「轉正面」之間只等了 150ms,遠不夠讓上一段「轉回側身」的過渡動畫(<code>FRONT_TURN_DUR=0.9s</code>)先跑完,導致下一次「轉正面」被排進佇列、實際到達 <code>turnP>=1</code> 的時間拉長到快 2 秒,截圖時角色其實還沒轉正面完成。修正測試腳本等待時間後重新驗證,機制確認正確;debug 用的暫時計數器已移除,不進正式程式碼。手持配件的「持握」外觀目前直接沿用收納形狀本身(劍柄朝上、劍尖朝下的同一個形狀,不重新設計),視覺上會跟身體輪廓重疊、不易辨識——這是刻意的:這輪的範圍是驗證收納/優先權機制本身,不是設計正式的手持配件美術,持握外觀的獨立留白等到正式設計每款手部配件時再處理。</p>
     <p class="sub" style="opacity:0.7;">以下為 v35 紀錄,保留作為歷史脈絡(<code>FOOT_ACCESSORY_REGISTRY</code> 已於 v36 拆分,詳見上方):</p>
     <p class="sub"><b>新增腳邊掛載點</b> <code>footMount</code>:Y 座標固定用 <code>baseY</code>(跟 <code>drawGroundShadow</code> 完全同一個地面參考值,對所有原型都一樣,矮胖/長腿原型不需要各自另外算),X 座標用已經隨原型縮放好的 <code>FRONT_PIVOT_CFG.hipHalfW</code> 加上腿寬一半跟頭部半徑的固定邊距,寬/胖原型的較寬 <code>hipHalfW</code> 會自動把配件推得更外側,不需要逐一原型手調。<br><br><b>兩種擺放姿態</b>:<code>FOOT_ACCESSORY_REGISTRY</code> 每筆多一個 <code>footPlacement: 'stuck' | 'flat'</code> 欄位,兩者都沿用既有的 <code>drawInMountFrame</code>(局部「上」= OUT 方向、「右」= perp 方向)——「倒插」類直接沿局部上方向畫(劍尖朝上、劍柄在下,示範配件:劍),「平放」類沿局部右(perp)方向延伸畫(沿用草帽帽簷、竹蜻蜓螺旋槳桿子已經驗證過的同一招,示範配件:水壺)。<br><br><b>簡化版轉場</b>:<code>footMount</code> 在側身視角跟整段轉正面過渡動畫(<code>turnP</code> 從 0 到 1 期間)一律回傳 <code>null</code>,只有 <code>turnP >= 1</code>(完全站定正面)才回傳實際座標——<code>drawTurnPivotMove</code> 本來就同時服務轉場(<code>turnP</code> 變動)跟所有正面靜止姿態(<code>turnP</code> 固定為 1),單一個門檻判斷式就同時涵蓋兩種呼叫情境,零特例;<code>drawFrontDejected</code> 因為 <code>STATE_GRAPH</code> 定義只能從已經正面的狀態進入,不需要額外門檻。手部持有物收納到背後的平滑轉場動畫本輪明確不做,留待之後討論。<br><br><b>隨身寵物(靜態版)</b>:純剪影、無發光效果,靜態站姿,跟其他配件一樣走 <code>drawInMountFrame</code> + <code>ctx.fillStyle = SIL</code> 的既有畫法,沒有另外開發新的呈現邏輯。發光/晃動待確認比例後再另外評估,本輪不做。<br><br><b>兩輪除錯</b>:第一輪截圖發現三個問題——劍的線寬比例在 <code>boxChubbyBlur</code>(<code>ACCESSORY_BLUR_RADIUS=1px</code>)上換算成絕對像素不到 1.5px,直接被模糊柔化通道完全抹除(逐像素比對整張畫布找不到任何劍的痕跡,不是視覺不明顯,是真的沒畫出來);水壺比例太細讀不出「水壺」的輪廓;寵物太小且離腿太近,讀起來像腿上的一個突起而非獨立個體。加粗劍/水壺的寬度比例後解決了柔化抹除跟不明顯的問題,但二輪截圖比對背景像素差異(<code>diff</code> 分析,而非單純肉眼看縮圖)發現劍在 <code>boxChubbyBlur</code>上雖然像素上有畫出來(對照無配件版本的差異分析,找到 474 個差異像素、最大差值 420),但視覺上仍緊貼在腿的模糊暈邊內,幾乎融合成一體——原因是模糊原型的軀體本身會往外暈開 <code>BLUR_RADIUS</code> 的柔化半徑,配件即使緊貼在「銳利邊緣」外也還在這圈暈邊裡面。修正方式是把共用的 <code>footMountDxFor()</code> 邊距公式加上 <code>+BLUR_RADIUS*2</code> 的額外淨空(非模糊原型 <code>BLUR_RADIUS=0</code>,原本已核可的位移完全不受影響),搭配放大寵物本體/耳朵/眼睛比例,重新截圖確認三項配件在 <code>longlimb</code>、<code>chubby</code>、<code>boxChubbyBlur</code> 三種代表性原型上都清楚可辨識、跟腿部有明確視覺分離。全部 17 種原型 × 21 種姿勢,腳邊配件輪替搭配帽子頭部配件、貓尾巴、手持道具同時開啟,zero console 錯誤。</p>
@@ -3392,31 +3393,37 @@
   // term, stepFsm draw line, checkbox, listener) instead of one registry
   // entry, and the dropdown UI (below) generates its options directly from
   // this object's keys/labels so the two can never drift out of sync.
+  // rarity: 'B' | 'A' | 'S' | 'SSS' | null -- reserved for the future
+  // gacha system, not read by any code yet. See HAND_ACCESSORY_REGISTRY's
+  // own comment (component W) for the full rationale -- same convention,
+  // applied retroactively here. null is an explicit "not yet assigned"
+  // placeholder on every entry, not an omitted field, so the whole
+  // registry can be grepped/audited for tiering progress at a glance.
   const HEAD_ACCESSORY_REGISTRY = {
-    hat:          { label: '小帽子',   draw: (ctx, headTop, headR) => drawHatAccessory(ctx, headTop), apex: () => HAT_HEIGHT + HAT_SYMBOL_MARGIN },
-    catEars:      { label: '貓耳',     draw: drawCatEarsAccessory, apex: headR => earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    bunnyEars:    { label: '兔耳',     draw: drawBunnyEarsAccessory, apex: headR => bunnyEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    devilHorns:   { label: '惡魔角',   draw: drawDevilHornsAccessory, apex: headR => devilHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    bullHorns:    { label: '牛角',     draw: drawBullHornsAccessory, apex: headR => bullHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    deerAntlers:  { label: '鹿角',     draw: drawDeerAntlersAccessory, apex: headR => deerAntlerApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    dualAntenna:  { label: '雙天線',   draw: drawDualAntennaAccessory, apex: headR => dualAntennaApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    baseballCap:  { label: '鴨舌帽',   draw: drawBaseballCapAccessory, apex: headR => BASEBALL_CAP_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    beret:        { label: '貝雷帽',   draw: drawBeretAccessory, apex: headR => BERET_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    wizardHat:    { label: '巫師帽',   draw: drawWizardHatAccessory, apex: headR => WIZARD_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    strawHat:     { label: '草帽',     draw: drawStrawHatAccessory, apex: headR => STRAW_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    cowboyHat:    { label: '牛仔帽',   draw: drawCowboyHatAccessory, apex: headR => COWBOY_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    singleAntenna:{ label: '單天線',   draw: drawSingleAntennaAccessory, apex: headR => SINGLE_ANTENNA_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    ahoge:        { label: '呆毛',     draw: drawAhogeAccessory, apex: headR => AHOGE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    partyHat:     { label: '生日派對帽', draw: drawPartyHatAccessory, apex: headR => PARTY_HAT_TOTAL_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    sensorLight:  { label: '感測器指示燈', draw: drawSensorLightAccessory, apex: headR => SENSOR_LIGHT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    santaHat:     { label: '聖誕帽',   draw: drawSantaHatAccessory, apex: headR => SANTA_HAT_HEIGHT_TOTAL_RATIO * headR + HAT_SYMBOL_MARGIN },
-    halo:         { label: '光環',     draw: drawHaloAccessory, apex: headR => HALO_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    crown:        { label: '皇冠',     draw: drawCrownAccessory, apex: headR => CROWN_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    fourLeafClover:{ label: '四葉草',  draw: drawFourLeafCloverAccessory, apex: headR => CLOVER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    smallWhiteFlower:{ label: '小白花', draw: drawSmallWhiteFlowerAccessory, apex: headR => FLOWER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    bambooDragonfly:{ label: '竹蜻蜓', draw: drawBambooDragonflyAccessory, apex: headR => DRAGONFLY_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    wheatStalk:   { label: '小麥穗',   draw: drawWheatStalkAccessory, apex: headR => WHEAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    mapleLeaf:    { label: '楓葉',     draw: drawMapleLeafAccessory, apex: headR => MAPLE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    hat:          { label: '小帽子',   rarity: null, draw: (ctx, headTop, headR) => drawHatAccessory(ctx, headTop), apex: () => HAT_HEIGHT + HAT_SYMBOL_MARGIN },
+    catEars:      { label: '貓耳',     rarity: null, draw: drawCatEarsAccessory, apex: headR => earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    bunnyEars:    { label: '兔耳',     rarity: null, draw: drawBunnyEarsAccessory, apex: headR => bunnyEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    devilHorns:   { label: '惡魔角',   rarity: null, draw: drawDevilHornsAccessory, apex: headR => devilHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    bullHorns:    { label: '牛角',     rarity: null, draw: drawBullHornsAccessory, apex: headR => bullHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    deerAntlers:  { label: '鹿角',     rarity: null, draw: drawDeerAntlersAccessory, apex: headR => deerAntlerApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    dualAntenna:  { label: '雙天線',   rarity: null, draw: drawDualAntennaAccessory, apex: headR => dualAntennaApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    baseballCap:  { label: '鴨舌帽',   rarity: null, draw: drawBaseballCapAccessory, apex: headR => BASEBALL_CAP_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    beret:        { label: '貝雷帽',   rarity: null, draw: drawBeretAccessory, apex: headR => BERET_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    wizardHat:    { label: '巫師帽',   rarity: null, draw: drawWizardHatAccessory, apex: headR => WIZARD_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    strawHat:     { label: '草帽',     rarity: null, draw: drawStrawHatAccessory, apex: headR => STRAW_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    cowboyHat:    { label: '牛仔帽',   rarity: null, draw: drawCowboyHatAccessory, apex: headR => COWBOY_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    singleAntenna:{ label: '單天線',   rarity: null, draw: drawSingleAntennaAccessory, apex: headR => SINGLE_ANTENNA_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    ahoge:        { label: '呆毛',     rarity: null, draw: drawAhogeAccessory, apex: headR => AHOGE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    partyHat:     { label: '生日派對帽', rarity: null, draw: drawPartyHatAccessory, apex: headR => PARTY_HAT_TOTAL_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    sensorLight:  { label: '感測器指示燈', rarity: null, draw: drawSensorLightAccessory, apex: headR => SENSOR_LIGHT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    santaHat:     { label: '聖誕帽',   rarity: null, draw: drawSantaHatAccessory, apex: headR => SANTA_HAT_HEIGHT_TOTAL_RATIO * headR + HAT_SYMBOL_MARGIN },
+    halo:         { label: '光環',     rarity: null, draw: drawHaloAccessory, apex: headR => HALO_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    crown:        { label: '皇冠',     rarity: null, draw: drawCrownAccessory, apex: headR => CROWN_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    fourLeafClover:{ label: '四葉草',  rarity: null, draw: drawFourLeafCloverAccessory, apex: headR => CLOVER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    smallWhiteFlower:{ label: '小白花', rarity: null, draw: drawSmallWhiteFlowerAccessory, apex: headR => FLOWER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    bambooDragonfly:{ label: '竹蜻蜓', rarity: null, draw: drawBambooDragonflyAccessory, apex: headR => DRAGONFLY_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    wheatStalk:   { label: '小麥穗',   rarity: null, draw: drawWheatStalkAccessory, apex: headR => WHEAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    mapleLeaf:    { label: '楓葉',     rarity: null, draw: drawMapleLeafAccessory, apex: headR => MAPLE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
   };
   let currentHeadAccessory = '';
 
@@ -3572,14 +3579,44 @@
   // handle-first-oriented held pose is part of formally designing these
   // as real hand accessories later, not required to validate the swap
   // mechanism itself.
+  //
+  // holdStyle: 'single' | 'dual', DEFAULTS TO 'single' when omitted (see
+  // handHeldVisible's own draw call at the stepFsm call site) -- flipped
+  // from an earlier 'dual'-when-omitted design once it was clear the
+  // upcoming hand-accessory catalog (~100 items) is overwhelmingly
+  // single-hand-held items (sword, phone, book, ...), with genuinely
+  // dual-hand items (handbell pair, boxing gloves -- things that are
+  // inherently WORN as a matching pair, one per hand) the rare exception.
+  // Defaulting to 'dual' would have meant every single-hand item needed
+  // its own explicit tag, and a forgotten tag silently became a wrong
+  // dual-hand render; defaulting to 'single' means only the rare
+  // dual-hand exception needs tagging, and a forgotten tag just falls
+  // back to the overwhelmingly-common case instead of an incorrect one.
+  // Neither sword nor canteen is a matching-pair-by-nature item, so
+  // neither sets holdStyle explicitly -- both fall through to the
+  // 'single' default, which is also the semantically correct choice for
+  // them (nobody holds a sword or a canteen in both hands at once).
+  //
+  // rarity: 'B' | 'A' | 'S' | 'SSS' | null -- reserved for the future
+  // gacha system (echoing the archetype rarity system's own tiers), not
+  // read by any code yet. null means "not yet assigned" (an explicit
+  // placeholder, not simply omitted) so every entry can be grepped/
+  // audited for whether it's been tiered. Deliberately just the tier
+  // string, nothing else: any future visual treatment (glow/border per
+  // tier) belongs in an independent RARITY_STYLE lookup keyed by this
+  // same string, not as extra fields bolted onto each accessory entry --
+  // accessory data stays "what to draw", presentation-by-rarity stays a
+  // separate concern to design when it's actually built.
   const HAND_ACCESSORY_REGISTRY = {
     sword: {
       label: '劍(手持/收納示範)',
+      rarity: null,
       draw: drawSwordAccessory,
       footStow: { placement: 'stuck', draw: drawSwordAccessory, apex: headR => SWORD_HEIGHT_RATIO * headR }
     },
     canteen: {
       label: '水壺(手持/收納示範)',
+      rarity: null,
       draw: drawCanteenAccessory,
       footStow: { placement: 'flat', draw: drawCanteenAccessory, apex: headR => CANTEEN_HEIGHT_RATIO * headR }
     }
@@ -3593,7 +3630,7 @@
   // front view (the shared footMount, via resolveFootDisplay's priority
   // below).
   const PET_REGISTRY = {
-    pet: { label: '隨身寵物', draw: drawPetAccessory, apex: headR => PET_HEIGHT_RATIO * headR }
+    pet: { label: '隨身寵物', rarity: null, draw: drawPetAccessory, apex: headR => PET_HEIGHT_RATIO * headR }
   };
   let currentPet = '';
 
@@ -3725,8 +3762,13 @@
           // footDisplay/footMount instead, or show nothing).
           if (petEntry && mounts.petSideMount) petEntry.draw(accCtx, mounts.petSideMount, WALK_CFG.headR);
           if (handAcc && handHeldVisible){
+            // holdStyle defaults to 'single' when omitted (see
+            // HAND_ACCESSORY_REGISTRY's own comment on why) -- handNear is
+            // the one consistent hand for every single-hold item; handFar
+            // only gets drawn when an item explicitly opts into
+            // holdStyle: 'dual' (a genuinely matching-worn-pair item).
             handAcc.draw(accCtx, mounts.handNear, WALK_CFG.headR);
-            handAcc.draw(accCtx, mounts.handFar, WALK_CFG.headR);
+            if (handAcc.holdStyle === 'dual') handAcc.draw(accCtx, mounts.handFar, WALK_CFG.headR);
           }
           if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(accCtx, mounts.back);
           if (ACCESSORY_PROP){
