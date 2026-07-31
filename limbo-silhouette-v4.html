@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v39 — 修正手持武器角度:垂直下垂改為隨手臂擺動的自然斜角</title>
+<title>剪影走路/跑步循環 v40 — 手持武器角度限幅 + 握持點改為中段(gripRatio)</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v39</div>
-    <h1>修正手持武器角度:垂直下垂改為隨手臂擺動的自然斜角</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v40</div>
+    <h1>手持武器角度限幅 + 握持點改為中段(gripRatio)</h1>
+    <p class="sub"><b>問題一根因</b>:手臂擺到最低點時武器仍指向地面——不是角度計算錯,是上一輪的固定傾角用「純加法、沒有限幅」疊加在 <code>mount.angle</code> 上,而 <code>mount.angle</code> 本身會隨手臂擺動在基準角度附近振盪(走路 ±26°、快走 ±42°)。擺到某個極限時,「動態角度 + 固定傾角」算出來的最終值剛好又繞回接近垂直,傾角的效果在那個瞬間被抵銷。<br><br><b>修正</b>:新增 <code>WEAPON_HELD_MAX_ANGLE</code>,只對「最終角度」的上限做限幅(不是對稱範圍)——刻意只限一邊,因為趴下姿勢的手臂角度本身朝完全不同的方向(<code>PRONE_ARM_DEG=172</code>,換算後手部掛載角度接近 0° 而非接近垂直),如果做成對稱限幅會把趴下姿勢的武器角度錯誤地拉回走路專用的範圍。只限制「太靠近垂直向下」這一側,其他姿勢原本就不會碰到這個上限,不受影響。<br><br><b>問題二根因</b>:配件釘在物件末端而非中段——<code>held</code> 模式原本的公式把「握柄尾端(距離=totalLen)」對齊掛載點,尖端往外延伸,等於整根武器只往手掌外側伸出、內側完全沒有東西,這是錨定基準點本身的問題,跟角度無關。<br><br><b>修正</b>:新增 <code>gripRatio</code>(尖端到尾端全長上的握持位置比例),公式改成握持點對齊掛載點,尖端側跟尾端側分別往局部座標系的兩個方向延伸,兩側都有東西露出。共用預設值 <code>DEFAULT_WEAPON_GRIP_RATIO=0.68</code>,經截圖比對後定案;個別配件需要時可覆寫 <code>weapon.gripRatio</code>。<b>這個預設值的改變會影響所有透過 <code>drawWeaponParts</code> 渲染的手持配件(目前是短劍/長矛/三叉戟,原本錨定末端的呈現方式本身就不對,理當一併修正)</b>,但不影響水壺(<code>drawCanteenAccessory</code>,圓潤本體+瓶蓋的形狀沒有尖端到尾端的軸線可言,走完全獨立的繪製函式,從未使用 <code>drawWeaponParts</code>)、也不影響最早的示範劍(<code>sword</code>,用 <code>drawSwordAccessory</code> 直接畫,同樣是獨立函式)——這兩者經截圖重新確認,外觀與這輪修改前完全一致。倒插模式(<code>footStow</code>)的錨定基準點維持不變(尖端頂地面),不受 <code>gripRatio</code> 影響。<br><br><b>驗證</b>:角度方向再次改變後,重新確認坐下/躺下/趴下/跳躍四種姿勢(武器全程手持、不會收納)在極端原型上沒有新的頭部重疊,尤其重新檢查趴下姿勢(手臂本身角度已伸向頭部前方,最容易受這次改動牽動)。全部 17 原型 × 21 姿勢回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>根因診斷</b>:回報指出手持長條武器側身走路時呈現垂直朝下、像拖在地上。先排除「誤用倒插固定角度邏輯」這個假設——確認 <code>drawInMountFrame</code> 本來就用 <code>mount.angle</code> 做旋轉,傳進去的 <code>mounts.handNear</code> 本來就是每一幀隨手臂擺動即時算好的動態值,跟其他手部配件、既有的 <code>drawPropAccessory</code> 共用同一套機制,角度追蹤本身沒有錯、確實是即時更新的。真正原因是武器形狀完全沒有額外偏移,直接沿 <code>handNear.angle</code> 本身的方向畫——這個角度代表「手臂自然垂放的擺動方向」,走路擺幅只有 26°-42°,基準角度接近垂直,所以長條武器跟著這個角度延伸,結果全程接近垂直。真人拿長武器不會讓武器完全平行於垂放的前臂,而是用手腕撐出一個角度斜向持握,這個「持握傾角」是原本設計裡缺少的參數,不是角度計算本身的錯誤。<br><br><b>修正</b>:新增 <code>WEAPON_HELD_TILT</code>(-50°),在 <code>handNear.angle</code> 之上疊加,不是取代——武器角度 = 手臂即時擺動角度 + 固定持握傾角,這樣武器依然完整繼承手臂擺動的動態(走路/跑步循環中角度會隨手臂自然小幅擺動,不是死板固定死一個角度),只是在此基礎上多轉一個角度,呈現參考圖那種沿手臂斜向延伸的自然持握感。<br><br><b>安全餘裕重新驗證</b>:改變角度方向後,原本針對坐下/躺下/趴下/跳躍四種姿勢(手持武器不會收納,全程維持手持外觀)做過的極端原型(大頭模糊型、大頭娃娃、全圓形型等)頭部無重疊驗證重新跑過一次——尤其是趴下姿勢,手臂角度本身就已經伸到頭部前方(<code>PRONE_ARM_DEG=172</code>),持握傾角疊加上去有可能把武器推得更靠近頭部,需要重新確認不會有新的重疊。目視檢查確認全部乾淨。全部 17 原型 × 21 姿勢回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>通用倒插/手持武器渲染器</b> <code>drawWeaponParts()</code>:每款武器的幾何只定義一次,用一組「從武器尖端(距離 0)到握柄尾端(距離 totalLen)」的零件清單描述(<code>WEAPON_SHAPES</code>),同一份資料同時支援兩種呈現——「倒插」尖端頂在掛載點(比照原本示範劍的畫法)、「手持」握柄頂在掛載點、尖端往外延伸,只是決定哪一端對齊局部原點的差異,不是兩套獨立畫法。這修正了上一輪示範劍「持握外觀直接沿用倒插形狀」的已知簡化——正式配件的手持外觀必須是握柄在手、刀尖朝外,不能尖端頂著手掌。<br><br><b>長度分級,不是同一組尺寸套所有配件</b>:短劍 totalLen=1.35 個 headR、長矛/三叉戟各 3.20/3.15 個 headR——刻意拉開量級差距,不是「換個造型、大小照舊」。起因是上一輪的示範劍(totalLen=0.99)被回報視覺上像十字架而非武器;這次三款示範涵蓋短/中/長三個量級,確認辨識度後再決定其餘 13 款怎麼分級(短劍/苦無一類、長劍/彎刀/武士刀/西洋刺劍/戰斧/流星錘一類、長矛/三叉戟/長杖/木柄鐵鎚一類)。<br><br><b>安全餘裕驗證,而非假設</b>:一開始以為需要檢查歡呼/揮手/驚訝等舉手姿勢會不會讓加長後的武器打到頭——實際檢查後發現這些「舉手」的姿勢全部是正面朝向姿勢(<code>turnP=1</code>),武器本來就會自動收納到腳邊,根本不會用手持外觀畫出來,不是這批加長配件的風險點。真正的風險點是坐下/躺下/趴下/跳躍這四種姿勢——它們都不經過 <code>drawTurnPivotMove</code>/<code>drawFrontDejected</code>,<code>mounts.footMount</code> 永遠不存在,武器全程維持手持狀態,而且趴下姿勢的手臂角度本來就「伸到頭部前方」(<code>PRONE_ARM_DEG=172</code>)。針對這四種姿勢,在頭部相對手臂比例最極端的原型(大頭模糊型:headR=12、armLen=8;大頭娃娃:headR=11、armLen=15;全圓形型:armLen==headR)加上基準組(長腳手、小頭高個)× 三款武器全跑一輪,先寫了一個逐像素比對頭部區域的自動化腳本,但腳本用「最上方深色像素往下 40px」當頭部區域的判斷太粗糙,在趴下姿勢手臂本來就伸到頭部附近時大量誤判——改用直接目視檢查腳本標記出的最高風險組合(12 組,涵蓋每個原型、每種姿勢、長矛/三叉戟這兩款最長武器),確認全部乾淨、沒有武器線條穿過頭部剪影。<br><br><b>模糊柔化寬度驗證</b>:武器主幹寬度比例統一 >= 0.22(headR 相對值),這次額外拿 <code>wideFlatBlur</code>(headR=7、BLUR_RADIUS=3,是全部 4 個模糊原型裡 headR 最小、柔化半徑卻是最大值的組合,比先前只驗過的 <code>boxChubbyBlur</code>/<code>boxSlenderBlur</code> 更嚴苛)重新驗證,三款武器倒插在腳邊都清楚可見,沒有重演上一輪劍線寬 0.09-0.12 被完全抹除的問題。<br><br><b>單手/雙手判斷</b>:三款示範都沒有標註 <code>holdStyle</code>,吃 v37 訂下的預設值(單手)。三叉戟原本列在使用者提出的「雙手候選」清單,評估後判斷不適用現有的 <code>holdStyle: 'dual'</code> 機制——目前的雙手邏輯是「同一個形狀在兩個掛載點各畫一份」(適合成對配戴的物件,例如一對鈴鐺),不是「同一件武器橫跨雙手的單一握持」;若直接把三叉戟標成 <code>dual</code>,畫面上會出現兩支三叉戟而不是一支雙手持握的三叉戟,是錯誤的視覺結果。真正的雙手單一武器渲染(掛載點錨定在雙手之間)是一個尚未建置的新機制,不在這輪的 <code>holdStyle</code> 旗標範圍內,留待有實際需求時再評估——這輪 16 款武器建議全部維持單手預設,不手動標註 <code>dual</code>。<code>rarity</code> 三款均為 <code>null</code>,比照既有規範。全部 17 原型 × 21 姿勢回歸測試(手部配件+寵物輪替搭配頭部配件/貓尾巴/道具)zero console 錯誤。</p>
     <p class="sub"><b>單手持握改為預設值</b>:<code>HAND_ACCESSORY_REGISTRY</code> 新增 <code>holdStyle: 'single' | 'dual'</code>,省略時預設 <code>'single'</code>(原本規劃是省略預設 <code>'dual'</code>,但接下來要擴充到近百款手部配件,絕大多數都是單手拿的東西,雙手才是少數例外——預設 <code>'dual'</code> 代表每一款單手配件都要記得手動標,漏標會靜默變成錯誤的雙手效果;反過來預設 <code>'single'</code>,只有真正該雙手的少數例外需要標,漏標退回到絕大多數情況下本來就正確的單手,風險方向對了)。<code>stepFsm</code> 的繪製呼叫對應改成:<code>handNear</code> 永遠畫(單手固定用這一側,側身/正面都是同一個穩定掛載點,不需要額外判斷該用哪隻手),<code>handFar</code> 只有 <code>holdStyle === 'dual'</code> 才畫。劍/水壺這兩項示範都不是「本來就該成對配戴」的物件,兩者都沒有標註 <code>holdStyle</code>,直接吃預設值變成單手,語意上也剛好正確。既有的 <code>ACCESSORY_PROP</code>(手持道具勾選框,獨立於 <code>HAND_ACCESSORY_REGISTRY</code> 之外的掛載點示範)維持雙手不動,不在這次調整範圍——它的用途是示範兩個手部掛載點都能運作,反轉成單手會失去這個示範目的。雙手各拿不同東西的複合型配件(長弓、盾牌+武器)這輪不處理,之後真的要做時再幫那筆資料加新欄位即可,不需要現在預留額外資料結構。腳邊收納邏輯不受影響——<code>footMount</code> 本來就只有一個座標點(不是雙手各一份),單手配件收納後一樣只出現一份。<br><br><b>稀有度欄位預留</b>:<code>HEAD_ACCESSORY_REGISTRY</code>(24 款)、<code>HAND_ACCESSORY_REGISTRY</code>、<code>PET_REGISTRY</code> 每一筆都加上 <code>rarity: null</code>(呼應角色原型既有的 B/A/S/SSS 分級,明確標成「尚未指定」而非省略,方便之後稽核哪些還沒分級)。目前沒有任何程式碼讀取這個欄位,純資料預留,不影響任何現有畫面。視覺呈現(光暈/邊框等)刻意不現在做,也不把視覺參數塞進配件資料本身——之後要做的話另外建一個獨立的 <code>RARITY_STYLE</code> 對照表,用 <code>rarity</code> 字串查表取視覺參數,配件資料維持只描述「畫什麼」。背部配件(貓尾巴)目前還是單一布林開關、沒有註冊表結構,<code>rarity</code> 沒有地方掛,需要先經歷跟手部配件同一輪「開關→註冊表」的轉換——這是另一個獨立任務,記錄在案,這輪不處理。<br><br><b>驗證</b>:側身走路姿態下劍清楚只出現在其中一隻手(另一手維持自然垂放),正面歡呼姿態下 <code>ACCESSORY_PROP</code> 仍雙手皆有(確認未受影響)。全部 17 種原型 × 21 種姿勢回歸測試(手部配件+寵物輪替搭配頭部配件/貓尾巴/道具同時開啟)zero console 錯誤。</p>
@@ -3559,12 +3560,50 @@
   // wherever the arm currently is, instead of parallel to it.
   const WEAPON_HELD_TILT = -50 * Math.PI / 180;
 
+  // WEAPON_HELD_MAX_ANGLE: caps how close the final held angle can get to
+  // straight-down (Math.PI). Root cause of "weapon still points at the
+  // ground when the arm swings to its low point": WEAPON_HELD_TILT is
+  // ADDED to mount.angle (correct, additive, not a replacement -- see that
+  // constant's own comment), but mount.angle itself already swings +-26 to
+  // 42deg around near-vertical during walk/run. At one extreme of that
+  // swing, mount.angle+tilt drifts back uncomfortably close to Math.PI
+  // again, undoing the tilt right at that phase of the gait. Only an
+  // UPPER clamp (not a symmetric range) is applied -- prone reaches the
+  // arm in a completely different direction (near 0deg, not near
+  // vertical -- see PRONE_ARM_DEG) and must NOT be dragged back toward
+  // this walk/run-specific ceiling; clamping only the "too close to
+  // straight down" side leaves every other pose's own natural angle
+  // (which never approaches this ceiling in the first place) alone.
+  const WEAPON_HELD_MAX_ANGLE = 148 * Math.PI / 180;
+
+  // DEFAULT_WEAPON_GRIP_RATIO: fraction of the way from tip (0) to butt
+  // (1) where the hand actually grips -- NOT the end of the object.
+  // Root cause of "the whole weapon sticks out past the hand on one
+  // side": the original held formula pinned the BUTT (dist=totalLen) to
+  // the mount, so 100% of the length extended outward from the hand and
+  // 0% trailed on the other side -- equivalent to an implicit
+  // gripRatio=1, wrong for any weapon actually held mid-shaft. Applies
+  // ONLY to the tip-to-butt "stuck" weapon family (WEAPON_SHAPES,
+  // rendered through drawWeaponParts) -- non-axial items like the
+  // canteen (drawCanteenAccessory, a rounded body + cap, no tip/butt
+  // axis to grip along) don't use this renderer at all and are
+  // unaffected. Individual weapons can override via weapon.gripRatio
+  // when their own shape calls for it (e.g. a head-heavy weapon held
+  // further back); most should just take this default.
+  const DEFAULT_WEAPON_GRIP_RATIO = 0.68;
+
   function drawWeaponParts(ctx, mount, headR, weapon, orientation){
     if (!mount) return;
     const flip = orientation === 'held';
-    const drawMount = flip ? { x: mount.x, y: mount.y, angle: mount.angle + WEAPON_HELD_TILT } : mount;
+    let drawMount = mount;
+    if (flip){
+      const rawAngle = mount.angle + WEAPON_HELD_TILT;
+      drawMount = { x: mount.x, y: mount.y, angle: Math.min(rawAngle, WEAPON_HELD_MAX_ANGLE) };
+    }
+    const gripRatio = weapon.gripRatio != null ? weapon.gripRatio : DEFAULT_WEAPON_GRIP_RATIO;
+    const gripDist = flip ? gripRatio * weapon.totalLen : 0;
     drawInMountFrame(ctx, drawMount, function(c){
-      function y(dist){ return -(flip ? weapon.totalLen - dist : dist) * headR; }
+      function y(dist){ return flip ? (dist - gripDist) * headR : -dist * headR; }
       for (const p of weapon.parts){
         if (p.type === 'shaft'){
           capsule(c, 0, y(p.from), 0, y(p.to), p.width * headR, SIL);
