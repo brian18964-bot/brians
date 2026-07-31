@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v33 — 修正熊耳蓋住眼睛 + 尺寸過大</title>
+<title>剪影走路/跑步循環 v34 — 移除熊耳、新增牛角與 17 項單點配件、配件選單整合</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v33</div>
-    <h1>修正熊耳蓋住眼睛 + 尺寸過大</h1>
-    <p class="sub">上一輪(v32)出貨的熊耳有兩個問題:眼睛被蓋住、尺寸過度誇張。根因定位:先確認是否為繪製順序問題——結果不是。眼睛(<code>EYE_COLOR</code> 淺色實心圓)一律在配件之前畫完,包含模糊型原型專用的 <code>drawSharpEyes</code> 路徑,這個順序本身正確且是刻意設計(配件是「戴在最外層」的東西),貓耳/兔耳/惡魔角/鹿角/雙天線這 5 項配件從來沒有出過這個問題。真正的根因是純幾何:v32 為了讓熊耳在小頭原型上讀起來更清楚,把半徑從 0.45 拉大到 0.65、根部也往頭部中心挪低(baseRatio 0.644→0.568),兩個改動疊加後,圓形凸起的實際涵蓋範圍大到直接伸進臉部——用 <code>verify_bear_eye_safety.js</code> 直接算出圓形頭上錨點到眼睛的距離只有 0.541R(側視)/0.563R(正視),小於 0.65R 的半徑,確認真的整個蓋過去了(方形頭剛好差 0.03-0.04R 涉險過關,純運氣不是分開的個案)。<br><br>修正方向不是回退到 v1 的 0.45,而是重新設計:放棄「加大半徑」這條路,改成「錨點位置往上、往內收(比照貓耳的高位窄距,baseRatio 0.65/0.75、halfW 從 0.6 收到 0.45)+ 半徑大幅縮小到 0.28」——兩個改動的共同效果是把熊耳從「臉頰兩側的大凸起」變成「頭頂的小巧點綴」,順帶把錨點徹底移出臉部範圍,不只是縮小而已。修正後用同一支驗證腳本明確算出眼睛安全餘裕(錨點到眼睛距離減去半徑)在兩種頭型、側視跟正視兩種眼睛公式下都落在 +0.28R 到 +0.39R,不是勉強擦邊;包覆餘裕(耳朵根部是否仍在頭部輪廓內)對全部 17 種原型逐一驗證,最緊的 petite/slenderPetite 仍有 +1.15px。修正前後截圖(6 種原型、側視+正視)確認眼睛完全恢復可見、熊耳尺寸收斂成小巧點綴感。全部 17 種原型 × 21 種姿勢、九個配件同時開啟,zero console 錯誤。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v34</div>
+    <h1>移除熊耳、新增牛角與 17 項單點配件、配件選單整合</h1>
+    <p class="sub"><b>熊耳直接移除</b>——效果始終不理想,不再花時間除錯,<code>drawBearEarsAccessory</code>/<code>bearEarApexBeyondHeadTop</code>/<code>BEAR_EAR_*</code> 全數刪除,沒有其他地方引用它們。<br><br><b>新增牛角</b>,沿用雙元件對稱掛載點機制(跟惡魔角同一套 <code>drawHornCapsule</code>,只是更粗、傾角更淺更外八)。第一版嘗試 45 度陡角失敗——傾角太陡時,膠囊的長度大部分轉成側向位移而非向外伸出,導致尖端在圓形頭上完全沒有清出頭部邊界(可見度算出 -1.4%);改用 25 度、拉高高度比例後重新解出兩種頭型皆達 60% 可見度。這次也比照回報要求明確驗證了眼睛安全距離(雖然膠囊/三角形類配件理論上不會有熊耳那種問題——膠囊只會往根部的反方向延伸,不像圓形會朝四面八方長,包括往頭部中心方向),牛角根部到眼睛距離在全部 17 種原型上最小仍有數個 px 餘裕,量級遠大於熊耳當初的擦邊值。<br><br><b>新增 17 項單點配件</b>(鴨舌帽、貝雷帽、巫師帽、草帽、牛仔帽、單天線、呆毛、生日派對帽、感測器指示燈、聖誕帽、光環、皇冠、四葉草、小白花、竹蜻蜓、小麥穗、楓葉),比照小帽子/雙天線的公式,錨點固定在頭部掛載點本身(不像雙元件配件是往內衍生),風險上原本就較低。新增 <code>drawInMountFrame</code>(將 canvas 平移旋轉到掛載點自己的局部座標系,局部「上」= OUT 方向)取代逐一手算 out/perp 向量的寫法。首輪截圖(尤其鎖定圓角方形頭系列)發現約半數配件太不明顯——帽簷貼著頭部邊緣導致跟頭部本身的寬度混在一起看不出來(鴨舌帽/草帽/牛仔帽/貝雷帽)、多瓣造型的花瓣間距太窄在這個畫布尺度直接糊成一坨黑影(四葉草/小白花/楓葉)、細節塞太多超出小頭原型的實際像素解析度(小麥穗原本 3 對小枝葉全部糊在莖的根部,直接砍成 2 對並加大)。草帽/牛仔帽的帽簷即使放大到原本 2 倍,在 headR=6 的最小原型上仍完全不可見——不是比例問題,是絕對像素問題(帽簷寬度算出來的世界單位在極小頭圍下四捨五入後,跟頭部本身在該高度的既有寬度幾乎相等,自然被誤判成頭部的一部分),最終需要拉到 1.5 倍 headR 才在所有原型上穩定可辨識。<br><br><b>配件選單整合為單一下拉選單</b>:新增 <code>HEAD_ACCESSORY_REGISTRY</code>,每項頭部配件一筆(<code>draw</code> + <code>apex</code>),下拉選單選項直接從註冊表的 key/label 產生,不會手動漏接;<code>headAccessoryClearance()</code> 跟畫面繪製都改成查表,而不是一長串布林值 if 判斷。貓尾巴、手持道具維持獨立勾選框(不同掛載點類型,可跟頭部配件同時測試互動)。24 項頭部配件 + 「無」共 25 個選項,一次只能選一項,快速切換零延遲、zero console 錯誤。全部 17 種原型 × 21 種姿勢,配件下拉選單輪替搭配貓尾巴/手持道具同時開啟,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -96,32 +96,17 @@
         <input id="catTailToggle" type="checkbox" style="accent-color:var(--accent);"> 貓尾巴配件(背後掛載點示範)
       </label>
       <label class="toggle">
-        <input id="hatToggle" type="checkbox" style="accent-color:var(--accent);"> 小帽子配件(頭部掛載點示範)
-      </label>
-      <label class="toggle">
         <input id="propToggle" type="checkbox" style="accent-color:var(--accent);"> 手持道具配件(手部掛載點示範)
       </label>
-      <label class="toggle">
-        <input id="catEarsToggle" type="checkbox" style="accent-color:var(--accent);"> 貓耳配件(雙元件對稱掛載點示範)
-      </label>
-      <label class="toggle">
-        <input id="bunnyEarsToggle" type="checkbox" style="accent-color:var(--accent);"> 兔耳配件
-      </label>
-      <label class="toggle">
-        <input id="bearEarsToggle" type="checkbox" style="accent-color:var(--accent);"> 熊耳配件
-      </label>
-      <label class="toggle">
-        <input id="devilHornsToggle" type="checkbox" style="accent-color:var(--accent);"> 惡魔角配件
-      </label>
-      <label class="toggle">
-        <input id="deerAntlersToggle" type="checkbox" style="accent-color:var(--accent);"> 鹿角配件
-      </label>
-      <label class="toggle">
-        <input id="dualAntennaToggle" type="checkbox" style="accent-color:var(--accent);"> 雙天線配件
+      <label class="toggle" style="min-width:220px;">
+        頭部配件
+        <select id="headAccessorySelect" style="flex:1; background:#1c1e24; color:var(--ink); border:1px solid var(--line); border-radius:7px; padding:6px 10px; font-family:ui-monospace,monospace; font-size:12px;">
+          <option value="">無</option>
+        </select>
       </label>
     </div>
     <p class="note">切換原型會重建所有支點/角度座標並把狀態機重置回「停下不走」(側身疊加層一併清除),走路/跑步/情境預覽三個上方畫布也會跟著換成新原型的比例——同一套狀態機、過渡曲線、疊加層架構,五種原型共用,只有下面列出的幾何/角度數值換了一組。</p>
-    <p class="note">全部九個配件勾選框都套用在「狀態機驅動」這個畫布上,跟哪一種原型無關——各自只讀取渲染函式回傳的對應掛載點座標(位置 + 當下角度),不知道也不需要知道現在是哪個原型、哪個動作。切換原型或動作時配件會自動跟著新的掛載點座標移動;貓尾巴用背後掛載點(正面朝向的姿勢刻意不顯示,因為背後掛載點在正面視角會被軀幹完全擋住),小帽子用頭部掛載點(所有姿勢都顯示,包含正面),手持道具用雙手掛載點(所有姿勢都顯示),貓耳/兔耳/熊耳/惡魔角/鹿角/雙天線這 6 項都是從頭部掛載點衍生出的左右對稱新錨點(所有姿勢都顯示,包含正面,不分近/遠側),差別只在錨點比例跟繪製的形狀(三角形/膠囊/圓形/分叉膠囊)。</p>
+    <p class="note">貓尾巴/手持道具是另外兩種掛載點(背後/雙手),維持獨立勾選框,可以跟頭部配件同時開啟做互動測試。頭部配件(小帽子、貓耳/兔耳/惡魔角/牛角/鹿角/雙天線這 6 項雙元件對稱衍生配件,加上鴨舌帽/貝雷帽/巫師帽/草帽/牛仔帽/單天線/呆毛/生日派對帽/感測器指示燈/聖誕帽/光環/皇冠/四葉草/小白花/竹蜻蜓/小麥穗/楓葉這 17 項單點延伸配件,共 24 項)全部收整合成一個下拉選單,一次只能選一項——選單選項直接從程式內部的配件註冊表(<code>HEAD_ACCESSORY_REGISTRY</code>)產生,新增配件只需要在該註冊表加一筆,選單跟繪製邏輯自動同步,不會像過去每個配件各自一個勾選框那樣容易漏接。</p>
     <canvas id="stageFsm" width="480" height="360" style="max-width:320px; margin:0 auto;"></canvas>
     <div class="controls" style="margin-top:12px; padding-top:12px; gap:10px; flex-wrap:wrap;">
       <button id="fsmWalkBtn" type="button" data-target="walk">慢走</button>
@@ -2612,9 +2597,12 @@
     }
   }
 
-  let ACCESSORY_CAT_TAIL = false, ACCESSORY_HAT = false, ACCESSORY_PROP = false, ACCESSORY_CAT_EARS = false;
-  let ACCESSORY_BUNNY_EARS = false, ACCESSORY_BEAR_EARS = false, ACCESSORY_DEVIL_HORNS = false,
-      ACCESSORY_DEER_ANTLERS = false, ACCESSORY_DUAL_ANTENNA = false;
+  // Back-mount and hand-mount accessories stay as independent toggles --
+  // they're a different mount type from every head accessory below (back/
+  // hand vs headTop/head-derived-pair) and were never part of the "pick
+  // one to test" request, so combining tail+prop+any head accessory is
+  // still possible for interaction testing.
+  let ACCESSORY_CAT_TAIL = false, ACCESSORY_PROP = false;
   let accessoryT = 0;
 
   // Cat tail (back mount): deliberately simpler than the retired dinosaur
@@ -2745,67 +2733,13 @@
     }
   }
 
-  // Bear ears -- small rounded bumps rather than a spike, so the
-  // visibility bar is deliberately lower (55% vs the spiky accessories'
-  // 65-75%): a half-buried round bump still reads correctly as a bear ear
-  // (that's what real bear ears look like against the skull), unlike a
-  // half-buried triangle which just looks broken. The anchor point IS the
-  // circle's own center (not its base), so the "height" fed into the
-  // shared apex-beyond-headTop formula is simply the radius.
-  //
-  // History: v1 used radiusRatio=0.45 (55% visibility target) -- numerically
-  // fine but screenshot review showed the cat-ears-v1 lesson again: a small
-  // percentage of a small absolute radius is still visually small, so
-  // petite/longBox read as barely more than two faint notches. v2 chased a
-  // bigger, bolder bump by raising radiusRatio to 0.65 AND lowering
-  // baseRatio (root planted closer to head center) to keep visibility at
-  // the same 55% target. That shipped, then broke: on circle heads the
-  // enlarged, lowered circle's radius reached all the way into the FACE,
-  // overlapping the eye position and painting over it (eyes are drawn
-  // BEFORE accessories -- see the draw-order comment at drawSharpEyes and
-  // in stepFsm -- by design every accessory draws on top of whatever's
-  // already there, which is correct for accessories that stay near the
-  // head's own boundary, but a big low-anchored circle is a different
-  // failure mode none of the thin spike-shaped accessories could ever hit).
-  // Verified by direct calculation (verify_bear_eye_safety.js), not
-  // assumed from the screenshot alone: v2's circle-head anchor
-  // (baseRatio=0.568, halfW=0.6) sits 0.541R from the side-view eye and
-  // 0.563R from the front-view eye, both LESS than the 0.65R radius --
-  // confirmed geometric overlap, not a draw-order bug (square heads
-  // happened to just barely clear at +0.03-0.04R, thin luck, not a
-  // separate case).
-  //
-  // v3 abandons the "bigger radius, same visibility target" direction
-  // entirely and goes back to a genuinely SMALL decorative bump, placed
-  // high and narrow like the cat-ears anchor (baseRatio~0.65-0.75, half of
-  // v1/v2's halfW=0.6) rather than low and wide -- both changes push the
-  // anchor away from the face/eye zone as a side effect of "looks like an
-  // ear sitting on TOP of the head" instead of "a cheek-level blob", not
-  // just a shrink. radiusRatio=0.28 (well under both v1 and v2). Verified
-  // both properties explicitly, not just re-eyeballed: insideMargin stays
-  // positive across all 17 archetypes (worst 1.15px, petite/slenderPetite)
-  // AND the eye-safety margin (anchor-to-eye distance minus radius) is
-  // +0.28R to +0.39R across both head shapes and both the side-view and
-  // front-view eye formulas -- comfortable clearance, not a repeat of the
-  // v2 near-miss.
-  const BEAR_EAR_BASE_RATIO = 0.65, BEAR_EAR_BASE_RATIO_SQUARE = 0.75, BEAR_EAR_HALF_W_RATIO = 0.45;
-  const BEAR_EAR_RADIUS_RATIO = 0.28;
-  function bearEarApexBeyondHeadTop(headR){
-    const baseRatio = shapeAwareRatio(BEAR_EAR_BASE_RATIO, BEAR_EAR_BASE_RATIO_SQUARE);
-    return BEAR_EAR_RADIUS_RATIO * headR - (1 - baseRatio) * headR;
-  }
-  function drawBearEarsAccessory(ctx, headTop, headR){
-    if (!headTop) return;
-    const baseRatio = shapeAwareRatio(BEAR_EAR_BASE_RATIO, BEAR_EAR_BASE_RATIO_SQUARE);
-    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, BEAR_EAR_HALF_W_RATIO);
-    const radius = BEAR_EAR_RADIUS_RATIO * headR;
-    ctx.fillStyle = SIL;
-    for (const mount of [pair.left, pair.right]){
-      ctx.beginPath();
-      ctx.arc(mount.x, mount.y, radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
+  // Bear ears shipped, then pulled: v2's enlarged/lowered circle reached
+  // into the face and covered the eye (see the v33 fix commit for the full
+  // root-cause writeup), and even after the v3 eye-safety fix the round-
+  // bump shape just wasn't reading as intended -- retired outright per
+  // "效果不理想,直接移除,不需要花時間除錯修正" rather than sunk further
+  // tuning into it. drawBearEarsAccessory/bearEarApexBeyondHeadTop/
+  // BEAR_EAR_* are gone; nothing else referenced them.
 
   // Devil horns -- a short capsule tilted DEVIL_HORN_TILT_DEG away from
   // pure OUT (splayed outward from the head's centerline, like real horns
@@ -2845,6 +2779,47 @@
     const height = DEVIL_HORN_HEIGHT_RATIO * headR, width = DEVIL_HORN_WIDTH_RATIO * headR;
     drawHornCapsule(ctx, pair.left, height, width, DEVIL_HORN_TILT_DEG, -1);
     drawHornCapsule(ctx, pair.right, height, width, DEVIL_HORN_TILT_DEG, 1);
+  }
+
+  // Bull horns -- reuses drawHornCapsule unchanged (already generic over
+  // width/tilt/side), just thicker (WIDTH_RATIO 0.22 vs devil horns' 0.16)
+  // and a shallower, wider-set tilt (25deg vs 20deg, HALF_W_RATIO 0.55 vs
+  // 0.5) for a "curving out to the sides" bull-horn silhouette instead of
+  // devil horns' mostly-upward "swept back" look. A first attempt at a much
+  // steeper tilt (45deg) failed outright -- at that angle most of the
+  // capsule's own length converts to SIDEWAYS displacement rather than
+  // outward reach, so the tip never even cleared the circle-head boundary
+  // (clearance went NEGATIVE, -1.4% "visibility") despite reading fine on
+  // rounded-square heads; re-solved at a shallower 25deg with a taller
+  // height (0.65 vs devil horns' 0.55) to compensate, landing both shapes
+  // at a real, comfortable 60% visibility (insideMargin 0.28px/1.19px on
+  // petite/longBox, the tightest cases across all 17 archetypes).
+  //
+  // Eye-safety verified explicitly this round (the bear-ears lesson) even
+  // though every capsule/triangle-shaped dual-anchor accessory has been
+  // safe by construction so far: unlike bear ears' circle (which grows in
+  // EVERY direction from its center, including back toward the head's
+  // interior), a capsule only extends AWAY from its own root point, so the
+  // only thing that could reach the eye is the root itself -- and the root
+  // sits at baseRatio>=0.77 from head center on both shapes, far above the
+  // eye's near-center height. verify_bull_horns.js confirms: root-to-eye
+  // distance stays >=3.3R... actually >=3.9px minimum across all 17
+  // archetypes even before subtracting a capsule-width buffer, an order of
+  // magnitude more margin than bear ears ever had.
+  const BULL_HORN_BASE_RATIO = 0.773, BULL_HORN_BASE_RATIO_SQUARE = 0.801, BULL_HORN_HALF_W_RATIO = 0.55;
+  const BULL_HORN_HEIGHT_RATIO = 0.65, BULL_HORN_WIDTH_RATIO = 0.22, BULL_HORN_TILT_DEG = 25;
+  function bullHornApexBeyondHeadTop(headR){
+    const baseRatio = shapeAwareRatio(BULL_HORN_BASE_RATIO, BULL_HORN_BASE_RATIO_SQUARE);
+    const height = BULL_HORN_HEIGHT_RATIO * headR;
+    return height * Math.cos(BULL_HORN_TILT_DEG * Math.PI / 180) - (1 - baseRatio) * headR;
+  }
+  function drawBullHornsAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const baseRatio = shapeAwareRatio(BULL_HORN_BASE_RATIO, BULL_HORN_BASE_RATIO_SQUARE);
+    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, BULL_HORN_HALF_W_RATIO);
+    const height = BULL_HORN_HEIGHT_RATIO * headR, width = BULL_HORN_WIDTH_RATIO * headR;
+    drawHornCapsule(ctx, pair.left, height, width, BULL_HORN_TILT_DEG, -1);
+    drawHornCapsule(ctx, pair.right, height, width, BULL_HORN_TILT_DEG, 1);
   }
 
   // Deer antlers -- a main stem (verified exactly like bunny ears/cat ears:
@@ -2920,6 +2895,369 @@
     }
   }
 
+  // ---------- single-point (headTop-mounted) accessory batch ----------
+  // 17 accessories that all follow the SAME formula as the existing hat/
+  // single-antenna: one element (or a small composite of 2-4 primitives)
+  // rooted exactly AT headTop -- not derived inward like the dual-anchor
+  // ear/horn family -- and extending outward. Lower risk by construction:
+  // headTop already sits ON the head's own boundary (verified true for
+  // both head shapes when this rig's headShape support was built), so
+  // anything drawn from there outward is automatically clear of the head
+  // silhouette without needing a visibility-percentage solve the way the
+  // INSET dual-anchor accessories did. The one thing still worth stating
+  // explicitly: every element here stays within a modest sideways reach
+  // (well under the rounded-square heads' own flat-top half-width,
+  // R-cornerR ~= 0.68R for all 4 square archetypes) so nothing visually
+  // interacts with the corner curve, and nothing reaches anywhere close to
+  // the eye (which sits ~0.96R BELOW headTop, deep inside the head -- an
+  // order of magnitude further than any element here dips toward center).
+  //
+  // drawInMountFrame is the shared plumbing: translate+rotate the canvas
+  // to the mount's own local frame (local "up" = OUT(mount.angle), local
+  // "right" = perp) exactly once, so each accessory's drawFn just places
+  // shapes in plain local coordinates instead of every primitive re-deriving
+  // its own out/perp vectors -- the same translate+rotate technique
+  // drawTorsoShape's caller already uses for lean, just formalized into a
+  // reusable helper now that 17 accessories need it instead of 1.
+  function drawInMountFrame(ctx, mount, drawFn){
+    if (!mount) return;
+    ctx.save();
+    ctx.translate(mount.x, mount.y);
+    ctx.rotate(mount.angle);
+    ctx.fillStyle = SIL;
+    drawFn(ctx);
+    ctx.restore();
+  }
+
+  // 鴨舌帽 baseball cap: rounded dome + a brim offset to one side.
+  const CAP_DOME_RX = 0.58, CAP_DOME_RY = 0.55, CAP_DOME_CY = -0.55;
+  const CAP_BRIM_RX = 0.42, CAP_BRIM_RY = 0.13, CAP_BRIM_CX = 0.55, CAP_BRIM_CY = -0.08;
+  const BASEBALL_CAP_HEIGHT_RATIO = -CAP_DOME_CY + CAP_DOME_RY;
+  function drawBaseballCapAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      c.beginPath();
+      c.ellipse(0, CAP_DOME_CY * headR, CAP_DOME_RX * headR, CAP_DOME_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.ellipse(CAP_BRIM_CX * headR, CAP_BRIM_CY * headR, CAP_BRIM_RX * headR, CAP_BRIM_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // 貝雷帽 beret: a wide flattened ellipse + a tiny stem nub at top center.
+  const BERET_RX = 0.72, BERET_RY = 0.42, BERET_CY = -0.4, BERET_STEM_R = 0.07, BERET_STEM_CY = -0.78;
+  const BERET_HEIGHT_RATIO = -BERET_STEM_CY + BERET_STEM_R;
+  function drawBeretAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      c.beginPath();
+      c.ellipse(0, BERET_CY * headR, BERET_RX * headR, BERET_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.arc(0, BERET_STEM_CY * headR, BERET_STEM_R * headR, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // 巫師帽 wizard hat: a tall cone (tip bent slightly to one side) + a wide
+  // brim at the base.
+  const WIZARD_HAT_HEIGHT_RATIO = 1.6, WIZARD_HAT_BASE_W = 0.55, WIZARD_HAT_TIP_BEND = 0.16;
+  const WIZARD_BRIM_RX = 0.62, WIZARD_BRIM_RY = 0.13, WIZARD_BRIM_CY = -0.05;
+  function drawWizardHatAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      c.beginPath();
+      c.ellipse(0, WIZARD_BRIM_CY * headR, WIZARD_BRIM_RX * headR, WIZARD_BRIM_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.moveTo(WIZARD_HAT_TIP_BEND * headR, -WIZARD_HAT_HEIGHT_RATIO * headR);
+      c.lineTo(-WIZARD_HAT_BASE_W / 2 * headR, -0.08 * headR);
+      c.lineTo(WIZARD_HAT_BASE_W / 2 * headR, -0.08 * headR);
+      c.closePath();
+      c.fill();
+    });
+  }
+
+  // 草帽 straw hat: a wide flat brim + a short rounded dome.
+  // Even at RX=1.15 the brim was invisible on the smallest-headR archetypes
+  // (longBox/boxSlenderBlur, headR=6) -- not a ratio problem but an
+  // absolute-pixel one: at that small a headR the brim's world-unit width
+  // rounds to almost exactly the head's own already-substantial pixel
+  // width at that row, so it reads as "part of the head" rather than an
+  // overhang, confirmed by dumping raw pixel rows (the same technique used
+  // to catch the wheat leaflets' resolution floor). Pushed further so it
+  // stays unambiguous even at the smallest headR, not just the sampled
+  // larger ones.
+  const STRAW_BRIM_RX = 1.5, STRAW_BRIM_RY = 0.2, STRAW_BRIM_CY = -0.22;
+  const STRAW_DOME_RX = 0.4, STRAW_DOME_RY = 0.36, STRAW_DOME_CY = -0.5;
+  const STRAW_HAT_HEIGHT_RATIO = -STRAW_DOME_CY + STRAW_DOME_RY;
+  function drawStrawHatAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      c.beginPath();
+      c.ellipse(0, STRAW_BRIM_CY * headR, STRAW_BRIM_RX * headR, STRAW_BRIM_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.ellipse(0, STRAW_DOME_CY * headR, STRAW_DOME_RX * headR, STRAW_DOME_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // 牛仔帽 cowboy hat: a narrower brim than the straw hat + a taller pinched
+  // dome -- same two-ellipse technique, different proportions is enough to
+  // read as a distinct hat at this icon scale.
+  const COWBOY_BRIM_RX = 1.45, COWBOY_BRIM_RY = 0.19, COWBOY_BRIM_CY = -0.22;
+  const COWBOY_DOME_RX = 0.36, COWBOY_DOME_RY = 0.46, COWBOY_DOME_CY = -0.66;
+  const COWBOY_HAT_HEIGHT_RATIO = -COWBOY_DOME_CY + COWBOY_DOME_RY;
+  function drawCowboyHatAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      c.beginPath();
+      c.ellipse(0, COWBOY_BRIM_CY * headR, COWBOY_BRIM_RX * headR, COWBOY_BRIM_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.ellipse(0, COWBOY_DOME_CY * headR, COWBOY_DOME_RX * headR, COWBOY_DOME_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // 單天線 single antenna: one centered capsule + ball tip -- same "pole +
+  // disc" technique as drawPropAccessory/dual antenna, just one instance
+  // mounted directly at headTop instead of a derived pair.
+  const SINGLE_ANTENNA_STEM_RATIO = 1.0, SINGLE_ANTENNA_WIDTH_RATIO = 0.09, SINGLE_ANTENNA_BALL_RATIO = 0.17;
+  const SINGLE_ANTENNA_HEIGHT_RATIO = SINGLE_ANTENNA_STEM_RATIO + SINGLE_ANTENNA_BALL_RATIO;
+  function drawSingleAntennaAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const out = mountOutward(headTop);
+    const tipX = headTop.x + out.x * SINGLE_ANTENNA_STEM_RATIO * headR, tipY = headTop.y + out.y * SINGLE_ANTENNA_STEM_RATIO * headR;
+    capsule(ctx, headTop.x, headTop.y, tipX, tipY, SINGLE_ANTENNA_WIDTH_RATIO * headR, SIL);
+    ctx.fillStyle = SIL;
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, SINGLE_ANTENNA_BALL_RATIO * headR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 呆毛 ahoge (cowlick): a single thin strand tilted slightly to one side --
+  // simplified as a straight tilted capsule rather than an actually curved
+  // stroke (no curved-capsule primitive exists in this rig; "先簡化" per
+  // the project's established first-pass convention, same as the cat
+  // tail's simplification).
+  const AHOGE_HEIGHT_RATIO = 0.65, AHOGE_WIDTH_RATIO = 0.08, AHOGE_TILT_DEG = 18;
+  function drawAhogeAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      const t = AHOGE_TILT_DEG * Math.PI / 180;
+      const tipX = Math.sin(t) * AHOGE_HEIGHT_RATIO * headR, tipY = -Math.cos(t) * AHOGE_HEIGHT_RATIO * headR;
+      capsule(c, 0, 0, tipX, tipY, AHOGE_WIDTH_RATIO * headR, SIL);
+    });
+  }
+
+  // 生日派對帽 party hat: cone + a small pompom ball at the tip.
+  const PARTY_HAT_HEIGHT_RATIO = 1.05, PARTY_HAT_BASE_W = 0.55, PARTY_HAT_BALL_RATIO = 0.22;
+  const PARTY_HAT_TOTAL_HEIGHT_RATIO = PARTY_HAT_HEIGHT_RATIO + PARTY_HAT_BALL_RATIO;
+  function drawPartyHatAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      c.beginPath();
+      c.moveTo(0, -PARTY_HAT_HEIGHT_RATIO * headR);
+      c.lineTo(-PARTY_HAT_BASE_W / 2 * headR, -0.05 * headR);
+      c.lineTo(PARTY_HAT_BASE_W / 2 * headR, -0.05 * headR);
+      c.closePath();
+      c.fill();
+      c.beginPath();
+      c.arc(0, -PARTY_HAT_HEIGHT_RATIO * headR, PARTY_HAT_BALL_RATIO * headR, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // 感測器指示燈 sensor/indicator light: a short stubby stalk + a bigger ball
+  // tip than the antennas -- reads as a stubby robot beacon rather than a
+  // thin antenna.
+  const SENSOR_LIGHT_STEM_RATIO = 0.45, SENSOR_LIGHT_WIDTH_RATIO = 0.14, SENSOR_LIGHT_BALL_RATIO = 0.27;
+  const SENSOR_LIGHT_HEIGHT_RATIO = SENSOR_LIGHT_STEM_RATIO + SENSOR_LIGHT_BALL_RATIO;
+  function drawSensorLightAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    const out = mountOutward(headTop);
+    const tipX = headTop.x + out.x * SENSOR_LIGHT_STEM_RATIO * headR, tipY = headTop.y + out.y * SENSOR_LIGHT_STEM_RATIO * headR;
+    capsule(ctx, headTop.x, headTop.y, tipX, tipY, SENSOR_LIGHT_WIDTH_RATIO * headR, SIL);
+    ctx.fillStyle = SIL;
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, SENSOR_LIGHT_BALL_RATIO * headR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 聖誕帽 Santa hat: cone tilted to one side (the classic floppy droop) +
+  // a pompom ball at the drooping tip + a small cuff band at the base.
+  const SANTA_HAT_HEIGHT_RATIO = 0.85, SANTA_HAT_BASE_W = 0.55, SANTA_HAT_TILT_DEG = 30, SANTA_HAT_BALL_RATIO = 0.17;
+  const SANTA_CUFF_RX = 0.38, SANTA_CUFF_RY = 0.1, SANTA_CUFF_CY = -0.04;
+  const SANTA_HAT_HEIGHT_TOTAL_RATIO = (SANTA_HAT_HEIGHT_RATIO + SANTA_HAT_BALL_RATIO) * Math.cos(SANTA_HAT_TILT_DEG * Math.PI / 180);
+  function drawSantaHatAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      c.beginPath();
+      c.ellipse(0, SANTA_CUFF_CY * headR, SANTA_CUFF_RX * headR, SANTA_CUFF_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+      const t = SANTA_HAT_TILT_DEG * Math.PI / 180;
+      const tipX = Math.sin(t) * SANTA_HAT_HEIGHT_RATIO * headR, tipY = -Math.cos(t) * SANTA_HAT_HEIGHT_RATIO * headR;
+      c.beginPath();
+      c.moveTo(tipX, tipY);
+      c.lineTo(-SANTA_HAT_BASE_W / 2 * headR, -0.06 * headR);
+      c.lineTo(SANTA_HAT_BASE_W / 2 * headR, -0.06 * headR);
+      c.closePath();
+      c.fill();
+      c.beginPath();
+      c.arc(tipX, tipY, SANTA_HAT_BALL_RATIO * headR, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // 光環 halo: a flattened ring floating above the head -- drawn as a
+  // STROKED ellipse (not filled) so the background shows through the
+  // middle, the one accessory in this batch that isn't a solid silhouette.
+  const HALO_RX = 0.42, HALO_RY = 0.11, HALO_CY = -1.0, HALO_STROKE_W = 0.07;
+  const HALO_HEIGHT_RATIO = -HALO_CY + HALO_RY + HALO_STROKE_W / 2;
+  function drawHaloAccessory(ctx, headTop, headR){
+    if (!headTop) return;
+    ctx.save();
+    ctx.translate(headTop.x, headTop.y);
+    ctx.rotate(headTop.angle);
+    ctx.strokeStyle = SIL;
+    ctx.lineWidth = HALO_STROKE_W * headR;
+    ctx.beginPath();
+    ctx.ellipse(0, HALO_CY * headR, HALO_RX * headR, HALO_RY * headR, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 皇冠 crown: a band + 3 triangular peaks (center peak tallest).
+  const CROWN_BAND_HALF_W = 0.68, CROWN_BAND_HALF_H = 0.16, CROWN_BAND_CY = -0.2;
+  const CROWN_PEAK_BASE_W = 0.28, CROWN_SIDE_PEAK_H = 0.48, CROWN_CENTER_PEAK_H = 0.72;
+  const CROWN_HEIGHT_RATIO = -CROWN_BAND_CY + CROWN_BAND_HALF_H + CROWN_CENTER_PEAK_H;
+  function drawCrownAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      const bandTop = (CROWN_BAND_CY - CROWN_BAND_HALF_H) * headR, bandBottom = (CROWN_BAND_CY + CROWN_BAND_HALF_H) * headR;
+      c.fillRect(-CROWN_BAND_HALF_W * headR, bandTop, CROWN_BAND_HALF_W * 2 * headR, bandBottom - bandTop);
+      const peaks = [
+        { x: -CROWN_BAND_HALF_W * headR * 0.6, h: CROWN_SIDE_PEAK_H },
+        { x: 0, h: CROWN_CENTER_PEAK_H },
+        { x: CROWN_BAND_HALF_W * headR * 0.6, h: CROWN_SIDE_PEAK_H },
+      ];
+      for (const peak of peaks){
+        const half = CROWN_PEAK_BASE_W / 2 * headR;
+        c.beginPath();
+        c.moveTo(peak.x, bandTop - peak.h * headR);
+        c.lineTo(peak.x - half, bandTop);
+        c.lineTo(peak.x + half, bandTop);
+        c.closePath();
+        c.fill();
+      }
+    });
+  }
+
+  // 四葉草 four-leaf clover: a thin stem + 4 petal circles arranged around a
+  // center point.
+  // PETAL_OFFSET/PETAL_R chosen so adjacent petals stay clearly SEPARATED
+  // (2*offset > 2*radius) rather than touching/overlapping -- an early pass
+  // used offset=radius=0.14 (petals exactly touching), which at this icon's
+  // raster scale just reads as one solid rounded blob, not four petals
+  // (same lesson as the ears: same-color fills with no outline need a
+  // visible GAP to read as separate shapes, not just distinct math).
+  const CLOVER_STEM_RATIO = 0.45, CLOVER_STEM_WIDTH = 0.06, CLOVER_CENTER_RATIO = 0.45, CLOVER_PETAL_OFFSET = 0.24, CLOVER_PETAL_R = 0.15;
+  const CLOVER_HEIGHT_RATIO = CLOVER_CENTER_RATIO + CLOVER_PETAL_OFFSET + CLOVER_PETAL_R;
+  function drawFourLeafCloverAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      capsule(c, 0, 0, 0, -CLOVER_CENTER_RATIO * headR, CLOVER_STEM_WIDTH * headR, SIL);
+      const cy = -CLOVER_CENTER_RATIO * headR, off = CLOVER_PETAL_OFFSET * headR, r = CLOVER_PETAL_R * headR;
+      for (const [dx, dy] of [[-off, -off], [off, -off], [-off, off], [off, off]]){
+        c.beginPath();
+        c.arc(dx, cy + dy, r, 0, Math.PI * 2);
+        c.fill();
+      }
+    });
+  }
+
+  // 小白花 small white flower: a thin stem + N radial petals + a center dot.
+  // Same separation lesson as the clover: PETAL_DIST increased so adjacent
+  // petals' chord distance clears their own tangential width (2*RX)
+  // instead of the original values landing right at the overlap boundary,
+  // which read as one solid blob rather than six petals.
+  const FLOWER_STEM_RATIO = 0.48, FLOWER_STEM_WIDTH = 0.06, FLOWER_PETAL_COUNT = 6;
+  const FLOWER_PETAL_DIST = 0.28, FLOWER_PETAL_RX = 0.09, FLOWER_PETAL_RY = 0.2, FLOWER_CENTER_R = 0.09;
+  const FLOWER_HEIGHT_RATIO = FLOWER_STEM_RATIO + FLOWER_PETAL_DIST + FLOWER_PETAL_RY * 2;
+  function drawSmallWhiteFlowerAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      capsule(c, 0, 0, 0, -FLOWER_STEM_RATIO * headR, FLOWER_STEM_WIDTH * headR, SIL);
+      const cy = -FLOWER_STEM_RATIO * headR;
+      for (let i = 0; i < FLOWER_PETAL_COUNT; i++){
+        const a = (i / FLOWER_PETAL_COUNT) * Math.PI * 2 - Math.PI / 2;
+        const px = Math.cos(a) * FLOWER_PETAL_DIST * headR, py = cy + Math.sin(a) * FLOWER_PETAL_DIST * headR;
+        c.save();
+        c.translate(px, py);
+        c.rotate(a + Math.PI / 2);
+        c.beginPath();
+        c.ellipse(0, 0, FLOWER_PETAL_RX * headR, FLOWER_PETAL_RY * headR, 0, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      }
+      c.beginPath();
+      c.arc(0, cy, FLOWER_CENTER_R * headR, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // 竹蜻蜓 bamboo dragonfly (Doraemon-style propeller beanie): a vertical
+  // stem + a horizontal propeller bar crossing at the top.
+  const DRAGONFLY_STEM_RATIO = 0.7, DRAGONFLY_STEM_WIDTH = 0.07, DRAGONFLY_BAR_HALF_LEN = 0.48, DRAGONFLY_BAR_WIDTH = 0.09;
+  const DRAGONFLY_HEIGHT_RATIO = DRAGONFLY_STEM_RATIO;
+  function drawBambooDragonflyAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      capsule(c, 0, 0, 0, -DRAGONFLY_STEM_RATIO * headR, DRAGONFLY_STEM_WIDTH * headR, SIL);
+      const barY = -DRAGONFLY_STEM_RATIO * headR;
+      capsule(c, -DRAGONFLY_BAR_HALF_LEN * headR, barY, DRAGONFLY_BAR_HALF_LEN * headR, barY, DRAGONFLY_BAR_WIDTH * headR, SIL);
+    });
+  }
+
+  // 小麥穗 wheat ear: a stem with 3 pairs of small leaflets forking off
+  // alternately along its length, each pair below the stem's own tip by
+  // construction (topmost fork at 65% height + a modest leaflet length
+  // stays under 100%, same "branch can't be verified separately" argument
+  // as the deer antler's branch).
+  // First pass used 3 leaflet pairs crammed into a 0.85R stem -- at a
+  // small archetype's absolute pixel scale that stem is only a few px
+  // tall, nowhere near enough resolution to render 3 distinct pairs (they
+  // rendered as an indistinguishable smear right at the stem's own base,
+  // confirmed by dumping raw pixel rows, not just eyeballing the
+  // screenshot). Cut to 2 bigger, higher, more widely-spaced pairs instead
+  // of cramming more detail than the canvas can resolve.
+  const WHEAT_STEM_RATIO = 0.9, WHEAT_STEM_WIDTH = 0.08, WHEAT_LEAFLET_LEN = 0.35, WHEAT_LEAFLET_WIDTH = 0.09, WHEAT_LEAFLET_TILT_DEG = 45;
+  const WHEAT_FORK_RATIOS = [0.45, 0.68];
+  const WHEAT_HEIGHT_RATIO = WHEAT_STEM_RATIO;
+  function drawWheatStalkAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      capsule(c, 0, 0, 0, -WHEAT_STEM_RATIO * headR, WHEAT_STEM_WIDTH * headR, SIL);
+      const t = WHEAT_LEAFLET_TILT_DEG * Math.PI / 180;
+      WHEAT_FORK_RATIOS.forEach(function(forkRatio, i){
+        const forkY = -WHEAT_STEM_RATIO * forkRatio * headR;
+        const side = i % 2 === 0 ? -1 : 1;
+        const tipX = side * Math.sin(t) * WHEAT_LEAFLET_LEN * headR, tipY = forkY - Math.cos(t) * WHEAT_LEAFLET_LEN * headR;
+        capsule(c, 0, forkY, tipX, tipY, WHEAT_LEAFLET_WIDTH * headR, SIL);
+      });
+    });
+  }
+
+  // 楓葉 maple leaf: a short stem + a simplified 5-point star silhouette
+  // standing in for a lobed leaf shape at this icon scale.
+  const MAPLE_STEM_RATIO = 0.42, MAPLE_STEM_WIDTH = 0.07, MAPLE_CENTER_RATIO = 0.85, MAPLE_OUTER_R = 0.46, MAPLE_INNER_R = 0.17, MAPLE_POINTS = 5;
+  const MAPLE_HEIGHT_RATIO = MAPLE_CENTER_RATIO + MAPLE_OUTER_R;
+  function drawMapleLeafAccessory(ctx, headTop, headR){
+    drawInMountFrame(ctx, headTop, function(c){
+      capsule(c, 0, 0, 0, -MAPLE_STEM_RATIO * headR, MAPLE_STEM_WIDTH * headR, SIL);
+      const cy = -MAPLE_CENTER_RATIO * headR;
+      c.beginPath();
+      for (let i = 0; i < MAPLE_POINTS * 2; i++){
+        const a = -Math.PI / 2 + i * Math.PI / MAPLE_POINTS;
+        const r = (i % 2 === 0 ? MAPLE_OUTER_R : MAPLE_INNER_R) * headR;
+        const px = Math.cos(a) * r, py = cy + Math.sin(a) * r;
+        if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+      }
+      c.closePath();
+      c.fill();
+    });
+  }
+
   // Party hat (headTop mount): a small filled triangle extending straight
   // along OUT(mount.angle) -- "straight up off the top of the head" in the
   // mount's own local frame, tilting with the head exactly as far as the
@@ -2943,6 +3281,47 @@
     ctx.closePath();
     ctx.fill();
   }
+
+  // ---------- head accessory registry (component T) ----------
+  // Single source of truth for every head-mounted accessory (both the
+  // dual-symmetric-anchor family and the single-point batch above): one
+  // entry each, `draw(ctx, headTop, headR)` and `apex(headR)` (how far past
+  // headTop's own OUT-axis position the accessory's furthest point
+  // reaches, feeding straight into headAccessoryClearance/drawMountSymbol
+  // below). Replaces the old one-boolean-per-accessory pattern (still used
+  // for cat tail/prop, which are a different mount type) now that there
+  // are 25 head accessories instead of 4 -- doing this the old way would
+  // mean touching 5-6 call sites per accessory (flag, headAccessoryClearance
+  // term, stepFsm draw line, checkbox, listener) instead of one registry
+  // entry, and the dropdown UI (below) generates its options directly from
+  // this object's keys/labels so the two can never drift out of sync.
+  const HEAD_ACCESSORY_REGISTRY = {
+    hat:          { label: '小帽子',   draw: (ctx, headTop, headR) => drawHatAccessory(ctx, headTop), apex: () => HAT_HEIGHT + HAT_SYMBOL_MARGIN },
+    catEars:      { label: '貓耳',     draw: drawCatEarsAccessory, apex: headR => earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    bunnyEars:    { label: '兔耳',     draw: drawBunnyEarsAccessory, apex: headR => bunnyEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    devilHorns:   { label: '惡魔角',   draw: drawDevilHornsAccessory, apex: headR => devilHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    bullHorns:    { label: '牛角',     draw: drawBullHornsAccessory, apex: headR => bullHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    deerAntlers:  { label: '鹿角',     draw: drawDeerAntlersAccessory, apex: headR => deerAntlerApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    dualAntenna:  { label: '雙天線',   draw: drawDualAntennaAccessory, apex: headR => dualAntennaApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    baseballCap:  { label: '鴨舌帽',   draw: drawBaseballCapAccessory, apex: headR => BASEBALL_CAP_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    beret:        { label: '貝雷帽',   draw: drawBeretAccessory, apex: headR => BERET_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    wizardHat:    { label: '巫師帽',   draw: drawWizardHatAccessory, apex: headR => WIZARD_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    strawHat:     { label: '草帽',     draw: drawStrawHatAccessory, apex: headR => STRAW_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    cowboyHat:    { label: '牛仔帽',   draw: drawCowboyHatAccessory, apex: headR => COWBOY_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    singleAntenna:{ label: '單天線',   draw: drawSingleAntennaAccessory, apex: headR => SINGLE_ANTENNA_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    ahoge:        { label: '呆毛',     draw: drawAhogeAccessory, apex: headR => AHOGE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    partyHat:     { label: '生日派對帽', draw: drawPartyHatAccessory, apex: headR => PARTY_HAT_TOTAL_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    sensorLight:  { label: '感測器指示燈', draw: drawSensorLightAccessory, apex: headR => SENSOR_LIGHT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    santaHat:     { label: '聖誕帽',   draw: drawSantaHatAccessory, apex: headR => SANTA_HAT_HEIGHT_TOTAL_RATIO * headR + HAT_SYMBOL_MARGIN },
+    halo:         { label: '光環',     draw: drawHaloAccessory, apex: headR => HALO_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    crown:        { label: '皇冠',     draw: drawCrownAccessory, apex: headR => CROWN_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    fourLeafClover:{ label: '四葉草',  draw: drawFourLeafCloverAccessory, apex: headR => CLOVER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    smallWhiteFlower:{ label: '小白花', draw: drawSmallWhiteFlowerAccessory, apex: headR => FLOWER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    bambooDragonfly:{ label: '竹蜻蜓', draw: drawBambooDragonflyAccessory, apex: headR => DRAGONFLY_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    wheatStalk:   { label: '小麥穗',   draw: drawWheatStalkAccessory, apex: headR => WHEAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    mapleLeaf:    { label: '楓葉',     draw: drawMapleLeafAccessory, apex: headR => MAPLE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+  };
+  let currentHeadAccessory = '';
 
   // Flag prop (hand mounts): a thin pole + small flag disc extending along
   // OUT(mount.angle) -- since a hand mount's angle was built specifically so
@@ -2976,30 +3355,15 @@
   // accessory currently reaches furthest past headTop) -- with no head
   // accessory equipped, this is exactly the old tuned gap, unchanged.
   //
-  // headAccessoryClearance() covers hat and cat-ears today. Cat-ears was a
-  // real gap (no pun intended) in the previous round -- the hat term was
-  // added when the "hat covers the symbol" bug was fixed, but cat-ears
-  // shipped afterward without ever getting its own term here, so a tall-
-  // eared + symbol combo on a big-headR archetype (bighead/bigHeadBlur)
-  // could in principle sit closer than intended. HAT_SYMBOL_MARGIN is
-  // reused as a generic buffer (it's just "clearance past whichever
-  // accessory," already headR-scaled, not conceptually hat-specific) rather
-  // than adding a second identical constant. The next dual-symmetric-anchor
-  // accessory (bunny/bear ears, antlers, horns, antenna) reuses
-  // earApexBeyondHeadTop unchanged if it's also ear-triangle-shaped, or
-  // else needs its own `Math.max(..., itsOwnApexHeight + HAT_SYMBOL_MARGIN)`
-  // term added here -- same pattern, nothing else in the symbol pipeline
-  // needs to change.
+  // headAccessoryClearance() now just looks up the ONE currently-selected
+  // head accessory (component T's registry, see its own comment) and calls
+  // its apex() -- since only one head accessory can be active at a time
+  // (the dropdown), there's no longer a Math.max() over several booleans
+  // to maintain here; any future head accessory just needs its own
+  // registry entry, nothing here changes.
   function headAccessoryClearance(headR){
-    let h = 0;
-    if (ACCESSORY_HAT) h = Math.max(h, HAT_HEIGHT + HAT_SYMBOL_MARGIN);
-    if (ACCESSORY_CAT_EARS) h = Math.max(h, earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
-    if (ACCESSORY_BUNNY_EARS) h = Math.max(h, bunnyEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
-    if (ACCESSORY_BEAR_EARS) h = Math.max(h, bearEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
-    if (ACCESSORY_DEVIL_HORNS) h = Math.max(h, devilHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
-    if (ACCESSORY_DEER_ANTLERS) h = Math.max(h, deerAntlerApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
-    if (ACCESSORY_DUAL_ANTENNA) h = Math.max(h, dualAntennaApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN);
-    return h;
+    const acc = HEAD_ACCESSORY_REGISTRY[currentHeadAccessory];
+    return acc ? acc.apex(headR) : 0;
   }
   function drawMountSymbol(ctx, mounts, symbol){
     if (!symbol || !mounts || !mounts.headTop) return;
@@ -3052,26 +3416,19 @@
       // BLUR_EDGES suppressed the inline draw; every other archetype
       // already has its eye as part of the body itself.
       if (BLUR_EDGES) drawSharpEyes(ctx, mounts.eyes);
-      // ears drawn before the hat -- ears grow FROM the head (rooted inside
-      // its own silhouette, see deriveSymmetricHeadPair), while a hat sits
-      // ON TOP of/between them, so hat-after-ears is the natural wearing
-      // order if both happen to be on at once during testing. Routed
-      // through drawAccessoriesMaybeSoftened (Option B) so a blur-edge
-      // archetype gets a light independent softening pass on top of these
-      // four; every other archetype draws straight to `ctx` exactly as
-      // before.
-      if (ACCESSORY_CAT_EARS || ACCESSORY_CAT_TAIL || ACCESSORY_HAT || ACCESSORY_PROP ||
-          ACCESSORY_BUNNY_EARS || ACCESSORY_BEAR_EARS || ACCESSORY_DEVIL_HORNS ||
-          ACCESSORY_DEER_ANTLERS || ACCESSORY_DUAL_ANTENNA){
+      // the ONE selected head accessory draws before cat tail/prop -- a
+      // head accessory grows from/sits on the head itself, while tail/prop
+      // are a different mount entirely, so this ordering is really just
+      // "head accessory, then everything else" rather than a meaningful
+      // z-order choice. Routed through drawAccessoriesMaybeSoftened
+      // (Option B) so a blur-edge archetype gets a light independent
+      // softening pass; every other archetype draws straight to `ctx`
+      // exactly as before.
+      const headAcc = HEAD_ACCESSORY_REGISTRY[currentHeadAccessory];
+      if (headAcc || ACCESSORY_CAT_TAIL || ACCESSORY_PROP){
         drawAccessoriesMaybeSoftened(stage, accessoryBuf, function(accCtx){
-          if (ACCESSORY_CAT_EARS) drawCatEarsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
-          if (ACCESSORY_BUNNY_EARS) drawBunnyEarsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
-          if (ACCESSORY_BEAR_EARS) drawBearEarsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
-          if (ACCESSORY_DEVIL_HORNS) drawDevilHornsAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
-          if (ACCESSORY_DEER_ANTLERS) drawDeerAntlersAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
-          if (ACCESSORY_DUAL_ANTENNA) drawDualAntennaAccessory(accCtx, mounts.headTop, WALK_CFG.headR);
+          if (headAcc) headAcc.draw(accCtx, mounts.headTop, WALK_CFG.headR);
           if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(accCtx, mounts.back);
-          if (ACCESSORY_HAT) drawHatAccessory(accCtx, mounts.headTop);
           if (ACCESSORY_PROP){
             drawPropAccessory(accCtx, mounts.handNear);
             drawPropAccessory(accCtx, mounts.handFar);
@@ -3165,29 +3522,25 @@
   document.getElementById('catTailToggle').addEventListener('change', function(){
     ACCESSORY_CAT_TAIL = this.checked;
   });
-  document.getElementById('hatToggle').addEventListener('change', function(){
-    ACCESSORY_HAT = this.checked;
-  });
   document.getElementById('propToggle').addEventListener('change', function(){
     ACCESSORY_PROP = this.checked;
   });
-  document.getElementById('catEarsToggle').addEventListener('change', function(){
-    ACCESSORY_CAT_EARS = this.checked;
-  });
-  document.getElementById('bunnyEarsToggle').addEventListener('change', function(){
-    ACCESSORY_BUNNY_EARS = this.checked;
-  });
-  document.getElementById('bearEarsToggle').addEventListener('change', function(){
-    ACCESSORY_BEAR_EARS = this.checked;
-  });
-  document.getElementById('devilHornsToggle').addEventListener('change', function(){
-    ACCESSORY_DEVIL_HORNS = this.checked;
-  });
-  document.getElementById('deerAntlersToggle').addEventListener('change', function(){
-    ACCESSORY_DEER_ANTLERS = this.checked;
-  });
-  document.getElementById('dualAntennaToggle').addEventListener('change', function(){
-    ACCESSORY_DUAL_ANTENNA = this.checked;
+  // Dropdown options generated straight from HEAD_ACCESSORY_REGISTRY's
+  // keys/labels (see that object's own comment) -- the "無" option is the
+  // only one hand-written in the HTML, everything else comes from the
+  // registry so the list can never drift out of sync with what actually
+  // draws.
+  (function populateHeadAccessorySelect(){
+    const select = document.getElementById('headAccessorySelect');
+    for (const key in HEAD_ACCESSORY_REGISTRY){
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = HEAD_ACCESSORY_REGISTRY[key].label;
+      select.appendChild(opt);
+    }
+  })();
+  document.getElementById('headAccessorySelect').addEventListener('change', function(){
+    currentHeadAccessory = this.value;
   });
 })();
 </script>
