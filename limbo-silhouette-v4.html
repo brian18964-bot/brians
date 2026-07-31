@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v42 — A 組長條武器 15 款輪廓形狀重製(短劍/彎刀/武士刀/西洋刺劍/光劍/手斧/戰斧/木棍/鐵鎚/長矛/苦無/三叉戟/流星錘/長杖/木柄鐵鎚)</title>
+<title>剪影走路/跑步循環 v43 — A 組長條武器補完長劍,16 款全數到齊</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v42</div>
-    <h1>A 組長條武器 15 款輪廓形狀重製(不只靠長度/角度區分)</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v43</div>
+    <h1>補完長劍,A 組長條武器 16 款全數到齊</h1>
+    <p class="sub"><b>補完清單缺漏</b>:原始 A 組 16 項清單(短劍、長劍、彎刀、木棍、鐵鎚、手斧、長矛、武士刀、苦無、西洋刺劍、三叉戟、戰斧、流星錘、長杖、木柄鐵鎚、光劍)裡,「長劍」在 v39/v40/v41 三輪都沒有實際建置,v41 的紀錄裡也明確標註過這個疑似謄寫遺漏、待確認是否補上。這輪確認要補上,新增 <code>longsword</code>,套用跟其餘 15 款完全相同的機制與驗證流程,不重新發明。<br><br><b>形狀設計</b>:沿用短劍的直劍身、尖端 <code>polygon</code> 語彙,但拉長(<code>totalLen</code> 1.88 對短劍的 1.33,落在中段刀劍量級,跟彎刀 1.62、武士刀 1.78 同一梯次),並且加上短劍刻意省略的特徵——握柄與劍身交界處的直向 <code>crossbar</code> 十字護手。短劍的辨識重點是「完全沒有護手」,長劍則是「樸素的十字護手」,兩者刻意做出有無護手的對比,同時跟西洋刺劍的大圓弧護手、武士刀的方形鍔用不同零件型別(crossbar/circle/polygon)彼此區隔,不會混淆。握柄比短劍略細(0.15 對 0.17),對應長劍握柄通常較修長的比例。<code>gripRatio</code> 不覆寫,吃共用預設值 0.68(平衡型刀劍類,跟短劍/彎刀/武士刀/西洋刺劍/長杖同一類)。<code>holdStyle</code> 不標註,吃預設單手。<code>rarity: null</code>。<br><br><b>驗證</b>:放大截圖確認長劍側身呈現出清楚的尖端、十字護手、握柄、圓形柄頭四段式輪廓,跟短劍並排比對辨識度足夠(短劍矮小無護手,長劍修長有護手)。17 原型 × 21 姿勢回歸測試(16 款手部武器輪替)zero console 錯誤。針對長劍額外跑一輪坐下/躺下/趴下/跳躍 × 5 種極端原型的安全餘裕驗證(像素 bbox 跟無配件基準比對),最大超出幅度 4px(躺姿,方向背離頭部,跟其餘 15 款已驗證過的安全範圍一致),沒有新增穿模風險。角度公式(<code>WEAPON_HELD_TILT</code>/<code>WEAPON_HELD_MAX_ANGLE</code>/<code>gripRatio</code>)完全不受武器外形資料影響,跟其餘 15 款共用同一段程式碼,不需要重新驗證角度行為本身。</p>
     <p class="sub"><b>問題</b>:上一輪(v41)完成的 15 款長條武器雖然長度分級、角度限幅、握持位置都已確認正確,但使用者提供參考圖比對後指出,短劍/彎刀/武士刀/西洋刺劍/光劍這五款剪影彼此看不出差異,手斧/戰斧也彼此看不出差異——問題出在這些配件先前全部共用「直杆 + 可能一個圓形柄頭」的同一套形狀語彙,只靠 <code>totalLen</code> 長度或些微的斜向偏移角度分級,沒有真正的輪廓形狀差異,剪影本身不具備可辨識的武器特徵(例如彎刀不是真的彎、武士刀護手看不出跟劍身的分野、戰斧斧刃比手斧斧刃只是線條斜一點點)。<br><br><b>新增三種零件型別</b>(<code>drawWeaponParts()</code> 的 <code>parts</code> 清單新增支援):<code>polygon</code>(任意多邊形填色輪廓,<code>points: [{at, dx}, ...]</code> 沿武器軸線描出多邊形頂點再 <code>fill()</code>——取代原本 <code>diagonal</code> 型別畫出來只是一條細線、讀不出「有面積的刀刃」的問題,斧刃/鎚頭/矛頭/苦無/三叉戟的三個分岔尖端、還有帶尖端的劍身都改用這個型別)、<code>polyline</code>(依序串接的膠囊線段,<code>points</code> 陣列可以有 2-3 折,近似畫出真正的弧線——這個畫布尺度畫不出貝茲曲線,用 2-3 段折線逼近彎刀的明顯弧度、武士刀較淺的弧度、流星錘鏈條的鋸齒連接)、<code>ring</code>(用兩次方向相反的 <code>arc()</code>——外圈順時針、內圈逆時針——讓預設的 nonzero fill rule 把內圈判定為鏤空,畫出真正「中間穿透」的圓環,不是實心圓,苦無末端的吊環用這個型別,是這批唯一真的需要鏤空孔洞的特徵)。另外新增 <code>buildStarPoints()</code> 輔助函式,產生外/內半徑交替的頂點清單描出星芒輪廓,流星錘的球頭用這個函式生成一個 7 角星形 <code>polygon</code>。<br><br><b>逐款差異化設計</b>:短劍——直劍身、無護手裝飾,刀尖用 <code>polygon</code> 收窄成真正的尖點(不是膠囊圓頭)。彎刀——<code>polyline</code> 畫出明顯側向弧度的刀身，搭配簡單弧形護手。武士刀——<code>polyline</code> 弧度比彎刀淺很多，握柄用獨立 <code>shaft</code>（寬度跟刀身不同）明確跟刀身分野，方形 <code>crossbar</code> 當鍔（護手）。西洋刺劍——細直 <code>polygon</code> 劍身，搭配全劍最大的圓形護手（劍柄與刀身交界處一個明顯大圓，這是最容易辨識的細劍特徵）。光劍——直劍身，握柄段用比劍身粗、比劍身短的獨立 <code>shaft</code> 明確區隔（能量刃該有的「柄粗刃薄」觀感），柄部加兩條 <code>crossbar</code> 當控制環。手斧——小型單側 4 點凸起楔形斧刃、短握柄。戰斧——斧刃改成 5 點凹弧新月形（兩側各一片，中段刻意往握柄內凹再往外翻出，做出真正的鋸齒雙刃輪廓，不是平滑一片），握柄明顯比手斧長。木棍——維持純直圓柱、無任何裝飾，是這批裡最樸素的一款，用來跟長杖的分節裝飾對比。鐵鎚——鎚頭改成清楚的方形/箱型 <code>polygon</code>，跟斧刃/劍身的形狀語彙完全不同。長矛——矛頭是柳葉形 <code>polygon</code>，杆身維持細直。苦無——短刀身，末端用新增的 <code>ring</code> 型別畫出真正鏤空的吊環，整批裡最短小精幹的一款。三叉戟——頭部拆成三個各自獨立的尖端 <code>polygon</code>（中央一支、左右各一支往外撇），確保三叉清晰可辨、不會被簡化成單一尖點跟長矛混淆。流星錘——<code>buildStarPoints()</code> 生成的 7 角星 <code>polygon</code> 當球頭，球頭跟握柄之間用 <code>polyline</code> 畫一段鋸齒折線表示鎖鏈連接。長杖——杆身用交錯的 <code>shaft</code>/<code>crossbar</code> 分段做出竹節/纏繞裝飾紋理，跟木棍的純樸拉開差異。木柄鐵鎚——鎚頭比一般鐵鎚更大更方，握柄段拉長並保持木柄的圓柱觀感，整體比例更沉重。<br><br><b>除錯過程（兩個形狀反覆調整三次才成功）</b>:①短劍/西洋刺劍/光劍最初的劍身用既有的 <code>shaft</code>（膠囊，兩端預設圓頭）畫，刀尖端因此是圓鈍的，讀起來像一根直棍而非有尖端的劍——改用 <code>polygon</code> 在刀尖處收窄成真正的尖點解決。②戰斧/手斧最初用單一 6 點 <code>polygon</code> 涵蓋整個斧頭寬度，渲染出來是一整片平滑的曲線,像湯匙/鏟子而非斧頭；第二次嘗試拆成「連續握柄 <code>shaft</code> + 獨立凸起翼形 <code>polygon</code>」疊加,翼形內側頂點跟握柄邊緣距離太近,兩者視覺上仍融合成一片平滑形狀，沒有辨識得出的「凹槽」；第三次改成 5 點凹弧新月形（每側斧刃在中段刻意往內凹一個真正的凹頂點，再往外翻出),放大截圖確認終於呈現鋸齒狀的「M-W」雙刃輪廓，明確跟手斧的簡單單側鉤形區分開來。<br><br><b>驗證</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口（渲染完成後已移除,不進正式程式碼)搭配獨立 Playwright 腳本,把 15 款武器各自在乾淨背景上放大渲染(headR=34,遠大於遊戲內實際圖示尺寸),輸出並排標籤截圖供逐款比對,確認 15 款彼此剪影都有可辨識的獨立特徵後,再跑一次完整 17 原型 × 21 姿勢回歸測試(15 款手部武器輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤，確認新增的 <code>polygon</code>/<code>polyline</code>/<code>ring</code> 渲染邏輯沒有在任何原型或姿勢組合下產生執行期錯誤。<b>這輪僅重製形狀,尚未針對新形狀重新驗證手持/倒插的走路循環角度自然度與頭部安全餘裕——待使用者確認形狀辨識度後再進行下一輪動畫驗證。</b><br><br><b>待確認事項（沿用自 v41,尚未處理)</b>:原始 A 組清單裡的「長劍」仍未實作。</p>
     <p class="sub"><b>沿用既有機制,無重新發明</b>:12 款新配件全部透過既有的 <code>stuckWeaponEntry()</code> 工廠函式註冊,共用同一個 <code>drawWeaponParts()</code> 渲染器、<code>WEAPON_HELD_MAX_ANGLE</code> 角度限幅、<code>DEFAULT_WEAPON_GRIP_RATIO</code> 握持位置——沒有為任何一款另外寫渲染邏輯或角度公式。<br><br><b>長度分級</b>(headR 單位,遞增排序):苦無 0.85 &lt; 手斧 1.15 &lt; 鐵鎚 1.3 &lt; 短劍 1.35(已完成)&lt; 木棍 1.5 &lt; 光劍 1.6 &lt; 彎刀 1.65 &lt; 武士刀 1.85 &lt; 流星錘 1.9 &lt; 西洋刺劍 2.0 &lt; 戰斧 2.1 &lt; 木柄鐵鎚 2.7 &lt; 長杖 3.0 &lt; 三叉戟 3.15(已完成)&lt; 長矛 3.2(已完成)——16 個量級全部不同,不是套同一組尺寸換外形。彎刀的「彎」在這個畫布尺度無法真的畫出弧線,改用一個固定側向偏移(刀身從護手端到刀尖端斜向偏移)近似「不是直劍」的識別特徵。<br><br><b>gripRatio 個別覆寫</b>:鐵鎚(0.8)、手斧(0.78)、戰斧(0.85)、流星錘(0.92)、木柄鐵鎚(0.85)五款覆寫共用預設值 0.68——這五款都是「頭重」的工具類武器(鎚頭/斧刃/流星錘球),頭重的器具實際持握時會抓得更靠近尾端以取得揮動槓桿,不會抓在跟平衡刀劍一樣的中段位置,所以握持點刻意往尾端(掛載點)靠。其餘 7 款(彎刀/木棍/武士刀/苦無/西洋刺劍/長杖/光劍)都是刀劍/長柄類的平衡器具,直接吃共用預設值,沒有另外覆寫。<br><br><b>holdStyle 全部維持單手</b>,包含戰斧/流星錘/木柄鐵鎚這三款「較重」的候選——不是照單全收單手,而是重新確認過既有的 <code>holdStyle: 'dual'</code> 機制其實是「同一個形狀在兩個掛載點各畫一份」,適合成對配戴物,標成雙手會讓畫面出現兩把斧頭/兩顆流星錘而不是一把雙手持握的武器,是錯誤的視覺結果。這三款改用 <code>gripRatio</code> 覆寫來表達「較重、握持位置更靠後」,不是靠 <code>holdStyle</code>。真正的雙手單一武器渲染仍是尚未建置的機制。<br><br><b>安全餘裕驗證</b>:12 款 × 坐下/躺下/趴下/跳躍 4 種姿勢 × 5 種極端原型(大頭模糊型、大頭娃娃、全圓形型、標準長腿、小頭高個)全部跑過,目視抽查最高風險組合(頭重長柄武器 × 趴下姿勢)確認無穿模。<code>rarity</code> 全數 <code>null</code>。全部 17 原型 × 21 姿勢回歸測試(15 款手部武器輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟)zero console 錯誤。<br><br><b>待確認事項</b>:原始 A 組清單裡的「長劍」這次的補完清單中沒有出現(既不在已完成的三款,也不在這次的 12 款新增裡),推測是清單謄寫時漏掉,尚未實作——請確認是否要在下一輪補上,或是刻意先跳過。</p>
     <p class="sub"><b>問題一根因</b>:手臂擺到最低點時武器仍指向地面——不是角度計算錯,是上一輪的固定傾角用「純加法、沒有限幅」疊加在 <code>mount.angle</code> 上,而 <code>mount.angle</code> 本身會隨手臂擺動在基準角度附近振盪(走路 ±26°、快走 ±42°)。擺到某個極限時,「動態角度 + 固定傾角」算出來的最終值剛好又繞回接近垂直,傾角的效果在那個瞬間被抵銷。<br><br><b>修正</b>:新增 <code>WEAPON_HELD_MAX_ANGLE</code>,只對「最終角度」的上限做限幅(不是對稱範圍)——刻意只限一邊,因為趴下姿勢的手臂角度本身朝完全不同的方向(<code>PRONE_ARM_DEG=172</code>,換算後手部掛載角度接近 0° 而非接近垂直),如果做成對稱限幅會把趴下姿勢的武器角度錯誤地拉回走路專用的範圍。只限制「太靠近垂直向下」這一側,其他姿勢原本就不會碰到這個上限,不受影響。<br><br><b>問題二根因</b>:配件釘在物件末端而非中段——<code>held</code> 模式原本的公式把「握柄尾端(距離=totalLen)」對齊掛載點,尖端往外延伸,等於整根武器只往手掌外側伸出、內側完全沒有東西,這是錨定基準點本身的問題,跟角度無關。<br><br><b>修正</b>:新增 <code>gripRatio</code>(尖端到尾端全長上的握持位置比例),公式改成握持點對齊掛載點,尖端側跟尾端側分別往局部座標系的兩個方向延伸,兩側都有東西露出。共用預設值 <code>DEFAULT_WEAPON_GRIP_RATIO=0.68</code>,經截圖比對後定案;個別配件需要時可覆寫 <code>weapon.gripRatio</code>。<b>這個預設值的改變會影響所有透過 <code>drawWeaponParts</code> 渲染的手持配件(目前是短劍/長矛/三叉戟,原本錨定末端的呈現方式本身就不對,理當一併修正)</b>,但不影響水壺(<code>drawCanteenAccessory</code>,圓潤本體+瓶蓋的形狀沒有尖端到尾端的軸線可言,走完全獨立的繪製函式,從未使用 <code>drawWeaponParts</code>)、也不影響最早的示範劍(<code>sword</code>,用 <code>drawSwordAccessory</code> 直接畫,同樣是獨立函式)——這兩者經截圖重新確認,外觀與這輪修改前完全一致。倒插模式(<code>footStow</code>)的錨定基準點維持不變(尖端頂地面),不受 <code>gripRatio</code> 影響。<br><br><b>驗證</b>:角度方向再次改變後,重新確認坐下/躺下/趴下/跳躍四種姿勢(武器全程手持、不會收納)在極端原型上沒有新的頭部重疊,尤其重新檢查趴下姿勢(手臂本身角度已伸向頭部前方,最容易受這次改動牽動)。全部 17 原型 × 21 姿勢回歸測試 zero console 錯誤。</p>
@@ -3731,6 +3732,21 @@
         { type: 'circle', at: 0.85 + 0.35, r: 0.13 }
       ]
     },
+    // 長劍: same straight-pointed blade language as shortSword, but longer
+    // and with the one feature shortSword deliberately omits -- a straight
+    // 'crossbar' cross-guard at the blade/grip junction. shortSword reads
+    // as "no guard at all"; longsword reads as "plain cross-guard"; neither
+    // is confused with rapier's oversized round bowl guard or katana's
+    // square tsuba, since crossbar/circle/polygon each look distinct.
+    longsword: {
+      totalLen: 1.3 + 0.48 + 0.1,
+      parts: [
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.1 }, { at: 1.3, dx: 0.1 }, { at: 1.3, dx: -0.1 }, { at: 0.12, dx: -0.1 }] },
+        { type: 'crossbar', at: 1.3, halfLen: 0.22, width: 0.08 },
+        { type: 'shaft', from: 1.3, to: 1.3 + 0.48, width: 0.15 },
+        { type: 'circle', at: 1.3 + 0.48 + 0.1, r: 0.1 }
+      ]
+    },
     // 長矛: a true leaf/rhombus spearhead (widest partway down, tapering
     // to points at both the tip AND the base) via 'polygon' -- replaces
     // the old plain 'triangle' (a wedge, not a leaf) so it no longer
@@ -4086,6 +4102,7 @@
     // available lever for "this weapon reads as heavier/harder to swing"
     // without needing the unbuilt mechanism.
     shortSword: stuckWeaponEntry('短劍', 'shortSword'),
+    longsword: stuckWeaponEntry('長劍', 'longsword'),
     spear: stuckWeaponEntry('長矛', 'spear'),
     trident: stuckWeaponEntry('三叉戟', 'trident'),
     curvedSaber: stuckWeaponEntry('彎刀', 'curvedSaber'),
