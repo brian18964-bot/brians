@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v41 — A 組長條武器補完 12 款(彎刀/木棍/鐵鎚/手斧/武士刀/苦無/西洋刺劍/戰斧/流星錘/長杖/木柄鐵鎚/光劍)</title>
+<title>剪影走路/跑步循環 v42 — A 組長條武器 15 款輪廓形狀重製(短劍/彎刀/武士刀/西洋刺劍/光劍/手斧/戰斧/木棍/鐵鎚/長矛/苦無/三叉戟/流星錘/長杖/木柄鐵鎚)</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v41</div>
-    <h1>A 組長條武器補完 12 款(彎刀/木棍/鐵鎚/手斧/武士刀/苦無/西洋刺劍/戰斧/流星錘/長杖/木柄鐵鎚/光劍)</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v42</div>
+    <h1>A 組長條武器 15 款輪廓形狀重製(不只靠長度/角度區分)</h1>
+    <p class="sub"><b>問題</b>:上一輪(v41)完成的 15 款長條武器雖然長度分級、角度限幅、握持位置都已確認正確,但使用者提供參考圖比對後指出,短劍/彎刀/武士刀/西洋刺劍/光劍這五款剪影彼此看不出差異,手斧/戰斧也彼此看不出差異——問題出在這些配件先前全部共用「直杆 + 可能一個圓形柄頭」的同一套形狀語彙,只靠 <code>totalLen</code> 長度或些微的斜向偏移角度分級,沒有真正的輪廓形狀差異,剪影本身不具備可辨識的武器特徵(例如彎刀不是真的彎、武士刀護手看不出跟劍身的分野、戰斧斧刃比手斧斧刃只是線條斜一點點)。<br><br><b>新增三種零件型別</b>(<code>drawWeaponParts()</code> 的 <code>parts</code> 清單新增支援):<code>polygon</code>(任意多邊形填色輪廓,<code>points: [{at, dx}, ...]</code> 沿武器軸線描出多邊形頂點再 <code>fill()</code>——取代原本 <code>diagonal</code> 型別畫出來只是一條細線、讀不出「有面積的刀刃」的問題,斧刃/鎚頭/矛頭/苦無/三叉戟的三個分岔尖端、還有帶尖端的劍身都改用這個型別)、<code>polyline</code>(依序串接的膠囊線段,<code>points</code> 陣列可以有 2-3 折,近似畫出真正的弧線——這個畫布尺度畫不出貝茲曲線,用 2-3 段折線逼近彎刀的明顯弧度、武士刀較淺的弧度、流星錘鏈條的鋸齒連接)、<code>ring</code>(用兩次方向相反的 <code>arc()</code>——外圈順時針、內圈逆時針——讓預設的 nonzero fill rule 把內圈判定為鏤空,畫出真正「中間穿透」的圓環,不是實心圓,苦無末端的吊環用這個型別,是這批唯一真的需要鏤空孔洞的特徵)。另外新增 <code>buildStarPoints()</code> 輔助函式,產生外/內半徑交替的頂點清單描出星芒輪廓,流星錘的球頭用這個函式生成一個 7 角星形 <code>polygon</code>。<br><br><b>逐款差異化設計</b>:短劍——直劍身、無護手裝飾,刀尖用 <code>polygon</code> 收窄成真正的尖點(不是膠囊圓頭)。彎刀——<code>polyline</code> 畫出明顯側向弧度的刀身，搭配簡單弧形護手。武士刀——<code>polyline</code> 弧度比彎刀淺很多，握柄用獨立 <code>shaft</code>（寬度跟刀身不同）明確跟刀身分野，方形 <code>crossbar</code> 當鍔（護手）。西洋刺劍——細直 <code>polygon</code> 劍身，搭配全劍最大的圓形護手（劍柄與刀身交界處一個明顯大圓，這是最容易辨識的細劍特徵）。光劍——直劍身，握柄段用比劍身粗、比劍身短的獨立 <code>shaft</code> 明確區隔（能量刃該有的「柄粗刃薄」觀感），柄部加兩條 <code>crossbar</code> 當控制環。手斧——小型單側 4 點凸起楔形斧刃、短握柄。戰斧——斧刃改成 5 點凹弧新月形（兩側各一片，中段刻意往握柄內凹再往外翻出，做出真正的鋸齒雙刃輪廓，不是平滑一片），握柄明顯比手斧長。木棍——維持純直圓柱、無任何裝飾，是這批裡最樸素的一款，用來跟長杖的分節裝飾對比。鐵鎚——鎚頭改成清楚的方形/箱型 <code>polygon</code>，跟斧刃/劍身的形狀語彙完全不同。長矛——矛頭是柳葉形 <code>polygon</code>，杆身維持細直。苦無——短刀身，末端用新增的 <code>ring</code> 型別畫出真正鏤空的吊環，整批裡最短小精幹的一款。三叉戟——頭部拆成三個各自獨立的尖端 <code>polygon</code>（中央一支、左右各一支往外撇），確保三叉清晰可辨、不會被簡化成單一尖點跟長矛混淆。流星錘——<code>buildStarPoints()</code> 生成的 7 角星 <code>polygon</code> 當球頭，球頭跟握柄之間用 <code>polyline</code> 畫一段鋸齒折線表示鎖鏈連接。長杖——杆身用交錯的 <code>shaft</code>/<code>crossbar</code> 分段做出竹節/纏繞裝飾紋理，跟木棍的純樸拉開差異。木柄鐵鎚——鎚頭比一般鐵鎚更大更方，握柄段拉長並保持木柄的圓柱觀感，整體比例更沉重。<br><br><b>除錯過程（兩個形狀反覆調整三次才成功）</b>:①短劍/西洋刺劍/光劍最初的劍身用既有的 <code>shaft</code>（膠囊，兩端預設圓頭）畫，刀尖端因此是圓鈍的，讀起來像一根直棍而非有尖端的劍——改用 <code>polygon</code> 在刀尖處收窄成真正的尖點解決。②戰斧/手斧最初用單一 6 點 <code>polygon</code> 涵蓋整個斧頭寬度，渲染出來是一整片平滑的曲線,像湯匙/鏟子而非斧頭；第二次嘗試拆成「連續握柄 <code>shaft</code> + 獨立凸起翼形 <code>polygon</code>」疊加,翼形內側頂點跟握柄邊緣距離太近,兩者視覺上仍融合成一片平滑形狀，沒有辨識得出的「凹槽」；第三次改成 5 點凹弧新月形（每側斧刃在中段刻意往內凹一個真正的凹頂點，再往外翻出),放大截圖確認終於呈現鋸齒狀的「M-W」雙刃輪廓，明確跟手斧的簡單單側鉤形區分開來。<br><br><b>驗證</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口（渲染完成後已移除,不進正式程式碼)搭配獨立 Playwright 腳本,把 15 款武器各自在乾淨背景上放大渲染(headR=34,遠大於遊戲內實際圖示尺寸),輸出並排標籤截圖供逐款比對,確認 15 款彼此剪影都有可辨識的獨立特徵後,再跑一次完整 17 原型 × 21 姿勢回歸測試(15 款手部武器輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤，確認新增的 <code>polygon</code>/<code>polyline</code>/<code>ring</code> 渲染邏輯沒有在任何原型或姿勢組合下產生執行期錯誤。<b>這輪僅重製形狀,尚未針對新形狀重新驗證手持/倒插的走路循環角度自然度與頭部安全餘裕——待使用者確認形狀辨識度後再進行下一輪動畫驗證。</b><br><br><b>待確認事項（沿用自 v41,尚未處理)</b>:原始 A 組清單裡的「長劍」仍未實作。</p>
     <p class="sub"><b>沿用既有機制,無重新發明</b>:12 款新配件全部透過既有的 <code>stuckWeaponEntry()</code> 工廠函式註冊,共用同一個 <code>drawWeaponParts()</code> 渲染器、<code>WEAPON_HELD_MAX_ANGLE</code> 角度限幅、<code>DEFAULT_WEAPON_GRIP_RATIO</code> 握持位置——沒有為任何一款另外寫渲染邏輯或角度公式。<br><br><b>長度分級</b>(headR 單位,遞增排序):苦無 0.85 &lt; 手斧 1.15 &lt; 鐵鎚 1.3 &lt; 短劍 1.35(已完成)&lt; 木棍 1.5 &lt; 光劍 1.6 &lt; 彎刀 1.65 &lt; 武士刀 1.85 &lt; 流星錘 1.9 &lt; 西洋刺劍 2.0 &lt; 戰斧 2.1 &lt; 木柄鐵鎚 2.7 &lt; 長杖 3.0 &lt; 三叉戟 3.15(已完成)&lt; 長矛 3.2(已完成)——16 個量級全部不同,不是套同一組尺寸換外形。彎刀的「彎」在這個畫布尺度無法真的畫出弧線,改用一個固定側向偏移(刀身從護手端到刀尖端斜向偏移)近似「不是直劍」的識別特徵。<br><br><b>gripRatio 個別覆寫</b>:鐵鎚(0.8)、手斧(0.78)、戰斧(0.85)、流星錘(0.92)、木柄鐵鎚(0.85)五款覆寫共用預設值 0.68——這五款都是「頭重」的工具類武器(鎚頭/斧刃/流星錘球),頭重的器具實際持握時會抓得更靠近尾端以取得揮動槓桿,不會抓在跟平衡刀劍一樣的中段位置,所以握持點刻意往尾端(掛載點)靠。其餘 7 款(彎刀/木棍/武士刀/苦無/西洋刺劍/長杖/光劍)都是刀劍/長柄類的平衡器具,直接吃共用預設值,沒有另外覆寫。<br><br><b>holdStyle 全部維持單手</b>,包含戰斧/流星錘/木柄鐵鎚這三款「較重」的候選——不是照單全收單手,而是重新確認過既有的 <code>holdStyle: 'dual'</code> 機制其實是「同一個形狀在兩個掛載點各畫一份」,適合成對配戴物,標成雙手會讓畫面出現兩把斧頭/兩顆流星錘而不是一把雙手持握的武器,是錯誤的視覺結果。這三款改用 <code>gripRatio</code> 覆寫來表達「較重、握持位置更靠後」,不是靠 <code>holdStyle</code>。真正的雙手單一武器渲染仍是尚未建置的機制。<br><br><b>安全餘裕驗證</b>:12 款 × 坐下/躺下/趴下/跳躍 4 種姿勢 × 5 種極端原型(大頭模糊型、大頭娃娃、全圓形型、標準長腿、小頭高個)全部跑過,目視抽查最高風險組合(頭重長柄武器 × 趴下姿勢)確認無穿模。<code>rarity</code> 全數 <code>null</code>。全部 17 原型 × 21 姿勢回歸測試(15 款手部武器輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟)zero console 錯誤。<br><br><b>待確認事項</b>:原始 A 組清單裡的「長劍」這次的補完清單中沒有出現(既不在已完成的三款,也不在這次的 12 款新增裡),推測是清單謄寫時漏掉,尚未實作——請確認是否要在下一輪補上,或是刻意先跳過。</p>
     <p class="sub"><b>問題一根因</b>:手臂擺到最低點時武器仍指向地面——不是角度計算錯,是上一輪的固定傾角用「純加法、沒有限幅」疊加在 <code>mount.angle</code> 上,而 <code>mount.angle</code> 本身會隨手臂擺動在基準角度附近振盪(走路 ±26°、快走 ±42°)。擺到某個極限時,「動態角度 + 固定傾角」算出來的最終值剛好又繞回接近垂直,傾角的效果在那個瞬間被抵銷。<br><br><b>修正</b>:新增 <code>WEAPON_HELD_MAX_ANGLE</code>,只對「最終角度」的上限做限幅(不是對稱範圍)——刻意只限一邊,因為趴下姿勢的手臂角度本身朝完全不同的方向(<code>PRONE_ARM_DEG=172</code>,換算後手部掛載角度接近 0° 而非接近垂直),如果做成對稱限幅會把趴下姿勢的武器角度錯誤地拉回走路專用的範圍。只限制「太靠近垂直向下」這一側,其他姿勢原本就不會碰到這個上限,不受影響。<br><br><b>問題二根因</b>:配件釘在物件末端而非中段——<code>held</code> 模式原本的公式把「握柄尾端(距離=totalLen)」對齊掛載點,尖端往外延伸,等於整根武器只往手掌外側伸出、內側完全沒有東西,這是錨定基準點本身的問題,跟角度無關。<br><br><b>修正</b>:新增 <code>gripRatio</code>(尖端到尾端全長上的握持位置比例),公式改成握持點對齊掛載點,尖端側跟尾端側分別往局部座標系的兩個方向延伸,兩側都有東西露出。共用預設值 <code>DEFAULT_WEAPON_GRIP_RATIO=0.68</code>,經截圖比對後定案;個別配件需要時可覆寫 <code>weapon.gripRatio</code>。<b>這個預設值的改變會影響所有透過 <code>drawWeaponParts</code> 渲染的手持配件(目前是短劍/長矛/三叉戟,原本錨定末端的呈現方式本身就不對,理當一併修正)</b>,但不影響水壺(<code>drawCanteenAccessory</code>,圓潤本體+瓶蓋的形狀沒有尖端到尾端的軸線可言,走完全獨立的繪製函式,從未使用 <code>drawWeaponParts</code>)、也不影響最早的示範劍(<code>sword</code>,用 <code>drawSwordAccessory</code> 直接畫,同樣是獨立函式)——這兩者經截圖重新確認,外觀與這輪修改前完全一致。倒插模式(<code>footStow</code>)的錨定基準點維持不變(尖端頂地面),不受 <code>gripRatio</code> 影響。<br><br><b>驗證</b>:角度方向再次改變後,重新確認坐下/躺下/趴下/跳躍四種姿勢(武器全程手持、不會收納)在極端原型上沒有新的頭部重疊,尤其重新檢查趴下姿勢(手臂本身角度已伸向頭部前方,最容易受這次改動牽動)。全部 17 原型 × 21 姿勢回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>根因診斷</b>:回報指出手持長條武器側身走路時呈現垂直朝下、像拖在地上。先排除「誤用倒插固定角度邏輯」這個假設——確認 <code>drawInMountFrame</code> 本來就用 <code>mount.angle</code> 做旋轉,傳進去的 <code>mounts.handNear</code> 本來就是每一幀隨手臂擺動即時算好的動態值,跟其他手部配件、既有的 <code>drawPropAccessory</code> 共用同一套機制,角度追蹤本身沒有錯、確實是即時更新的。真正原因是武器形狀完全沒有額外偏移,直接沿 <code>handNear.angle</code> 本身的方向畫——這個角度代表「手臂自然垂放的擺動方向」,走路擺幅只有 26°-42°,基準角度接近垂直,所以長條武器跟著這個角度延伸,結果全程接近垂直。真人拿長武器不會讓武器完全平行於垂放的前臂,而是用手腕撐出一個角度斜向持握,這個「持握傾角」是原本設計裡缺少的參數,不是角度計算本身的錯誤。<br><br><b>修正</b>:新增 <code>WEAPON_HELD_TILT</code>(-50°),在 <code>handNear.angle</code> 之上疊加,不是取代——武器角度 = 手臂即時擺動角度 + 固定持握傾角,這樣武器依然完整繼承手臂擺動的動態(走路/跑步循環中角度會隨手臂自然小幅擺動,不是死板固定死一個角度),只是在此基礎上多轉一個角度,呈現參考圖那種沿手臂斜向延伸的自然持握感。<br><br><b>安全餘裕重新驗證</b>:改變角度方向後,原本針對坐下/躺下/趴下/跳躍四種姿勢(手持武器不會收納,全程維持手持外觀)做過的極端原型(大頭模糊型、大頭娃娃、全圓形型等)頭部無重疊驗證重新跑過一次——尤其是趴下姿勢,手臂角度本身就已經伸到頭部前方(<code>PRONE_ARM_DEG=172</code>),持握傾角疊加上去有可能把武器推得更靠近頭部,需要重新確認不會有新的重疊。目視檢查確認全部乾淨。全部 17 原型 × 21 姿勢回歸測試 zero console 錯誤。</p>
@@ -3630,9 +3631,65 @@
           c.lineTo(0, tipY);
           c.closePath();
           c.fill();
+        } else if (p.type === 'polygon'){
+          // arbitrary filled outline -- each point is {at: distance along
+          // the tip-butt axis, dx: sideways offset in headR units}. This is
+          // the general-purpose shape primitive (axe blades, hammer
+          // blocks, leaf-shaped spearheads, trident tines...) added once
+          // it became clear that a thin capsule stroke ('diagonal') reads
+          // as "a spike," not "a blade with area" -- an axe head and a
+          // spear tip both need an actual filled silhouette, not a line.
+          c.beginPath();
+          p.points.forEach(function(pt, idx){
+            const px = pt.dx * headR, py = y(pt.at);
+            if (idx === 0) c.moveTo(px, py); else c.lineTo(px, py);
+          });
+          c.closePath();
+          c.fill();
+        } else if (p.type === 'polyline'){
+          // chained capsule segments through a list of {at, dx} points --
+          // this project's flat-silhouette scale can't render a true
+          // bezier curve, but 2-3 straight segments bending through
+          // increasing dx offsets reads as "curved, not straight" (used
+          // for curvedSaber/katana blade curvature and flailMace's chain
+          // zigzag). width is a single shared value, or an array with one
+          // entry per segment for a tapering line.
+          for (let i = 0; i < p.points.length - 1; i++){
+            const a = p.points[i], b = p.points[i + 1];
+            const w = Array.isArray(p.width) ? p.width[i] : p.width;
+            capsule(c, a.dx * headR, y(a.at), b.dx * headR, y(b.at), w * headR, SIL);
+          }
+        } else if (p.type === 'ring'){
+          // true annulus (a hole punched through, not a filled disc) --
+          // opposite-winding inner arc makes the default nonzero fill
+          // rule treat the inner region as unfilled, so whatever sits
+          // behind the accessory (ground/leg) shows through. Needed
+          // specifically for kunai's ring pommel, the one feature in this
+          // batch that's structurally a loop rather than a solid shape.
+          const cy = y(p.at);
+          c.beginPath();
+          c.arc(0, cy, p.rOuter * headR, 0, Math.PI * 2, false);
+          c.arc(0, cy, p.rInner * headR, 0, Math.PI * 2, true);
+          c.fill();
         }
       }
     });
+  }
+
+  // buildStarPoints(): generates an alternating outer/inner-radius point
+  // list around `centerAt` for a spiked-ball 'polygon' (flailMace's head)
+  // -- perturbing 'at' (not just dx) by the star's own radius/angle so the
+  // shape reads as a rosette in the local 2D plane, not just a bump on one
+  // side of the axis.
+  function buildStarPoints(centerAt, spikes, rOuter, rInner){
+    const pts = [];
+    const n = spikes * 2;
+    for (let i = 0; i < n; i++){
+      const r = (i % 2 === 0) ? rOuter : rInner;
+      const angle = (i / n) * Math.PI * 2;
+      pts.push({ at: centerAt + r * Math.cos(angle), dx: r * Math.sin(angle) });
+    }
+    return pts;
   }
 
   // Length tiers (totalLen in headR units) -- deliberately spread wide so
@@ -3646,151 +3703,235 @@
   //   短劍 shortSword: 1.35  (short blade, clearly a weapon, not a toy knife)
   //   長矛 spear:       3.20  (full pole weapon, visibly exceeds the arm itself)
   //   三叉戟 trident:    3.15  (comparable pole length to spear, wider head)
+  // Every weapon's silhouette must be identifiable in isolation, not just
+  // by length -- reworked after screenshot review showed 短劍/彎刀/武士刀/
+  // 西洋刺劍/光劍 (all "generic blade + circle pommel" before this pass)
+  // and 手斧/戰斧 (both "one thin diagonal line") reading as near-
+  // duplicates of each other. Distinguishing features are now built from
+  // actual outline geometry ('polygon' filled blade/axe-head shapes,
+  // 'polyline' multi-segment curves, a true 'ring' for kunai's loop), not
+  // from length/width/angle alone -- see 'polygon'/'polyline'/'ring' in
+  // drawWeaponParts' own comments for why those primitives exist.
   const WEAPON_SHAPES = {
+    // 短劍: the plain baseline of the blade family -- straight, short, NO
+    // guard decoration at all, so every other blade's guard/curve/tsuba
+    // reads as a deliberate feature against this un-adorned reference.
+    // Blade is a 'polygon' (pointed tip, then constant width) rather than
+    // a 'shaft' -- 'shaft' renders as a capsule with ROUNDED caps, so a
+    // shaft-blade's tip was a rounded stub, not a point, and read as a
+    // plain rod rather than a bladed weapon (found by screenshot: the
+    // no-guard version was indistinguishable from a thin nail). The point
+    // is now the actual differentiator "no guard, but still clearly a
+    // blade" relies on.
     shortSword: {
       totalLen: 0.85 + 0.35 + 0.13,
       parts: [
-        { type: 'shaft', from: 0, to: 0.85, width: 0.24 },
-        { type: 'crossbar', at: 0.85, halfLen: 0.32, width: 0.16 },
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.12 }, { at: 0.85, dx: 0.12 }, { at: 0.85, dx: -0.12 }, { at: 0.12, dx: -0.12 }] },
         { type: 'shaft', from: 0.85, to: 0.85 + 0.35, width: 0.17 },
-        { type: 'circle', at: 0.85 + 0.35, r: 0.14 }
+        { type: 'circle', at: 0.85 + 0.35, r: 0.13 }
       ]
     },
+    // 長矛: a true leaf/rhombus spearhead (widest partway down, tapering
+    // to points at both the tip AND the base) via 'polygon' -- replaces
+    // the old plain 'triangle' (a wedge, not a leaf) so it no longer
+    // shares a silhouette family with trident's own tip treatment.
     spear: {
-      totalLen: 0.35 + 2.85,
+      totalLen: 0.45 + 2.75,
       parts: [
-        { type: 'triangle', tipAt: 0, baseAt: 0.35, baseWidth: 0.30 },
-        { type: 'shaft', from: 0.35, to: 0.35 + 2.85, width: 0.22 }
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.18, dx: 0.16 }, { at: 0.45, dx: 0 }, { at: 0.18, dx: -0.16 }] },
+        { type: 'shaft', from: 0.45, to: 0.45 + 2.75, width: 0.22 }
       ]
     },
+    // 三叉戟: three SEPARATE pointed 'polygon' tines (center + two outer,
+    // each its own closed diamond-ish shape) instead of thin capsule
+    // prongs -- the defining difference from 長矛 is genuinely three
+    // distinct pointed shapes, not one head simplified to a single point.
     trident: {
-      totalLen: 0.42 + 2.75,
+      totalLen: 0.5 + 2.7,
       parts: [
-        { type: 'shaft', from: 0, to: 0.42, width: 0.16 },
-        { type: 'diagonal', at: 0.42, to: 0.23, dx: -0.26, width: 0.13 },
-        { type: 'diagonal', at: 0.42, to: 0.23, dx: 0.26, width: 0.13 },
-        { type: 'shaft', from: 0.42, to: 0.42 + 2.75, width: 0.22 }
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.16, dx: 0.06 }, { at: 0.5, dx: 0 }, { at: 0.16, dx: -0.06 }] },
+        { type: 'polygon', points: [{ at: 0.12, dx: -0.32 }, { at: 0.26, dx: -0.28 }, { at: 0.5, dx: -0.06 }, { at: 0.42, dx: -0.02 }] },
+        { type: 'polygon', points: [{ at: 0.12, dx: 0.32 }, { at: 0.26, dx: 0.28 }, { at: 0.5, dx: 0.06 }, { at: 0.42, dx: 0.02 }] },
+        { type: 'shaft', from: 0.5, to: 0.5 + 2.7, width: 0.22 }
       ]
     },
-    // ---- A-batch remainder (12 of 16) ----
-    // Length tiers, ascending (headR units), anchored against the three
-    // already-confirmed shapes above: 苦無 0.85 < 手斧 1.15 < 鐵鎚 1.3 <
-    // 短劍 1.35(done) < 木棍 1.5 < 光劍 1.6 < 彎刀 1.65 < 武士刀 1.85 <
-    // 流星錘 1.9 < 西洋刺劍 2.0 < 戰斧 2.1 < 木柄鐵鎚 2.7 < 長杖 3.0 <
-    // 三叉戟 3.15(done) < 長矛 3.20(done). Every shaft/blade-type part
-    // carrying the weapon's primary visible length stays >=0.22 (the
-    // width floor re-derived in the first 3-weapon round, verified
-    // against wideFlatBlur); only short decorative sub-parts (kunai's
-    // ring, trident-style prongs) go thinner, matching what was already
-    // screenshot-confirmed to survive on the shapes shipped so far.
-    //
-    // gripRatio overrides: 鐵鎚/手斧/戰斧/流星錘/木柄鐵鎚 grip further
-    // toward the butt than the 0.68 default (0.78-0.92) -- these are all
-    // head-heavy tools (hammer block, axe blade, flail ball), and a
-    // head-heavy implement is naturally gripped nearer the butt end for
-    // leverage/swing control, not mid-shaft like a balanced blade. Every
-    // other weapon in this batch uses the shared default, no override.
+    // 彎刀: genuine multi-segment 'polyline' curve (most offset at the
+    // tip, straightening toward the guard -- a scimitar profile) plus a
+    // small arced guard (three points forming a shallow bow, not a
+    // straight crossbar).
     curvedSaber: {
-      totalLen: 1.0 + 0.53 + 0.12,
+      totalLen: 1.0 + 0.5 + 0.12,
       parts: [
-        // slight sideways skew (on-axis at the guard, offset at the tip)
-        // approximates a curved blade -- this project's flat-silhouette
-        // scale can't render a true curve, a fixed skew reads as "not a
-        // straight sword" which is the identifying feature that matters.
-        { type: 'diagonal', at: 1.0, to: 0, dx: 0.16, width: 0.24 },
-        { type: 'crossbar', at: 1.0, halfLen: 0.26, width: 0.15 },
-        { type: 'shaft', from: 1.0, to: 1.0 + 0.53, width: 0.22 },
-        { type: 'circle', at: 1.0 + 0.53, r: 0.12 }
+        { type: 'polyline', points: [{ at: 0, dx: 0.26 }, { at: 0.42, dx: 0.14 }, { at: 1.0, dx: 0 }], width: 0.24 },
+        { type: 'polyline', points: [{ at: 0.96, dx: -0.28 }, { at: 1.04, dx: 0 }, { at: 0.96, dx: 0.28 }], width: 0.16 },
+        { type: 'shaft', from: 1.0, to: 1.0 + 0.5, width: 0.2 },
+        { type: 'circle', at: 1.0 + 0.5, r: 0.12 }
       ]
     },
+    // 武士刀: curve is real but SHALLOWER than 彎刀's (smaller dx offset),
+    // handle is a full 0.28 vs. the blade's 0.2 -- a deliberate, visibly
+    // stepped width jump so "blade" and "tsuka" read as two different
+    // parts, not one continuous taper. Small squared tsuba via a chunky
+    // crossbar (wide relative to its length, not a thin bar).
+    katana: {
+      totalLen: 1.15 + 0.55 + 0.08,
+      parts: [
+        { type: 'polyline', points: [{ at: 0, dx: 0.1 }, { at: 0.6, dx: 0.05 }, { at: 1.15, dx: 0 }], width: 0.2 },
+        { type: 'crossbar', at: 1.15, halfLen: 0.15, width: 0.22 },
+        { type: 'shaft', from: 1.15, to: 1.15 + 0.55, width: 0.28 },
+        { type: 'circle', at: 1.15 + 0.55 + 0.08, r: 0.08 }
+      ]
+    },
+    // 苦無: a small leaf-blade 'polygon' (same technique as the spear's
+    // head, scaled down) plus a genuine 'ring' pommel -- a hole punched
+    // through the silhouette, the one feature in this whole batch that's
+    // structurally a loop rather than a solid shape. Shortest total
+    // length in the batch by design.
+    kunai: {
+      totalLen: 0.6 + 0.18,
+      parts: [
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.18, dx: 0.14 }, { at: 0.48, dx: 0 }, { at: 0.18, dx: -0.14 }] },
+        { type: 'shaft', from: 0.48, to: 0.58, width: 0.16 },
+        { type: 'ring', at: 0.7, rOuter: 0.18, rInner: 0.07 }
+      ]
+    },
+    // 西洋刺劍: the bowl/cup guard IS the identifying feature -- a large
+    // circle (0.34r, comfortably bigger than any other weapon's pommel)
+    // dwarfing the thin straight blade on either side of it.
+    rapier: {
+      totalLen: 1.5 + 0.42 + 0.12,
+      parts: [
+        // pointed blade (see shortSword's own comment on why 'shaft' alone
+        // isn't enough -- its rounded cap reads as a rod, not a rapier tip)
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.11 }, { at: 1.5, dx: 0.11 }, { at: 1.5, dx: -0.11 }, { at: 0.12, dx: -0.11 }] },
+        { type: 'circle', at: 1.5, r: 0.34 },
+        { type: 'shaft', from: 1.5, to: 1.5 + 0.42, width: 0.22 },
+        { type: 'circle', at: 1.5 + 0.42 + 0.12, r: 0.12 }
+      ]
+    },
+    // 光劍: no guard/crossbar at all (unlike every bladed weapon above) --
+    // just a thin blade meeting a short, visibly CHUNKIER hilt (0.34 vs
+    // the blade's 0.2, the widest width-jump ratio in the batch) with two
+    // thin grip-texture rings. Blade width kept at the established 0.22
+    // floor rather than pushed thinner, to survive the blur pass; the
+    // "delicate blade" read comes from the hilt contrast instead.
+    lightsaber: {
+      totalLen: 1.2 + 0.5,
+      parts: [
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.1, dx: 0.1 }, { at: 1.2, dx: 0.1 }, { at: 1.2, dx: -0.1 }, { at: 0.1, dx: -0.1 }] },
+        { type: 'shaft', from: 1.2, to: 1.2 + 0.35, width: 0.34 },
+        { type: 'crossbar', at: 1.32, halfLen: 0.19, width: 0.07 },
+        { type: 'crossbar', at: 1.44, halfLen: 0.19, width: 0.07 },
+        { type: 'circle', at: 1.2 + 0.5, r: 0.08 }
+      ]
+    },
+    // 手斧: a single curved wedge 'polygon' bulging to ONE side only,
+    // deliberately small and short-handled -- the direct visual contrast
+    // for 戰斧's much larger double wedge below.
+    // Haft drawn as a single continuous shaft from tip to butt (visible
+    // passing behind the blade, matching a real axe's handle poking
+    // through), with the blade wing layered on top as a separate closed
+    // 'polygon' -- replaces the original single fan-shaped polygon
+    // spanning the whole head, which rendered as one smooth curve (a
+    // spade/ladle silhouette) rather than a distinct wedge, found by
+    // screenshot review.
+    handAxe: {
+      totalLen: 0.3 + 0.65,
+      gripRatio: 0.78,
+      parts: [
+        { type: 'shaft', from: 0, to: 0.3 + 0.65, width: 0.12 },
+        // compact, abrupt step-out from the thin haft (short 'at' span,
+        // big dx jump) so the blade reads as a separate attached wedge --
+        // the first attempt spanned too much of the haft's own length
+        // with too small a dx jump, so it blended into one smooth taper
+        // instead of a distinct head, confirmed by screenshot.
+        { type: 'polygon', points: [{ at: 0.3, dx: 0.06 }, { at: 0.26, dx: 0.38 }, { at: 0.14, dx: 0.34 }, { at: 0.08, dx: 0.06 }] }
+      ]
+    },
+    // 戰斧: a symmetric DOUBLE-bit wedge (labrys/butterfly-axe silhouette
+    // -- blades fanning to both sides from a shared haft-line, not one
+    // side like 手斧), plus a longer handle. Both the head's width and
+    // the overall length are visibly larger than 手斧, not just longer.
+    // Same visible-haft-plus-separate-wing technique as 手斧, doubled --
+    // two independent closed 'polygon' wings straddling the haft (a real
+    // labrys/double-bit silhouette: a clear waist between each wing and
+    // the shaft) instead of one 6-point outline, which rendered as a
+    // single smooth curve rather than two distinct blades, same failure
+    // mode 手斧's original one-polygon version had.
+    battleAxe: {
+      totalLen: 0.5 + 1.65,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'shaft', from: 0, to: 0.5 + 1.65, width: 0.14 },
+        // 5-point crescent (not a 4-point convex lens): each wing flares
+        // out, dips back IN toward the haft at its own midpoint, then
+        // flares out again before returning to the shaft -- the concave
+        // dip is what makes it read as a curved cutting edge rather than
+        // a smooth spade/leaf outline blending into the shaft (confirmed
+        // by screenshot: a plain 4-point wing, even compact, still merged
+        // into one continuous silhouette with no perceptible waist).
+        { type: 'polygon', points: [{ at: 0.48, dx: 0.07 }, { at: 0.4, dx: 0.5 }, { at: 0.3, dx: 0.22 }, { at: 0.2, dx: 0.46 }, { at: 0.12, dx: 0.07 }] },
+        { type: 'polygon', points: [{ at: 0.48, dx: -0.07 }, { at: 0.4, dx: -0.5 }, { at: 0.3, dx: -0.22 }, { at: 0.2, dx: -0.46 }, { at: 0.12, dx: -0.07 }] }
+      ]
+    },
+    // 木棍: the deliberately plainest shape in the whole batch -- a single
+    // uniform-width shaft, no head, no cap, no nodes. Exists specifically
+    // as the "undecorated" reference that 長杖's nodes read against.
     woodenStick: {
       totalLen: 1.5,
       parts: [
-        { type: 'shaft', from: 0, to: 0.25, width: 0.26 }, // slightly thicker striking end
-        { type: 'shaft', from: 0.25, to: 1.5, width: 0.22 }
+        { type: 'shaft', from: 0, to: 1.5, width: 0.22 }
       ]
     },
-    ironHammer: {
-      totalLen: 0.3 + 1.0,
-      gripRatio: 0.8,
-      parts: [
-        { type: 'crossbar', at: 0.3, halfLen: 0.24, width: 0.36 }, // hammer head block
-        { type: 'shaft', from: 0.3, to: 0.3 + 1.0, width: 0.22 }
-      ]
-    },
-    handAxe: {
-      totalLen: 0.35 + 0.8,
-      gripRatio: 0.78,
-      parts: [
-        { type: 'diagonal', at: 0.35, to: 0, dx: 0.32, width: 0.24 }, // axe blade fanning to one side
-        { type: 'shaft', from: 0.35, to: 0.35 + 0.8, width: 0.22 }
-      ]
-    },
-    katana: {
-      totalLen: 1.1 + 0.65 + 0.1,
-      parts: [
-        { type: 'shaft', from: 0, to: 1.1, width: 0.22 },
-        { type: 'crossbar', at: 1.1, halfLen: 0.16, width: 0.14 }, // tsuba, simplified as a thin crossbar
-        { type: 'shaft', from: 1.1, to: 1.1 + 0.65, width: 0.22 },
-        { type: 'circle', at: 1.1 + 0.65, r: 0.1 }
-      ]
-    },
-    kunai: {
-      totalLen: 0.85,
-      parts: [
-        { type: 'triangle', tipAt: 0, baseAt: 0.35, baseWidth: 0.24 },
-        { type: 'shaft', from: 0.35, to: 0.7, width: 0.22 },
-        { type: 'circle', at: 0.7, r: 0.15 } // ring pommel
-      ]
-    },
-    rapier: {
-      totalLen: 2.0,
-      parts: [
-        { type: 'shaft', from: 0, to: 1.35, width: 0.22 },
-        { type: 'circle', at: 1.35, r: 0.16 }, // bell guard, simplified as a circle
-        { type: 'shaft', from: 1.35, to: 1.85, width: 0.22 },
-        { type: 'circle', at: 1.85, r: 0.15 }
-      ]
-    },
-    battleAxe: {
-      totalLen: 0.5 + 1.6,
-      gripRatio: 0.85,
-      parts: [
-        { type: 'diagonal', at: 0.5, to: 0, dx: 0.42, width: 0.3 }, // large axe blade
-        { type: 'shaft', from: 0.5, to: 0.5 + 1.6, width: 0.24 }
-      ]
-    },
-    flailMace: {
-      totalLen: 0.22 + 1.5 + 0.18,
-      gripRatio: 0.92,
-      parts: [
-        { type: 'circle', at: 0.22, r: 0.22 }, // spiked ball head
-        { type: 'shaft', from: 0.22, to: 0.22 + 1.5, width: 0.22 }, // chain, rendered as a rod (no fine links at this scale)
-        { type: 'shaft', from: 0.22 + 1.5, to: 0.22 + 1.5 + 0.18, width: 0.26 } // grip end
-      ]
-    },
+    // 長杖: same plain shaft technique as 木棍, but with two node bumps
+    // (short wide crossbars breaking up the otherwise uniform width) plus
+    // an ornamental cap -- the nodes are the one deliberate difference
+    // from 木棍's total plainness.
     staff: {
       totalLen: 2.85 + 0.15,
       parts: [
-        { type: 'shaft', from: 0, to: 2.85, width: 0.22 },
-        { type: 'circle', at: 2.85, r: 0.15 } // ornamental cap
+        { type: 'shaft', from: 0, to: 0.9, width: 0.2 },
+        { type: 'crossbar', at: 0.9, halfLen: 0.16, width: 0.16 },
+        { type: 'shaft', from: 0.9, to: 1.8, width: 0.2 },
+        { type: 'crossbar', at: 1.8, halfLen: 0.16, width: 0.16 },
+        { type: 'shaft', from: 1.8, to: 2.85, width: 0.2 },
+        { type: 'circle', at: 2.85 + 0.15, r: 0.15 }
       ]
     },
+    // 鐵鎚: a genuine rectangular BLOCK head via 'polygon' (four square
+    // corners, not a thin crossbar) -- unmistakably a hammer's box shape,
+    // not an axe's wedge or a sword's crossguard.
+    ironHammer: {
+      totalLen: 0.42 + 0.95,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [{ at: 0.18, dx: -0.26 }, { at: 0.42, dx: -0.26 }, { at: 0.42, dx: 0.26 }, { at: 0.18, dx: 0.26 }] },
+        { type: 'shaft', from: 0.42, to: 0.42 + 0.95, width: 0.2 }
+      ]
+    },
+    // 木柄鐵鎚: the same rectangular-block technique as 鐵鎚, but visibly
+    // BIGGER in both dimensions (0.36 long x 0.72 wide vs. 鐵鎚's 0.24 x
+    // 0.52), on a longer plain handle -- same shape family, unmistakably
+    // heavier scale.
     warHammer: {
-      totalLen: 0.45 + 2.25,
+      totalLen: 0.6 + 2.15,
       gripRatio: 0.85,
       parts: [
-        { type: 'crossbar', at: 0.45, halfLen: 0.3, width: 0.4 }, // heavy hammer head block
-        { type: 'shaft', from: 0.45, to: 0.45 + 2.25, width: 0.24 }
+        { type: 'polygon', points: [{ at: 0.24, dx: -0.36 }, { at: 0.6, dx: -0.36 }, { at: 0.6, dx: 0.36 }, { at: 0.24, dx: 0.36 }] },
+        { type: 'shaft', from: 0.6, to: 0.6 + 2.15, width: 0.22 }
       ]
     },
-    lightsaber: {
-      totalLen: 1.05 + 0.55,
+    // 流星錘: a spiked star 'polygon' head (buildStarPoints, 7 spikes) --
+    // unmistakably neither a smooth ball nor a blade -- connected to the
+    // grip by a short zigzagging 'polyline' (the jagged connector reads
+    // as "chain," the one feature that separates it from a plain mace).
+    flailMace: {
+      totalLen: 0.87 + 1.1,
+      gripRatio: 0.92,
       parts: [
-        // plain flat-silhouette blade -- no glow/light-emission effect,
-        // this project's entire visual language stays pure SIL fills
-        { type: 'shaft', from: 0, to: 1.05, width: 0.22 },
-        { type: 'shaft', from: 1.05, to: 1.05 + 0.55, width: 0.3 } // hilt, deliberately wider than the blade
+        { type: 'polygon', points: buildStarPoints(0.3, 7, 0.22, 0.11) },
+        { type: 'polyline', points: [{ at: 0.52, dx: 0 }, { at: 0.63, dx: 0.1 }, { at: 0.75, dx: -0.1 }, { at: 0.87, dx: 0 }], width: 0.12 },
+        { type: 'shaft', from: 0.87, to: 0.87 + 1.1, width: 0.24 }
       ]
     }
   };
