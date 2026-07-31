@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v34 — 移除熊耳、新增牛角與 17 項單點配件、配件選單整合</title>
+<title>剪影走路/跑步循環 v35 — 新增腳邊掛載點與倒插/平放配件、隨身寵物(靜態版)</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,9 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v34</div>
-    <h1>移除熊耳、新增牛角與 17 項單點配件、配件選單整合</h1>
-    <p class="sub"><b>熊耳直接移除</b>——效果始終不理想,不再花時間除錯,<code>drawBearEarsAccessory</code>/<code>bearEarApexBeyondHeadTop</code>/<code>BEAR_EAR_*</code> 全數刪除,沒有其他地方引用它們。<br><br><b>新增牛角</b>,沿用雙元件對稱掛載點機制(跟惡魔角同一套 <code>drawHornCapsule</code>,只是更粗、傾角更淺更外八)。第一版嘗試 45 度陡角失敗——傾角太陡時,膠囊的長度大部分轉成側向位移而非向外伸出,導致尖端在圓形頭上完全沒有清出頭部邊界(可見度算出 -1.4%);改用 25 度、拉高高度比例後重新解出兩種頭型皆達 60% 可見度。這次也比照回報要求明確驗證了眼睛安全距離(雖然膠囊/三角形類配件理論上不會有熊耳那種問題——膠囊只會往根部的反方向延伸,不像圓形會朝四面八方長,包括往頭部中心方向),牛角根部到眼睛距離在全部 17 種原型上最小仍有數個 px 餘裕,量級遠大於熊耳當初的擦邊值。<br><br><b>新增 17 項單點配件</b>(鴨舌帽、貝雷帽、巫師帽、草帽、牛仔帽、單天線、呆毛、生日派對帽、感測器指示燈、聖誕帽、光環、皇冠、四葉草、小白花、竹蜻蜓、小麥穗、楓葉),比照小帽子/雙天線的公式,錨點固定在頭部掛載點本身(不像雙元件配件是往內衍生),風險上原本就較低。新增 <code>drawInMountFrame</code>(將 canvas 平移旋轉到掛載點自己的局部座標系,局部「上」= OUT 方向)取代逐一手算 out/perp 向量的寫法。首輪截圖(尤其鎖定圓角方形頭系列)發現約半數配件太不明顯——帽簷貼著頭部邊緣導致跟頭部本身的寬度混在一起看不出來(鴨舌帽/草帽/牛仔帽/貝雷帽)、多瓣造型的花瓣間距太窄在這個畫布尺度直接糊成一坨黑影(四葉草/小白花/楓葉)、細節塞太多超出小頭原型的實際像素解析度(小麥穗原本 3 對小枝葉全部糊在莖的根部,直接砍成 2 對並加大)。草帽/牛仔帽的帽簷即使放大到原本 2 倍,在 headR=6 的最小原型上仍完全不可見——不是比例問題,是絕對像素問題(帽簷寬度算出來的世界單位在極小頭圍下四捨五入後,跟頭部本身在該高度的既有寬度幾乎相等,自然被誤判成頭部的一部分),最終需要拉到 1.5 倍 headR 才在所有原型上穩定可辨識。<br><br><b>配件選單整合為單一下拉選單</b>:新增 <code>HEAD_ACCESSORY_REGISTRY</code>,每項頭部配件一筆(<code>draw</code> + <code>apex</code>),下拉選單選項直接從註冊表的 key/label 產生,不會手動漏接;<code>headAccessoryClearance()</code> 跟畫面繪製都改成查表,而不是一長串布林值 if 判斷。貓尾巴、手持道具維持獨立勾選框(不同掛載點類型,可跟頭部配件同時測試互動)。24 項頭部配件 + 「無」共 25 個選項,一次只能選一項,快速切換零延遲、zero console 錯誤。全部 17 種原型 × 21 種姿勢,配件下拉選單輪替搭配貓尾巴/手持道具同時開啟,zero console 錯誤。</p>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v35</div>
+    <h1>新增腳邊掛載點與倒插/平放配件、隨身寵物(靜態版)</h1>
+    <p class="sub"><b>新增腳邊掛載點</b> <code>footMount</code>:Y 座標固定用 <code>baseY</code>(跟 <code>drawGroundShadow</code> 完全同一個地面參考值,對所有原型都一樣,矮胖/長腿原型不需要各自另外算),X 座標用已經隨原型縮放好的 <code>FRONT_PIVOT_CFG.hipHalfW</code> 加上腿寬一半跟頭部半徑的固定邊距,寬/胖原型的較寬 <code>hipHalfW</code> 會自動把配件推得更外側,不需要逐一原型手調。<br><br><b>兩種擺放姿態</b>:<code>FOOT_ACCESSORY_REGISTRY</code> 每筆多一個 <code>footPlacement: 'stuck' | 'flat'</code> 欄位,兩者都沿用既有的 <code>drawInMountFrame</code>(局部「上」= OUT 方向、「右」= perp 方向)——「倒插」類直接沿局部上方向畫(劍尖朝上、劍柄在下,示範配件:劍),「平放」類沿局部右(perp)方向延伸畫(沿用草帽帽簷、竹蜻蜓螺旋槳桿子已經驗證過的同一招,示範配件:水壺)。<br><br><b>簡化版轉場</b>:<code>footMount</code> 在側身視角跟整段轉正面過渡動畫(<code>turnP</code> 從 0 到 1 期間)一律回傳 <code>null</code>,只有 <code>turnP >= 1</code>(完全站定正面)才回傳實際座標——<code>drawTurnPivotMove</code> 本來就同時服務轉場(<code>turnP</code> 變動)跟所有正面靜止姿態(<code>turnP</code> 固定為 1),單一個門檻判斷式就同時涵蓋兩種呼叫情境,零特例;<code>drawFrontDejected</code> 因為 <code>STATE_GRAPH</code> 定義只能從已經正面的狀態進入,不需要額外門檻。手部持有物收納到背後的平滑轉場動畫本輪明確不做,留待之後討論。<br><br><b>隨身寵物(靜態版)</b>:純剪影、無發光效果,靜態站姿,跟其他配件一樣走 <code>drawInMountFrame</code> + <code>ctx.fillStyle = SIL</code> 的既有畫法,沒有另外開發新的呈現邏輯。發光/晃動待確認比例後再另外評估,本輪不做。<br><br><b>兩輪除錯</b>:第一輪截圖發現三個問題——劍的線寬比例在 <code>boxChubbyBlur</code>(<code>ACCESSORY_BLUR_RADIUS=1px</code>)上換算成絕對像素不到 1.5px,直接被模糊柔化通道完全抹除(逐像素比對整張畫布找不到任何劍的痕跡,不是視覺不明顯,是真的沒畫出來);水壺比例太細讀不出「水壺」的輪廓;寵物太小且離腿太近,讀起來像腿上的一個突起而非獨立個體。加粗劍/水壺的寬度比例後解決了柔化抹除跟不明顯的問題,但二輪截圖比對背景像素差異(<code>diff</code> 分析,而非單純肉眼看縮圖)發現劍在 <code>boxChubbyBlur</code>上雖然像素上有畫出來(對照無配件版本的差異分析,找到 474 個差異像素、最大差值 420),但視覺上仍緊貼在腿的模糊暈邊內,幾乎融合成一體——原因是模糊原型的軀體本身會往外暈開 <code>BLUR_RADIUS</code> 的柔化半徑,配件即使緊貼在「銳利邊緣」外也還在這圈暈邊裡面。修正方式是把共用的 <code>footMountDxFor()</code> 邊距公式加上 <code>+BLUR_RADIUS*2</code> 的額外淨空(非模糊原型 <code>BLUR_RADIUS=0</code>,原本已核可的位移完全不受影響),搭配放大寵物本體/耳朵/眼睛比例,重新截圖確認三項配件在 <code>longlimb</code>、<code>chubby</code>、<code>boxChubbyBlur</code> 三種代表性原型上都清楚可辨識、跟腿部有明確視覺分離。全部 17 種原型 × 21 種姿勢,腳邊配件輪替搭配帽子頭部配件、貓尾巴、手持道具同時開啟,zero console 錯誤。</p>
   </header>
 
   <div class="compare">
@@ -104,9 +104,16 @@
           <option value="">無</option>
         </select>
       </label>
+      <label class="toggle" style="min-width:220px;">
+        腳邊配件
+        <select id="footAccessorySelect" style="flex:1; background:#1c1e24; color:var(--ink); border:1px solid var(--line); border-radius:7px; padding:6px 10px; font-family:ui-monospace,monospace; font-size:12px;">
+          <option value="">無</option>
+        </select>
+      </label>
     </div>
     <p class="note">切換原型會重建所有支點/角度座標並把狀態機重置回「停下不走」(側身疊加層一併清除),走路/跑步/情境預覽三個上方畫布也會跟著換成新原型的比例——同一套狀態機、過渡曲線、疊加層架構,五種原型共用,只有下面列出的幾何/角度數值換了一組。</p>
     <p class="note">貓尾巴/手持道具是另外兩種掛載點(背後/雙手),維持獨立勾選框,可以跟頭部配件同時開啟做互動測試。頭部配件(小帽子、貓耳/兔耳/惡魔角/牛角/鹿角/雙天線這 6 項雙元件對稱衍生配件,加上鴨舌帽/貝雷帽/巫師帽/草帽/牛仔帽/單天線/呆毛/生日派對帽/感測器指示燈/聖誕帽/光環/皇冠/四葉草/小白花/竹蜻蜓/小麥穗/楓葉這 17 項單點延伸配件,共 24 項)全部收整合成一個下拉選單,一次只能選一項——選單選項直接從程式內部的配件註冊表(<code>HEAD_ACCESSORY_REGISTRY</code>)產生,新增配件只需要在該註冊表加一筆,選單跟繪製邏輯自動同步,不會像過去每個配件各自一個勾選框那樣容易漏接。</p>
+    <p class="note">腳邊配件是全新的掛載點類型(<code>footMount</code>),地面高度(Y)對所有原型一致(跟角色本身腳掌落地的參考線相同),水平位置(X)沿用正面站姿髖寬比例往外推,讓矮胖/短肢類原型也能自動避開腿部輪廓。這個掛載點只有在轉場「完全抵達」正面朝向的穩定姿勢時才會出現(側身、以及轉正面/轉回側身的過渡動畫全程都是空的)——先上線這個簡化版本,配件從手上收起、瞬間出現在腳邊,平滑轉場的動畫之後再另外處理。目前有三項示範:劍(倒插在地上,配件沿掛載點正上方延伸)、水壺(平放在地上,配件沿水平方向延伸)、隨身寵物(全新配件類別,一個會站在角色腳邊的生物剪影,目前是純剪影靜態站姿,不含待機動畫或發光效果)。</p>
     <canvas id="stageFsm" width="480" height="360" style="max-width:320px; margin:0 auto;"></canvas>
     <div class="controls" style="margin-top:12px; padding-top:12px; gap:10px; flex-wrap:wrap;">
       <button id="fsmWalkBtn" type="button" data-target="walk">慢走</button>
@@ -1220,6 +1227,21 @@
   // symbol drawn above the head via the shared symbol set. Every existing
   // caller (toFront/fromFront/toCheer/fromCheer/front/frontCheer) omits it,
   // so they keep behaving exactly as before -- this is purely additive.
+  // footMountDx: shared X-offset formula for the foot-mount point (used by
+  // both drawTurnPivotMove and drawFrontDejected). Base margin
+  // (hipHalfW*1.7 + legW/2 + headR*0.15) was tuned by screenshot review to
+  // clear the leg on non-blur archetypes. On blur-edge archetypes that
+  // alone wasn't enough -- the body's own blur halo (radius BLUR_RADIUS)
+  // bleeds outward past the leg's rendered edge, and a foot accessory
+  // sitting just past the sharp edge still visually reads as fused to the
+  // leg once both are softened. +BLUR_RADIUS*2 extra clearance (0 on
+  // non-blur archetypes, since BLUR_RADIUS=0 there, so their
+  // already-approved offset is untouched) pushes it clear of that halo,
+  // confirmed by screenshot on boxChubbyBlur (BLUR_RADIUS=3).
+  function footMountDxFor(hipHalfW, legW, headR){
+    return hipHalfW * 1.7 + legW / 2 + headR * 0.15 + BLUR_RADIUS * 2;
+  }
+
   function drawTurnPivotMove(ctx, baseX, baseY, turnP, armAngleNearDeg, armAngleFarDeg, breathT, extra){
     extra = extra || {};
     const legAngleNearDeg = extra.legNear || 0, legAngleFarDeg = extra.legFar || 0;
@@ -1392,11 +1414,47 @@
     // 刻意不做尾巴"). Head/hands stay fully visible from the front, though,
     // so those three mounts are real here. A caller must check mounts.back
     // for null before using it.
+    //
+    // ---------- component U: foot-side mount (new anchor type) ----------
+    // Ground-level point beside the character's feet -- used for (1) hand
+    // props "stowed" once the character is fully facing front (see the
+    // stowOnBack-style plan; the hand item disappears and this is where a
+    // foot-based equivalent would sit instead) and (2) a brand new
+    // accessory class, a standing companion pet. Two things make this
+    // mount genuinely easier than every prior one:
+    //
+    // Y is trivially archetype-independent: it's just `baseY`, the exact
+    // same ground-contact reference `drawGroundShadow` already draws its
+    // shadow ellipse at for every archetype regardless of leg length or
+    // body proportions -- a chubby archetype's short legs and a long-limbed
+    // archetype's long legs both put their feet at baseY by construction
+    // (hipY = baseY - legLen), so there's no per-archetype leg-length
+    // derivation needed here at all, unlike almost every other pivot in
+    // this file.
+    //
+    // X reuses the SAME archetype-scaled front-stance half-width the legs
+    // themselves already stand at (FRONT_PIVOT_CFG.hipHalfW, torsoRX-scaled
+    // -- a chubby/wide archetype already gets a proportionally wider stance
+    // "for free"), pushed out further (x1.5) plus half the leg's own
+    // thickness so the item clears the leg's silhouette rather than
+    // overlapping it -- confirmed by screenshot on chubby/short-limbed
+    // archetypes, not just assumed from the formula.
+    //
+    // Only present once turnP reaches exactly 1 -- i.e. the transition has
+    // fully LANDED on a front-facing state, never mid-turn. Both toFront
+    // (turnP=p, 0->1) and fromFront (turnP=1-p, 1->0) naturally produce
+    // null for their entire animated span and flip to real coordinates
+    // only at the single frame where the character is genuinely standing
+    // front-on -- this is the simplified "no smooth hand-off" version
+    // agreed on; a mid-transition interpolated position is future work.
+    const footMountDx = footMountDxFor(FRONT_PIVOT_CFG.hipHalfW, cfg.legW, cfg.headR);
+    const footMount = turnP >= 1 ? { x: baseX + footMountDx, y: baseY, angle: 0 } : null;
     return {
       back: null,
       headTop: carryMountThroughRotation(headTopPreBow, baseX, hipY, bowRad),
       handNear: carryMountThroughRotation(handNearPreBow, baseX, hipY, bowRad),
       handFar: carryMountThroughRotation(handFarPreBow, baseX, hipY, bowRad),
+      footMount: footMount,
       eyes: eyesData
     };
   }
@@ -1603,11 +1661,20 @@
     // +dx side) maps to "near" to match drawTurnPivotMove's own near=+dx
     // convention in its front-facing (turnP=1) orientation, keeping the
     // near/far labeling consistent across every front-facing render path.
+    //
+    // footMount: no turnP gating needed here (unlike drawTurnPivotMove) --
+    // frontDejected is only ever reached FROM 'front' (see STATE_GRAPH:
+    // frontDejected's only edge goes back to 'front'), so by construction
+    // this function is never called while the character is anything other
+    // than fully front-facing. Same formula (cfg.hipHalfW here is
+    // FRONT_PIVOT_CFG.hipHalfW -- it's merged in LAST in this function's
+    // own `cfg`, so it wins over DEJECTED_CFG's own value).
     return {
       back: null,
       headTop: { x: baseX, y: headCy - cfg.headR, angle: 0 },
       handNear: { x: armR.endX, y: armR.endY, angle: Math.PI - armWrapAngle },
-      handFar: { x: armL.endX, y: armL.endY, angle: Math.PI + armWrapAngle }
+      handFar: { x: armL.endX, y: armL.endY, angle: Math.PI + armWrapAngle },
+      footMount: { x: baseX + footMountDxFor(cfg.hipHalfW, cfg.legW, cfg.headR), y: baseY, angle: 0 }
     };
   }
 
@@ -3346,6 +3413,125 @@
     ctx.fill();
   }
 
+  // ---------- foot-mount accessory batch (component U follow-up) ----------
+  // First two demo accessories for footMount, one per footPlacement mode.
+  // Both reuse drawInMountFrame unchanged (mount.angle is always 0 here --
+  // see footMount's own comment -- so local "up" is screen-up and local
+  // "right" is screen-right, no rotation to account for): 'stuck' extends
+  // along local up (the exact same convention every headTop accessory
+  // already uses), 'flat' extends along local right instead, sitting with
+  // its bottom edge resting AT y=0 (the ground line) rather than floating
+  // above it. No new drawing mechanism, just a different fixed local
+  // orientation baked into each accessory's own shapes -- confirms the
+  // "either mode is a re-orientation, not a new mechanism" assessment.
+
+  // 劍 sword (footPlacement: 'stuck') -- blade stub + crossguard + handle +
+  // pommel, planted tip-down at the mount (the tip itself is treated as
+  // underground/not drawn -- only the portion above the ground line is
+  // visible, same convention as how a real sword driven into the ground
+  // would actually look from the side).
+  //
+  // Width ratios bumped after screenshot review: the first pass (0.09-0.12)
+  // rendered fine on non-blur archetypes but was completely erased on
+  // boxChubbyBlur -- at headR=8 those ratios are under 1px absolute width
+  // BEFORE the accessory-softening pass even applies its own ~1px blur, so
+  // there was nothing left to survive it (same failure mode as the very
+  // first blur-edge archetype pass on thin limbs). Widened to comfortably
+  // clear that floor on every archetype, not just re-tuned for this one.
+  const SWORD_BLADE_LEN = 0.5, SWORD_BLADE_WIDTH = 0.2;
+  const SWORD_GUARD_HALF_LEN = 0.34, SWORD_GUARD_WIDTH = 0.16;
+  const SWORD_HANDLE_LEN = 0.35, SWORD_HANDLE_WIDTH = 0.17, SWORD_POMMEL_R = 0.14;
+  const SWORD_HEIGHT_RATIO = SWORD_BLADE_LEN + SWORD_HANDLE_LEN + SWORD_POMMEL_R;
+  function drawSwordAccessory(ctx, footMount, headR){
+    drawInMountFrame(ctx, footMount, function(c){
+      capsule(c, 0, 0, 0, -SWORD_BLADE_LEN * headR, SWORD_BLADE_WIDTH * headR, SIL);
+      const guardY = -SWORD_BLADE_LEN * headR;
+      capsule(c, -SWORD_GUARD_HALF_LEN * headR, guardY, SWORD_GUARD_HALF_LEN * headR, guardY, SWORD_GUARD_WIDTH * headR, SIL);
+      const handleTopY = -(SWORD_BLADE_LEN + SWORD_HANDLE_LEN) * headR;
+      capsule(c, 0, guardY, 0, handleTopY, SWORD_HANDLE_WIDTH * headR, SIL);
+      c.beginPath();
+      c.arc(0, handleTopY, SWORD_POMMEL_R * headR, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // 水壺 canteen (footPlacement: 'flat') -- a capsule lying on its side along
+  // local right (perp direction) with its bottom edge flush against the
+  // ground line, plus a small cap nub at one end.
+  //
+  // Sized up after screenshot review: the first pass read as a thin stick
+  // rather than a canteen (same "too subtle to read" lesson already
+  // learned from several head accessories this project) -- thickness in
+  // particular needed to grow, since a canteen's whole silhouette identity
+  // comes from being visibly ROUND/chunky, not from its length.
+  const CANTEEN_HALF_LEN = 0.5, CANTEEN_THICKNESS = 0.42, CANTEEN_CAP_R = 0.14;
+  const CANTEEN_HEIGHT_RATIO = CANTEEN_THICKNESS + CANTEEN_CAP_R * 0.6;
+  function drawCanteenAccessory(ctx, footMount, headR){
+    drawInMountFrame(ctx, footMount, function(c){
+      const bodyY = -CANTEEN_THICKNESS / 2 * headR;
+      capsule(c, -CANTEEN_HALF_LEN * headR, bodyY, CANTEEN_HALF_LEN * headR, bodyY, CANTEEN_THICKNESS * headR, SIL);
+      c.beginPath();
+      c.arc(CANTEEN_HALF_LEN * headR, bodyY - CANTEEN_THICKNESS * 0.3 * headR, CANTEEN_CAP_R * headR, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  // ---------- companion pet (component V, new accessory class) ----------
+  // A standing creature rather than a static object -- deliberately generic
+  // ("不一定是貓狗,也可能只是一個發光體或毛球" per the brief), built as a
+  // round body + two small ear nubs + two EYE_COLOR dots so it reads as
+  // "alive" through the same light-dots-on-dark-silhouette technique the
+  // main character's own eyes already use, without needing any color or
+  // glow effect. Pure flat silhouette, static standing pose only, on
+  // purpose -- no independent idle sway yet (that would reuse the cat
+  // tail's accessoryT-driven technique, near-zero new mechanism, but is
+  // being held back until the mount/proportions are confirmed first, per
+  // direction). No glow/gradient rendering either -- this project's entire
+  // visual language is flat SIL fills with zero exceptions, and a genuine
+  // light-emission effect would be the first departure from that, which
+  // needs its own separate evaluation rather than being bundled in here.
+  // Body enlarged after screenshot review -- at the original size, sitting
+  // right next to the character's own already-large torso, the pet read as
+  // small and merged into the leg rather than as a distinct standing
+  // companion; also benefits from the same footMountDx margin increase
+  // applied above.
+  const PET_BODY_RX = 0.68, PET_BODY_RY = 0.62;
+  const PET_EAR_R = 0.16, PET_EAR_DX = 0.28, PET_EAR_DY_RATIO = 1.6;
+  const PET_EYE_R = 0.07, PET_EYE_DX = 0.19, PET_EYE_DY_RATIO = 1.05;
+  const PET_HEIGHT_RATIO = PET_BODY_RY * PET_EAR_DY_RATIO + PET_EAR_R;
+  function drawPetAccessory(ctx, footMount, headR){
+    drawInMountFrame(ctx, footMount, function(c){
+      const bodyCy = -PET_BODY_RY * headR;
+      c.beginPath();
+      c.ellipse(0, bodyCy, PET_BODY_RX * headR, PET_BODY_RY * headR, 0, 0, Math.PI * 2);
+      c.fill();
+      const earY = -PET_BODY_RY * PET_EAR_DY_RATIO * headR;
+      for (const dx of [-PET_EAR_DX, PET_EAR_DX]){
+        c.beginPath();
+        c.arc(dx * headR, earY, PET_EAR_R * headR, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.fillStyle = EYE_COLOR;
+      const eyeY = -PET_BODY_RY * PET_EYE_DY_RATIO * headR;
+      for (const dx of [-PET_EYE_DX, PET_EYE_DX]){
+        c.beginPath();
+        c.arc(dx * headR, eyeY, PET_EYE_R * headR, 0, Math.PI * 2);
+        c.fill();
+      }
+    });
+  }
+
+  // Registry mirrors HEAD_ACCESSORY_REGISTRY exactly (draw(ctx, footMount,
+  // headR) + apex(headR) for potential future symbol-style clearance
+  // needs, though nothing currently reads foot-accessory apex -- kept for
+  // structural symmetry/consistency, not because something needs it yet).
+  const FOOT_ACCESSORY_REGISTRY = {
+    sword:   { label: '劍(倒插)', footPlacement: 'stuck', draw: drawSwordAccessory, apex: headR => SWORD_HEIGHT_RATIO * headR },
+    canteen: { label: '水壺(平放)', footPlacement: 'flat', draw: drawCanteenAccessory, apex: headR => CANTEEN_HEIGHT_RATIO * headR },
+    pet:     { label: '隨身寵物', footPlacement: 'creature', draw: drawPetAccessory, apex: headR => PET_HEIGHT_RATIO * headR }
+  };
+  let currentFootAccessory = '';
+
   // Emotion symbol, drawn from a descriptor (overlaySymbolDescriptor for the
   // side-overlay layer, symbolDescriptorFromExtra for the front action
   // group) rather than inline inside a pose function -- this is what fixes
@@ -3425,9 +3611,16 @@
       // softening pass; every other archetype draws straight to `ctx`
       // exactly as before.
       const headAcc = HEAD_ACCESSORY_REGISTRY[currentHeadAccessory];
-      if (headAcc || ACCESSORY_CAT_TAIL || ACCESSORY_PROP){
+      const footAcc = FOOT_ACCESSORY_REGISTRY[currentFootAccessory];
+      if (headAcc || footAcc || ACCESSORY_CAT_TAIL || ACCESSORY_PROP){
         drawAccessoriesMaybeSoftened(stage, accessoryBuf, function(accCtx){
           if (headAcc) headAcc.draw(accCtx, mounts.headTop, WALK_CFG.headR);
+          // footMount is only ever non-null on stable/settled front-facing
+          // frames (see component U's comment in drawTurnPivotMove) -- on
+          // every side-view/transitioning frame mounts.footMount is either
+          // null or simply absent from the returned object, both falsy, so
+          // this naturally does nothing without an extra null check on top.
+          if (footAcc && mounts.footMount) footAcc.draw(accCtx, mounts.footMount, WALK_CFG.headR);
           if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(accCtx, mounts.back);
           if (ACCESSORY_PROP){
             drawPropAccessory(accCtx, mounts.handNear);
@@ -3541,6 +3734,18 @@
   })();
   document.getElementById('headAccessorySelect').addEventListener('change', function(){
     currentHeadAccessory = this.value;
+  });
+  (function populateFootAccessorySelect(){
+    const select = document.getElementById('footAccessorySelect');
+    for (const key in FOOT_ACCESSORY_REGISTRY){
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = FOOT_ACCESSORY_REGISTRY[key].label;
+      select.appendChild(opt);
+    }
+  })();
+  document.getElementById('footAccessorySelect').addEventListener('change', function(){
+    currentFootAccessory = this.value;
   });
 })();
 </script>
