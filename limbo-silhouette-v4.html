@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v40 — 手持武器角度限幅 + 握持點改為中段(gripRatio)</title>
+<title>剪影走路/跑步循環 v41 — A 組長條武器補完 12 款(彎刀/木棍/鐵鎚/手斧/武士刀/苦無/西洋刺劍/戰斧/流星錘/長杖/木柄鐵鎚/光劍)</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v40</div>
-    <h1>手持武器角度限幅 + 握持點改為中段(gripRatio)</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v41</div>
+    <h1>A 組長條武器補完 12 款(彎刀/木棍/鐵鎚/手斧/武士刀/苦無/西洋刺劍/戰斧/流星錘/長杖/木柄鐵鎚/光劍)</h1>
+    <p class="sub"><b>沿用既有機制,無重新發明</b>:12 款新配件全部透過既有的 <code>stuckWeaponEntry()</code> 工廠函式註冊,共用同一個 <code>drawWeaponParts()</code> 渲染器、<code>WEAPON_HELD_MAX_ANGLE</code> 角度限幅、<code>DEFAULT_WEAPON_GRIP_RATIO</code> 握持位置——沒有為任何一款另外寫渲染邏輯或角度公式。<br><br><b>長度分級</b>(headR 單位,遞增排序):苦無 0.85 &lt; 手斧 1.15 &lt; 鐵鎚 1.3 &lt; 短劍 1.35(已完成)&lt; 木棍 1.5 &lt; 光劍 1.6 &lt; 彎刀 1.65 &lt; 武士刀 1.85 &lt; 流星錘 1.9 &lt; 西洋刺劍 2.0 &lt; 戰斧 2.1 &lt; 木柄鐵鎚 2.7 &lt; 長杖 3.0 &lt; 三叉戟 3.15(已完成)&lt; 長矛 3.2(已完成)——16 個量級全部不同,不是套同一組尺寸換外形。彎刀的「彎」在這個畫布尺度無法真的畫出弧線,改用一個固定側向偏移(刀身從護手端到刀尖端斜向偏移)近似「不是直劍」的識別特徵。<br><br><b>gripRatio 個別覆寫</b>:鐵鎚(0.8)、手斧(0.78)、戰斧(0.85)、流星錘(0.92)、木柄鐵鎚(0.85)五款覆寫共用預設值 0.68——這五款都是「頭重」的工具類武器(鎚頭/斧刃/流星錘球),頭重的器具實際持握時會抓得更靠近尾端以取得揮動槓桿,不會抓在跟平衡刀劍一樣的中段位置,所以握持點刻意往尾端(掛載點)靠。其餘 7 款(彎刀/木棍/武士刀/苦無/西洋刺劍/長杖/光劍)都是刀劍/長柄類的平衡器具,直接吃共用預設值,沒有另外覆寫。<br><br><b>holdStyle 全部維持單手</b>,包含戰斧/流星錘/木柄鐵鎚這三款「較重」的候選——不是照單全收單手,而是重新確認過既有的 <code>holdStyle: 'dual'</code> 機制其實是「同一個形狀在兩個掛載點各畫一份」,適合成對配戴物,標成雙手會讓畫面出現兩把斧頭/兩顆流星錘而不是一把雙手持握的武器,是錯誤的視覺結果。這三款改用 <code>gripRatio</code> 覆寫來表達「較重、握持位置更靠後」,不是靠 <code>holdStyle</code>。真正的雙手單一武器渲染仍是尚未建置的機制。<br><br><b>安全餘裕驗證</b>:12 款 × 坐下/躺下/趴下/跳躍 4 種姿勢 × 5 種極端原型(大頭模糊型、大頭娃娃、全圓形型、標準長腿、小頭高個)全部跑過,目視抽查最高風險組合(頭重長柄武器 × 趴下姿勢)確認無穿模。<code>rarity</code> 全數 <code>null</code>。全部 17 原型 × 21 姿勢回歸測試(15 款手部武器輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟)zero console 錯誤。<br><br><b>待確認事項</b>:原始 A 組清單裡的「長劍」這次的補完清單中沒有出現(既不在已完成的三款,也不在這次的 12 款新增裡),推測是清單謄寫時漏掉,尚未實作——請確認是否要在下一輪補上,或是刻意先跳過。</p>
     <p class="sub"><b>問題一根因</b>:手臂擺到最低點時武器仍指向地面——不是角度計算錯,是上一輪的固定傾角用「純加法、沒有限幅」疊加在 <code>mount.angle</code> 上,而 <code>mount.angle</code> 本身會隨手臂擺動在基準角度附近振盪(走路 ±26°、快走 ±42°)。擺到某個極限時,「動態角度 + 固定傾角」算出來的最終值剛好又繞回接近垂直,傾角的效果在那個瞬間被抵銷。<br><br><b>修正</b>:新增 <code>WEAPON_HELD_MAX_ANGLE</code>,只對「最終角度」的上限做限幅(不是對稱範圍)——刻意只限一邊,因為趴下姿勢的手臂角度本身朝完全不同的方向(<code>PRONE_ARM_DEG=172</code>,換算後手部掛載角度接近 0° 而非接近垂直),如果做成對稱限幅會把趴下姿勢的武器角度錯誤地拉回走路專用的範圍。只限制「太靠近垂直向下」這一側,其他姿勢原本就不會碰到這個上限,不受影響。<br><br><b>問題二根因</b>:配件釘在物件末端而非中段——<code>held</code> 模式原本的公式把「握柄尾端(距離=totalLen)」對齊掛載點,尖端往外延伸,等於整根武器只往手掌外側伸出、內側完全沒有東西,這是錨定基準點本身的問題,跟角度無關。<br><br><b>修正</b>:新增 <code>gripRatio</code>(尖端到尾端全長上的握持位置比例),公式改成握持點對齊掛載點,尖端側跟尾端側分別往局部座標系的兩個方向延伸,兩側都有東西露出。共用預設值 <code>DEFAULT_WEAPON_GRIP_RATIO=0.68</code>,經截圖比對後定案;個別配件需要時可覆寫 <code>weapon.gripRatio</code>。<b>這個預設值的改變會影響所有透過 <code>drawWeaponParts</code> 渲染的手持配件(目前是短劍/長矛/三叉戟,原本錨定末端的呈現方式本身就不對,理當一併修正)</b>,但不影響水壺(<code>drawCanteenAccessory</code>,圓潤本體+瓶蓋的形狀沒有尖端到尾端的軸線可言,走完全獨立的繪製函式,從未使用 <code>drawWeaponParts</code>)、也不影響最早的示範劍(<code>sword</code>,用 <code>drawSwordAccessory</code> 直接畫,同樣是獨立函式)——這兩者經截圖重新確認,外觀與這輪修改前完全一致。倒插模式(<code>footStow</code>)的錨定基準點維持不變(尖端頂地面),不受 <code>gripRatio</code> 影響。<br><br><b>驗證</b>:角度方向再次改變後,重新確認坐下/躺下/趴下/跳躍四種姿勢(武器全程手持、不會收納)在極端原型上沒有新的頭部重疊,尤其重新檢查趴下姿勢(手臂本身角度已伸向頭部前方,最容易受這次改動牽動)。全部 17 原型 × 21 姿勢回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>根因診斷</b>:回報指出手持長條武器側身走路時呈現垂直朝下、像拖在地上。先排除「誤用倒插固定角度邏輯」這個假設——確認 <code>drawInMountFrame</code> 本來就用 <code>mount.angle</code> 做旋轉,傳進去的 <code>mounts.handNear</code> 本來就是每一幀隨手臂擺動即時算好的動態值,跟其他手部配件、既有的 <code>drawPropAccessory</code> 共用同一套機制,角度追蹤本身沒有錯、確實是即時更新的。真正原因是武器形狀完全沒有額外偏移,直接沿 <code>handNear.angle</code> 本身的方向畫——這個角度代表「手臂自然垂放的擺動方向」,走路擺幅只有 26°-42°,基準角度接近垂直,所以長條武器跟著這個角度延伸,結果全程接近垂直。真人拿長武器不會讓武器完全平行於垂放的前臂,而是用手腕撐出一個角度斜向持握,這個「持握傾角」是原本設計裡缺少的參數,不是角度計算本身的錯誤。<br><br><b>修正</b>:新增 <code>WEAPON_HELD_TILT</code>(-50°),在 <code>handNear.angle</code> 之上疊加,不是取代——武器角度 = 手臂即時擺動角度 + 固定持握傾角,這樣武器依然完整繼承手臂擺動的動態(走路/跑步循環中角度會隨手臂自然小幅擺動,不是死板固定死一個角度),只是在此基礎上多轉一個角度,呈現參考圖那種沿手臂斜向延伸的自然持握感。<br><br><b>安全餘裕重新驗證</b>:改變角度方向後,原本針對坐下/躺下/趴下/跳躍四種姿勢(手持武器不會收納,全程維持手持外觀)做過的極端原型(大頭模糊型、大頭娃娃、全圓形型等)頭部無重疊驗證重新跑過一次——尤其是趴下姿勢,手臂角度本身就已經伸到頭部前方(<code>PRONE_ARM_DEG=172</code>),持握傾角疊加上去有可能把武器推得更靠近頭部,需要重新確認不會有新的重疊。目視檢查確認全部乾淨。全部 17 原型 × 21 姿勢回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>通用倒插/手持武器渲染器</b> <code>drawWeaponParts()</code>:每款武器的幾何只定義一次,用一組「從武器尖端(距離 0)到握柄尾端(距離 totalLen)」的零件清單描述(<code>WEAPON_SHAPES</code>),同一份資料同時支援兩種呈現——「倒插」尖端頂在掛載點(比照原本示範劍的畫法)、「手持」握柄頂在掛載點、尖端往外延伸,只是決定哪一端對齊局部原點的差異,不是兩套獨立畫法。這修正了上一輪示範劍「持握外觀直接沿用倒插形狀」的已知簡化——正式配件的手持外觀必須是握柄在手、刀尖朝外,不能尖端頂著手掌。<br><br><b>長度分級,不是同一組尺寸套所有配件</b>:短劍 totalLen=1.35 個 headR、長矛/三叉戟各 3.20/3.15 個 headR——刻意拉開量級差距,不是「換個造型、大小照舊」。起因是上一輪的示範劍(totalLen=0.99)被回報視覺上像十字架而非武器;這次三款示範涵蓋短/中/長三個量級,確認辨識度後再決定其餘 13 款怎麼分級(短劍/苦無一類、長劍/彎刀/武士刀/西洋刺劍/戰斧/流星錘一類、長矛/三叉戟/長杖/木柄鐵鎚一類)。<br><br><b>安全餘裕驗證,而非假設</b>:一開始以為需要檢查歡呼/揮手/驚訝等舉手姿勢會不會讓加長後的武器打到頭——實際檢查後發現這些「舉手」的姿勢全部是正面朝向姿勢(<code>turnP=1</code>),武器本來就會自動收納到腳邊,根本不會用手持外觀畫出來,不是這批加長配件的風險點。真正的風險點是坐下/躺下/趴下/跳躍這四種姿勢——它們都不經過 <code>drawTurnPivotMove</code>/<code>drawFrontDejected</code>,<code>mounts.footMount</code> 永遠不存在,武器全程維持手持狀態,而且趴下姿勢的手臂角度本來就「伸到頭部前方」(<code>PRONE_ARM_DEG=172</code>)。針對這四種姿勢,在頭部相對手臂比例最極端的原型(大頭模糊型:headR=12、armLen=8;大頭娃娃:headR=11、armLen=15;全圓形型:armLen==headR)加上基準組(長腳手、小頭高個)× 三款武器全跑一輪,先寫了一個逐像素比對頭部區域的自動化腳本,但腳本用「最上方深色像素往下 40px」當頭部區域的判斷太粗糙,在趴下姿勢手臂本來就伸到頭部附近時大量誤判——改用直接目視檢查腳本標記出的最高風險組合(12 組,涵蓋每個原型、每種姿勢、長矛/三叉戟這兩款最長武器),確認全部乾淨、沒有武器線條穿過頭部剪影。<br><br><b>模糊柔化寬度驗證</b>:武器主幹寬度比例統一 >= 0.22(headR 相對值),這次額外拿 <code>wideFlatBlur</code>(headR=7、BLUR_RADIUS=3,是全部 4 個模糊原型裡 headR 最小、柔化半徑卻是最大值的組合,比先前只驗過的 <code>boxChubbyBlur</code>/<code>boxSlenderBlur</code> 更嚴苛)重新驗證,三款武器倒插在腳邊都清楚可見,沒有重演上一輪劍線寬 0.09-0.12 被完全抹除的問題。<br><br><b>單手/雙手判斷</b>:三款示範都沒有標註 <code>holdStyle</code>,吃 v37 訂下的預設值(單手)。三叉戟原本列在使用者提出的「雙手候選」清單,評估後判斷不適用現有的 <code>holdStyle: 'dual'</code> 機制——目前的雙手邏輯是「同一個形狀在兩個掛載點各畫一份」(適合成對配戴的物件,例如一對鈴鐺),不是「同一件武器橫跨雙手的單一握持」;若直接把三叉戟標成 <code>dual</code>,畫面上會出現兩支三叉戟而不是一支雙手持握的三叉戟,是錯誤的視覺結果。真正的雙手單一武器渲染(掛載點錨定在雙手之間)是一個尚未建置的新機制,不在這輪的 <code>holdStyle</code> 旗標範圍內,留待有實際需求時再評估——這輪 16 款武器建議全部維持單手預設,不手動標註 <code>dual</code>。<code>rarity</code> 三款均為 <code>null</code>,比照既有規範。全部 17 原型 × 21 姿勢回歸測試(手部配件+寵物輪替搭配頭部配件/貓尾巴/道具)zero console 錯誤。</p>
@@ -3670,6 +3671,127 @@
         { type: 'diagonal', at: 0.42, to: 0.23, dx: 0.26, width: 0.13 },
         { type: 'shaft', from: 0.42, to: 0.42 + 2.75, width: 0.22 }
       ]
+    },
+    // ---- A-batch remainder (12 of 16) ----
+    // Length tiers, ascending (headR units), anchored against the three
+    // already-confirmed shapes above: 苦無 0.85 < 手斧 1.15 < 鐵鎚 1.3 <
+    // 短劍 1.35(done) < 木棍 1.5 < 光劍 1.6 < 彎刀 1.65 < 武士刀 1.85 <
+    // 流星錘 1.9 < 西洋刺劍 2.0 < 戰斧 2.1 < 木柄鐵鎚 2.7 < 長杖 3.0 <
+    // 三叉戟 3.15(done) < 長矛 3.20(done). Every shaft/blade-type part
+    // carrying the weapon's primary visible length stays >=0.22 (the
+    // width floor re-derived in the first 3-weapon round, verified
+    // against wideFlatBlur); only short decorative sub-parts (kunai's
+    // ring, trident-style prongs) go thinner, matching what was already
+    // screenshot-confirmed to survive on the shapes shipped so far.
+    //
+    // gripRatio overrides: 鐵鎚/手斧/戰斧/流星錘/木柄鐵鎚 grip further
+    // toward the butt than the 0.68 default (0.78-0.92) -- these are all
+    // head-heavy tools (hammer block, axe blade, flail ball), and a
+    // head-heavy implement is naturally gripped nearer the butt end for
+    // leverage/swing control, not mid-shaft like a balanced blade. Every
+    // other weapon in this batch uses the shared default, no override.
+    curvedSaber: {
+      totalLen: 1.0 + 0.53 + 0.12,
+      parts: [
+        // slight sideways skew (on-axis at the guard, offset at the tip)
+        // approximates a curved blade -- this project's flat-silhouette
+        // scale can't render a true curve, a fixed skew reads as "not a
+        // straight sword" which is the identifying feature that matters.
+        { type: 'diagonal', at: 1.0, to: 0, dx: 0.16, width: 0.24 },
+        { type: 'crossbar', at: 1.0, halfLen: 0.26, width: 0.15 },
+        { type: 'shaft', from: 1.0, to: 1.0 + 0.53, width: 0.22 },
+        { type: 'circle', at: 1.0 + 0.53, r: 0.12 }
+      ]
+    },
+    woodenStick: {
+      totalLen: 1.5,
+      parts: [
+        { type: 'shaft', from: 0, to: 0.25, width: 0.26 }, // slightly thicker striking end
+        { type: 'shaft', from: 0.25, to: 1.5, width: 0.22 }
+      ]
+    },
+    ironHammer: {
+      totalLen: 0.3 + 1.0,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'crossbar', at: 0.3, halfLen: 0.24, width: 0.36 }, // hammer head block
+        { type: 'shaft', from: 0.3, to: 0.3 + 1.0, width: 0.22 }
+      ]
+    },
+    handAxe: {
+      totalLen: 0.35 + 0.8,
+      gripRatio: 0.78,
+      parts: [
+        { type: 'diagonal', at: 0.35, to: 0, dx: 0.32, width: 0.24 }, // axe blade fanning to one side
+        { type: 'shaft', from: 0.35, to: 0.35 + 0.8, width: 0.22 }
+      ]
+    },
+    katana: {
+      totalLen: 1.1 + 0.65 + 0.1,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.1, width: 0.22 },
+        { type: 'crossbar', at: 1.1, halfLen: 0.16, width: 0.14 }, // tsuba, simplified as a thin crossbar
+        { type: 'shaft', from: 1.1, to: 1.1 + 0.65, width: 0.22 },
+        { type: 'circle', at: 1.1 + 0.65, r: 0.1 }
+      ]
+    },
+    kunai: {
+      totalLen: 0.85,
+      parts: [
+        { type: 'triangle', tipAt: 0, baseAt: 0.35, baseWidth: 0.24 },
+        { type: 'shaft', from: 0.35, to: 0.7, width: 0.22 },
+        { type: 'circle', at: 0.7, r: 0.15 } // ring pommel
+      ]
+    },
+    rapier: {
+      totalLen: 2.0,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.35, width: 0.22 },
+        { type: 'circle', at: 1.35, r: 0.16 }, // bell guard, simplified as a circle
+        { type: 'shaft', from: 1.35, to: 1.85, width: 0.22 },
+        { type: 'circle', at: 1.85, r: 0.15 }
+      ]
+    },
+    battleAxe: {
+      totalLen: 0.5 + 1.6,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'diagonal', at: 0.5, to: 0, dx: 0.42, width: 0.3 }, // large axe blade
+        { type: 'shaft', from: 0.5, to: 0.5 + 1.6, width: 0.24 }
+      ]
+    },
+    flailMace: {
+      totalLen: 0.22 + 1.5 + 0.18,
+      gripRatio: 0.92,
+      parts: [
+        { type: 'circle', at: 0.22, r: 0.22 }, // spiked ball head
+        { type: 'shaft', from: 0.22, to: 0.22 + 1.5, width: 0.22 }, // chain, rendered as a rod (no fine links at this scale)
+        { type: 'shaft', from: 0.22 + 1.5, to: 0.22 + 1.5 + 0.18, width: 0.26 } // grip end
+      ]
+    },
+    staff: {
+      totalLen: 2.85 + 0.15,
+      parts: [
+        { type: 'shaft', from: 0, to: 2.85, width: 0.22 },
+        { type: 'circle', at: 2.85, r: 0.15 } // ornamental cap
+      ]
+    },
+    warHammer: {
+      totalLen: 0.45 + 2.25,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'crossbar', at: 0.45, halfLen: 0.3, width: 0.4 }, // heavy hammer head block
+        { type: 'shaft', from: 0.45, to: 0.45 + 2.25, width: 0.24 }
+      ]
+    },
+    lightsaber: {
+      totalLen: 1.05 + 0.55,
+      parts: [
+        // plain flat-silhouette blade -- no glow/light-emission effect,
+        // this project's entire visual language stays pure SIL fills
+        { type: 'shaft', from: 0, to: 1.05, width: 0.22 },
+        { type: 'shaft', from: 1.05, to: 1.05 + 0.55, width: 0.3 } // hilt, deliberately wider than the blade
+      ]
     }
   };
 
@@ -3803,14 +3925,40 @@
       footStow: { placement: 'flat', draw: drawCanteenAccessory, apex: headR => CANTEEN_HEIGHT_RATIO * headR }
     },
     // ---- stuck-category weapon batch (component X), first 3 of 16 ----
-    // 短劍/長矛/三叉戟 chosen as the initial demo trio specifically for
-    // their length spread (totalLen 1.35 / 3.20 / 3.15 headR) -- see
-    // WEAPON_SHAPES' own comment. Remaining 13 (長劍/彎刀/木棍/鐵鎚/手斧/
-    // 武士刀/苦無/西洋刺劍/戰斧/流星錘/長杖/木柄鐵鎚/光劍) pending
-    // confirmation of this trio's proportions and clearance margins.
+    // 短劍/長矛/三叉戟: the initial demo trio, proportions + angle clamp +
+    // gripRatio confirmed. The remaining 12 below reuse the exact same
+    // stuckWeaponEntry() factory, WEAPON_HELD_MAX_ANGLE clamp, and
+    // DEFAULT_WEAPON_GRIP_RATIO (or an explicit override, see
+    // WEAPON_SHAPES' own comment) -- no per-weapon reinvention of any of
+    // the three mechanisms.
+    //
+    // holdStyle: none of these 12 set 'dual', including the head-heavy
+    // 戰斧/流星錘/木柄鐵鎚 candidates -- confirmed (not assumed) that the
+    // existing holdStyle:'dual' mechanism draws the identical shape
+    // independently at BOTH hand mounts (correct for a matched pair worn
+    // one per hand), not a single weapon spanning both hands. Tagging any
+    // of these 'dual' would render two separate axes/flails, not one held
+    // two-handed -- the wrong visual. A real two-handed-single-weapon
+    // mount (anchored between both hands) is still an unbuilt mechanism;
+    // "gripped further back for leverage" is instead expressed through
+    // gripRatio overrides on these three, which is a real, already-
+    // available lever for "this weapon reads as heavier/harder to swing"
+    // without needing the unbuilt mechanism.
     shortSword: stuckWeaponEntry('短劍', 'shortSword'),
     spear: stuckWeaponEntry('長矛', 'spear'),
-    trident: stuckWeaponEntry('三叉戟', 'trident')
+    trident: stuckWeaponEntry('三叉戟', 'trident'),
+    curvedSaber: stuckWeaponEntry('彎刀', 'curvedSaber'),
+    woodenStick: stuckWeaponEntry('木棍', 'woodenStick'),
+    ironHammer: stuckWeaponEntry('鐵鎚', 'ironHammer'),
+    handAxe: stuckWeaponEntry('手斧', 'handAxe'),
+    katana: stuckWeaponEntry('武士刀', 'katana'),
+    kunai: stuckWeaponEntry('苦無', 'kunai'),
+    rapier: stuckWeaponEntry('西洋刺劍', 'rapier'),
+    battleAxe: stuckWeaponEntry('戰斧', 'battleAxe'),
+    flailMace: stuckWeaponEntry('流星錘', 'flailMace'),
+    staff: stuckWeaponEntry('長杖', 'staff'),
+    warHammer: stuckWeaponEntry('木柄鐵鎚', 'warHammer'),
+    lightsaber: stuckWeaponEntry('光劍', 'lightsaber')
   };
   let currentHandAccessory = '';
 
