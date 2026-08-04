@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48 — 手部配件握持系統根因修復 + Direction B 配件著色</title>
+<title>剪影走路/跑步循環 v48.1 — 修正配件懸空緊急問題 + 武士刀/光劍材質配色</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48</div>
-    <h1>手部配件握持系統根因修復,啟動 Direction B 配件著色</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.1</div>
+    <h1>修正配件懸空緊急問題,武士刀/光劍改為材質配色</h1>
+    <p class="sub"><b>問題(緊急)</b>:v48 上線後使用者截圖回報警棍配件完全懸空、飄在角色旁邊,不是握持角度不對這麼單純,懷疑配件根本沒有正確讀取 <code>handNear</code>/<code>handFar</code> 掛載點座標,要求優先於美術細節排查。<br><br><b>排查</b>:先追蹤程式碼呼叫鏈——<code>stepFsm</code> 呼叫 <code>handAcc.draw(accCtx, mounts.handNear, headR)</code>,<code>stuckWeaponEntry</code>/<code>itemEntry</code> 的 <code>draw</code> 一路把同一個 <code>mount</code> 原封不動傳進 <code>drawWeaponParts</code>,座標讀取本身沒有斷開、沒有引用錯變數。再用截圖直接驗證掛載點是否「跟得上」手臂:同一件配件(警棍)在走路循環的連續影格中截圖比對,配件每一幀都確實跟著手臂擺動角度同步移動,只是永遠拖著一段固定距離的空隙——證實這不是「座標沒讀到」,而是「座標讀到了,但被系統性地平移到一個沒有東西填補的空位」。<br><br><b>真正根因</b>:v48 當時新增的 <code>WEAPON_HELD_OUTWARD</code>(0.8 headR,約等於 <code>longlimb</code> 原型自己的 <code>legW/headR</code> 比例,也就是整條腿的「直徑」)把整個武器座標系原點平移離開掛載點本身,平移後的新原點才是握持點真正落腳的位置,但平移路徑上完全沒有繪製任何東西去填補這段距離。長劍、武士刀這類總長較長的配件,因為握把到尾端還有相當長度,平移後仍有機會與腿部剪影重疊、看起來像貼合;但警棍、火把、馬克杯這類總長偏短、握持點又落在其中一端附近的配件,平移量已經超過配件自身尾端能延伸回去的距離,於是懸空脫節。用同一手法測試偏移量 0(配件貼合但長劍幾乎整段被腿吞掉,回到 v48 想解決的原始問題)到 0.8(配件懸空)之間多組數值,搭配這個原型 <code>legW/2 ≈ 0.42 headR</code>(從整條腿的直徑改成半徑,即腿的邊緣而非中心)這個有意義的量,而非隨意再猜一個常數。<br><br><b>修正</b>:<code>WEAPON_HELD_OUTWARD</code> 從 0.8 降到 0.42,並在 <code>drawWeaponParts</code> 內對 <code>c.shadowBlur</code> 逐 part 重設(見下方光劍說明,同一個迴圈這輪也要支援新的發光 part,避免殘留狀態互相污染)。全 92 款配件在 <code>longlimb</code>、<code>chubby</code> 兩種原型、停下/走路姿態下重新截圖比對,警棍/火把/馬克杯/聖杯/十字架/鳶形盾等短小配件全數貼合、沒有懸空縫隙;長劍/武士刀等長配件的刀身分離度也維持在可接受範圍(彎刀這類本來就偏短的彎刀類配件,刀身可視度跟 v48 時一樣有限,不是這次改動造成的退步,留給未來個別配件 <code>heldTilt</code> 覆寫值處理)。17 原型 × 8 個姿態 × 92 款配件輪替重新跑過,zero console 錯誤。<br><br><b>美術修正一:武士刀改為材質配色</b>——使用者認為原本整把套用稀有度金黃色(<code>RARITY_STYLE.S</code>)不像武士刀的真實材質。刀身、鍔、柄、鐺(パンプル)四個 part 各自加上明確的 <code>part.color</code>(鋼灰刀身 <code>#c7ccd3</code>、暗紅鍔跟鐺 <code>#5c2028</code>、深色柄 <code>#1c1b1d</code>)。依 <code>resolveWeaponColor()</code> 既有優先權,<code>part.color</code> 蓋過 <code>style.color</code> 蓋過 <code>style.rarity</code> 查表,武士刀的視覺顏色從此不再經過 <code>RARITY_STYLE.S</code>——這不是拋棄稀有度解耦原則,而是判斷「這批顏色屬於武士刀自身固定的材質特徵(鋼是鋼、鞘是暗紅),不是稀有度分級決定的視覺效果」,跟火把火焰、手電筒光束原本就走 <code>part.color</code> 這條路徑是同一個分類,<code>rarity:'S'</code> 保留在註冊表上純粹供未來稀有度相關 UI(邊框、排序)查詢用,不再驅動任何實際畫面顏色;<code>RARITY_STYLE.S</code> 本身仍保留給未來真正想要「純粹套用分級色、沒有自己材質」的配件使用。<br><br><b>美術修正二:光劍改為核心發光層次</b>——原本刀身是單一 <code>polygon</code> 整片套用 <code>style.color</code>,使用者要求改成「握把維持中性深色、刀身核心發亮、外圍疊一層半透明色暈」的星際大戰式呈現。刀身拆成兩層同心 <code>polygon</code>:外層(較寬,新增的 <code>p.glow</code> 數值觸發 <code>drawWeaponParts</code> 迴圈內對這個 part 設定 <code>c.shadowColor</code>/<code>c.shadowBlur</code> 做出柔和暈染,填色本身也改成半透明 <code>rgba()</code>)不帶自己的 <code>part.color</code>,因此沿用 <code>style.color</code>——五款配色現在只由這一層決定;內層(較窄)則帶固定 <code>part.color:'#f6f9ff'</code> 的亮白,不論外層是哪個顏色都保持核心發白光。握把(<code>shaft</code>+兩個 <code>crossbar</code>+尾端 <code>circle</code>)四個 part 全部加上固定的 <code>part.color:'#3a3b40'</code> 深灰金屬色,不再吃 <code>style.color</code>,五款配色因此只有刀身在變、握把維持一致的金屬握感。五款(螢光藍/綠/紅/黃/亮白)全部套用同一套「核心亮白+外層半透明色暈」邏輯,只有 <code>opts.color</code> 這個 rgba 字串本身的色相不同,截圖逐款確認發光層次一致。<br><br>兩項美術修正都沒有更動 <code>resolveWeaponColor()</code> 的既有優先權邏輯本身,只是更精準地運用「哪個顏色該寫在 part 上(材質固有)、哪個該留給 style(款式/稀有度決定)」這個既有的資料結構分工。</p>
     <p class="sub"><b>問題</b>:使用者回報幾乎所有已完成的手持配件(劍類、盾、十字架、聖杯、剪刀、澆花壺、馬克杯、火把、蔬果、花草、吉他、沙鈴……)都有握持點/握持方向的問題,範圍太廣,不像是個別配件各自的參數錯誤,要求先診斷是否有系統性根因,只用 2-3 款代表性配件(長劍、十字架、剪刀)驗證,不要逐款當獨立問題修。<br><br><b>根因一:握持姿態沒有向外偏移</b>——<code>drawWeaponParts()</code> 的 <code>held</code> 分支過去直接沿用手部掛載點 <code>mount</code> 本身當作武器座標系原點,只疊加 <code>WEAPON_HELD_TILT</code> 角度,沒有任何位置偏移。用長劍量測確認:掛載點座標本身就落在角色手臂輪廓範圍內(不是手臂外緣),武器的整個座標系原點在輪廓內部起算,導致劍身前段(尤其細長的刀鋒/劍尖)有很長一段直接畫在身體剪影裡面,才會看起來「被身體擋住/糊成一團」。新增 <code>WEAPON_HELD_OUTWARD = 0.8</code>(× <code>headR</code>),在套用 <code>heldTilt</code> 之前,先沿著角色朝向的垂直方向把整個武器掛載幀往外推——這是所有握持類配件共用的同一個偏移,不是逐款調位置。<br><br><b>根因二:<code>dist=0</code> 恆為朝外端,並非握持比例可以反轉</b>——一開始以為調整 <code>gripRatio</code>(握持點沿武器軸線的比例)就能讓火把、馬克杯這類「握柄在配件某一端、功能部位在另一端」的配件呈現正確方向,但用十字架/火把兩款配件重新推導 <code>drawWeaponParts()</code> 內 <code>y(dist)</code> 的計算式才發現:不論 <code>gripRatio</code> 設多少,<code>dist=0</code>(配件資料定義的起點)在 <code>held</code> 姿態下永遠對應畫面朝外的那一端,<code>gripRatio</code> 只能滑動握持點沿軸線的位置,無法翻轉哪一端朝外——馬克杯握把、火把火焰、聖杯杯身這類「該露出的部位剛好定義在 <code>dist=0</code>」的配件,單靠 <code>gripRatio</code> 怎麼調都不會露出正確的一端。新增 <code>weapon.heldReverse</code> 布林旗標,設為 true 時對調 <code>y(dist)</code> 內 <code>gripDist - dist</code> 與 <code>dist - gripDist</code> 兩式,讓資料定義端可以整個翻到朝內——套用在聖杯、火把、蘑菇、向日葵/玫瑰/百合/稻穗/小麥束、沙鈴共 9 款。另外盾牌、十字架用劍類預設的 <code>-50°</code> 握持角度並不合適(盾面/十字長邊被轉到不自然的角度),兩根因之外再補一個小型可覆寫機制 <code>weapon.heldTilt</code>,讓個別配件覆寫預設角度而不影響其他配件。<br><br><b>Part 2 個別配件修正(約 24 款,逐款截圖驗證)</b>:A 組劍類——五款握持點對齊劍柄、刀鋒不再被身體遮擋;shortSword 加長、longsword 比 shortSword 更長、curvedSaber 弧度加大、rapier 劍身變薄、katana 定為本批最長並標記稀有度、lightsaber 與 longsword 等長並標記稀有度。B 組——kiteShield 修正握持方向與姿態、cross 改握長邊、chalice 改握杯柄/杯莖。C 組——scissors 重新設計成看得出「打開」的剪刀造型(第一版兩片楔形 <code>polygon</code> 因為兩片各自的回邊互相穿過對方範圍,合併填色後變成一坨類似臉的形狀,改用兩條各自獨立從刀尖經樞紐到握把的 <code>polyline</code> 錐形線才正確分離成可辨識的剪刀)、wateringCan 壺嘴方向轉為朝外、fishingRod 直接整款替換為警棍(<code>baton</code>,不修原本魚竿造型)。D 組——flashlight 燈頭前方加白色光源效果、torch 修正握持方向(<code>heldReverse</code>)、mug 改握握把(<code>gripRatio</code> 0.8→0.42)。E/F 組——carrot、mushroom、sunflower、rose、lily、riceEar、wheatBundle 修正握持方向。H 組——guitar 驗證後確認原 <code>gripRatio:0.86</code> 才是正確值(曾試改 0.5,人物身上比對後畫面反而更差,問題出在根因一,不是這款自己的參數)、maraca 修正握持方向。<br><br><b>Part 3:Direction B——特定配件開始脫離純黑剪影</b>,新增 <code>resolveWeaponColor(style, part)</code> 三層優先權:①<code>part.color</code>(配件資料裡個別部位直接寫死的顏色,用於「這個顏色是配件與生俱來的固定特徵」——火把的火焰、手電筒的光束/光源,這類顏色不該經過稀有度分級,直接寫在 <code>WEAPON_SHAPES</code>/<code>ITEM_SHAPES</code> 對應 part 上);②<code>style.color</code>(登記在 <code>HAND_ACCESSORY_REGISTRY</code> 條目上、由 <code>stuckWeaponEntry</code>/<code>itemEntry</code> 的 <code>opts.color</code> 帶入的整款專屬色,用於「同一個形狀但有多種顏色變體」——光劍的霓虹藍/綠/紅/黃與亮白 5 款各自是獨立登記項,共用同一個 <code>lightsaber</code> 幾何,顏色不寫進形狀資料,寫在各自的登記條目);③<code>style.rarity</code> 查 <code>RARITY_STYLE</code>(沿用 v37 就保留、原本未串接的 <code>rarity</code> 欄位,現在真正接上一個獨立的稀有度→顏色對照表,武士刀標記 <code>rarity:'S'</code> 後自動套用 S 級配色,不需要另外指定顏色,未來任何配件只要標同一個稀有度字串就會自動吃到同一色);找不到以上三者時退回原本純黑剪影 <code>SIL</code>,幾何資料(<code>WEAPON_SHAPES</code>/<code>ITEM_SHAPES</code>)本身維持與著色邏輯解耦,三種「顏色從哪來」的語意（配件固有特徵 / 款式變體 / 稀有度分級）各自對應資料結構裡不同的一層,不會互相打架。這輪保留清單所有 92 款配件,沒有刪除任何項目——刪減/去蕪存菁留待下一輪使用者提供裁剪名單後再處理。</p>
     <p class="sub"><b>問題</b>:握持點統一檢視畫廊(靜態截圖、裁切放大後另外發布成 artifact)雖然能看出問題,但使用者實際要的是能自己在互動測試頁裡直接放大角色,自由切換任何原型/姿勢/配件組合查看,不要每次都靠另外截圖產出一份新畫廊——截圖畫廊只能看事先選好的固定組合,自己在頁面上縮放才能涵蓋所有排列組合。<br><br><b>做法</b>:<code>#stageFsm</code>(狀態機面板的主要角色畫布)外層包一個新的 <code>#stageFsmViewport</code>(<code>overflow:hidden</code>),旁邊加一個「角色放大」滑桿(1x-4x)。畫布本身用 <code>position:absolute; left:...; bottom:0</code> 錨定在 viewport 內——底部對齊 viewport 底部(角色腳邊的參考位置本來就接近畫布底緣),水平位置則動態算出讓角色掛載點 <code>cx=240</code>(跟 <code>stepFsm()</code> 自己用的同一個值)對齊 viewport 正中央。滑桿調大時,畫布本身的顯示寬度變大(瀏覽器對 <code>&lt;canvas&gt;</code> 這種替代元素,只設定寬度時會自動保持 480:360 內在比例,跟 <code>&lt;img&gt;</code> 一樣,不需要額外算高度),而 viewport 的可視窗口同時朝角色實際的像素範圍收攏,兩者疊加的效果才是「角色变大」而不是「畫布變大、角色還是一樣小」。<br><br><b>除錯過程(兩個根因,由淺入深)</b>:①第一版只把 viewport 高度往下收(畫布仍是全寬 480 顯示),放大後角色的確變高了,但畫面變成一個很寬的空景加一個小小的角色,橫向完全沒收攏——用截圖比對兩個版本才注意到問題不是「角色沒有變大」(數學上確實变大了,寬度 320→902px 時角色高度也等比例變大),而是「角色佔畫面的比例沒有變」,因為裁切只動了垂直方向。②加上水平裁切後,放大直接壞掉(4x 縮放後截圖是一整塊 124×80px 的純黑色)——用 <code>getBoundingClientRect()</code> 逐步比對抓出根因:畫布沿用初始化時設定的 <code>style.width:'100%'</code>,這個「100%」是相對於離它最近的「已定位」祖先元素算的,而把 <code>#stageFsmViewport</code> 設成 <code>position:relative</code> 之後,這個祖先正好就是 viewport 本身——而這次改動同時也在縮小 viewport 的寬度(做水平裁切),等於每次滑桿一動,畫布的「100% 寬度」基準,就是「上一次已經縮小過的 viewport」,一路複合縮小下去。修正方式是不再依賴這條 <code>width:'100%'</code> 規則,滑桿每次都改成對一個「穩定不會被裁切邏輯影響」的祖先容器(viewport 的父層,<code>.context-panel</code>)重新量測寬度上限,畫布寬度用 <code>style.width</code> 明確指定像素值,不再假手瀏覽器的百分比繼承。<br><br><b>裁切範圍怎麼定</b>:沒有憑空猜測,直接用 <code>getImageData()</code> 掃描一次實際渲染出來的角色(<code>longlimb</code> 原型、手持短劍、停下站姿),量出角色剪影本身只佔約 21×45 個邏輯像素(對比畫布總尺寸 480×360)——這個量測結果拿來定裁切目標的緊縮端(4x 時顯示邏輯座標 140×90 的視窗,大約是角色本身尺寸的 2 倍留白),1x 時維持顯示完整 480×360(不裁切,跳躍/歡呼等會伸展到畫面上緣的姿勢在低倍率時不會被誤裁)。<br><br><b>驗證</b>:非連續跳倍率(1x 直接跳 4x,不是滑桿依序拖過中間值)、往返縮放(4x 再拉回 1x,確認畫布/viewport 尺寸精確復原成原始的 320×240,不會累積誤差)、換一個明顯比劍寬的配件(木吉他)搭配跳躍姿勢(角色在空中,測試低倍率下高聳姿勢不被誤裁),全部目視確認正常。完整 17 原型 × 21 姿勢回歸測試(88 款配件輪替)重新跑過,zero console 錯誤——這次改動完全是 DOM 結構(畫布外多包一層 viewport div)跟 CSS,沒有動到 <code>stepFsm()</code>/<code>drawCharacter()</code> 等繪製邏輯本身,回歸測試主要是確認新包的 <code>&lt;div&gt;</code> 沒有意外影響到既有的座標/點擊邏輯。</p>
     <p class="sub"><b>沿用既有機制,無重新發明</b>:全部 22 款一樣透過 <code>itemEntry()</code>/<code>ITEM_SHAPES</code>/<code>drawWeaponParts()</code>/<code>drawWeaponPartsFlat()</code> 渲染,跟 D/E/F/G 組完全相同的機制。這輪完成後手部配件庫 A 到 K 組全部到齊,總計 <b>88 款</b>正式配件(另有 2 款示範用的原型 <code>sword</code>/<code>canteen</code>,不計入分類清單),完整清單總覽見下方使用者回報段落。<br><br><b>兩個技術重用,沒有新機制</b>:①<code>polyline</code> 弧線握把(上一輪為了 <code>drawWeaponPartsFlat()</code> 旋轉後握把不能維持「貼合本體」而改用的技法)這輪套用在魔法神燈的握把、魔術方塊的做法沒有直接用到但同一套「跨一段 <code>at</code> 範圍」原則有延伸到量角器的半圓輪廓與羽毛球拍的橢圓握框上。②<code>polygon</code>+相反繞線 <code>holes</code>(挖洞技法)這輪用在三個新地方——直尺的 6 個刻度缺口、魔術方塊的九宮格線、木製面具的兩個杏眼鏤空,證明這個技法不只適用於矩形洞(先前的鳶形盾十字、扳手開口都是矩形),任意凸邊形洞都適用。<br><br><b>橢圓形近似</b>(新的幾何生成手法,非新渲染機制):羽毛球拍的中空拍框、量角器的半圓輪廓都需要橢圓/圓弧外框,但 <code>circle</code>/<code>ring</code> 兩個既有型別只支援正圓。沿用 <code>buildStarPoints()</code> 本來就有的「角度採樣」概念——固定半徑、遍歷 0-360 度(量角器只需 180 度)算出一圈 <code>{at, dx}</code> 頂點——但半徑改成橢圓的 rx/ry 而非星形的內外半徑交替,手算 8-9 個採樣點出來當 <code>polygon</code> 的 <code>points</code>(羽毛球拍的拍框洞用同一手法算內外兩圈,外圈跟內圈刻意用相反的角度遍歷順序生成,確保繞線方向相反、洞真的挖得穿)。截圖確認羽毛球拍拍框第一次手算就正確挖穿,量角器半圓輪廓也一次到位,沒有重演上一輪鳶形盾/扳手洞挖錯方向要來回除錯的狀況。<br><br><b>逐組差異化設計重點</b>:H 組(木吉他/小喇叭/直笛/沙鈴/大聲公)木吉他靠全目錄最長的 <code>totalLen</code>(2.15)+雙圓疊body+鏤空音孔獨立於其他四款；小喇叭跟大聲公共用「喇叭口 <code>polygon</code>」語彙但刻意用「有無活塞鈕」拉開(小喇叭 3 顆活塞鈕、大聲公完全沒有,只有握把+扳機),避免兩者混淆；直笛用單一喙型 <code>triangle</code> 尖嘴+6 孔識別,長度介於武器類量級。<br>I 組(鉛筆/直尺/量角器/信封/地球儀/魔術方塊)鉛筆是全目錄最直白的「尖端+木身+箍圈+橡皮擦」四段式應用;直尺跟量角器都是扁平幾何形但用「長直條 vs 半圓」拉開;信封用五點五邊形(矩形+三角屋頂融合)+郵票鏤空環;地球儀用「穿透球體的軸桿」(細桿先畫、球體圓形後畫蓋掉中段,只露出南北極兩截,球體圓形本身就有遮蓋效果,不需要額外裁切邏輯)。<br>J 組(仙女棒/燈籠/氣球/紙飛機/魔法神燈/巫毒娃娃)仙女棒的火花用 5 條方向不規則的短折線(刻意不用 <code>buildStarPoints()</code> 那種工整放射,讀起來才像「迸發」而非花朵);紙飛機是單一 6 點 <code>polygon</code> 就做出機頭+雙翼+尾部凹口的經典紙飛機輪廓,是這批裡效率最高的形狀;巫毒娃娃直接複用薑餅人的人形骨架(雙腿/軀幹/雙臂/頭),唯一差異是軀幹兩側加 3 根穿出輪廓外的細針(針必須穿出邊界才看得見,同色線畫在實心填色內部等於隱形,這是全系統從鳶形盾十字裝飾就確立的規則,這裡是第 N 次套用而非新發現)。<br>K 組(羽毛球拍/桌球拍/牙刷/木製面具/試管)羽毛球拍/桌球拍是這批裡差異化要求最明確的一對——拍框「中空橢圓+長細柄」對比桌球拍「實心正圓+短粗柄」,拍面性質(空 vs 實)、握柄長度(1.6 vs 0.75 個 <code>totalLen</code>)兩條線索疊加,不只靠尺寸;木製面具用兩個杏眼鏤空跟同樣是淚滴輪廓的鳶形盾拉開差異。<br><br><b>雙手持握的標註與判斷(使用者指令第 4 點)</b>:這輪評估了使用者明確點名的三個候選——木吉他(彈奏需要雙手)、羽毛球拍/桌球拍(揮擊動作)——三者全部維持 <code>holdStyle</code> 省略(單手預設),原因跟上一輪遊戲手把/相機一致且已經在各自的資料註解裡個別說明:吉他跟球拍現實中雖然雙手參與,但都是「單一物件」(一把吉他、一支球拍),不是「成對配戴物」,既有的 <code>dual</code> 機制只會畫出兩把吉他或兩支球拍,不是一把雙手共同操作的物件,套用會是錯誤結果;球拍額外類比既有的劍/長矛判斷先例——真人打羽球/桌球實際是單手持拍揮擊,不是雙手共握一支拍子,語意上本來就該單手。<br><br>這輪唯一真正標成 <code>holdStyle: 'dual'</code> 的是沙鈴(maraca)——沒有在使用者原始候選名單裡,是這輪自己額外判斷出來的:一組沙鈴是兩支同款搖鈴、一手一支的成對配戴物,正好符合既有 <code>dual</code> 機制「同一形狀在兩個掛載點各畫一份」的原始設計初衷(跟先前 v37 紀錄裡設想的「一對鈴鐺」範例完全同類),是全目錄第一款真正該用 <code>dual</code> 的配件,用 IIFE 包一層 <code>itemEntry()</code> 呼叫、渲染完再蓋一個 <code>holdStyle: 'dual'</code> 上去,沒有改動 <code>itemEntry()</code> 本身的簽章(其餘 87 款都不需要這個欄位,不值得為了一款配件把它變成 <code>itemEntry()</code> 的正式參數)。<br><br><b>除錯過程</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口(驗證完成後已移除,不進正式程式碼)把 22 款配件各自放大截圖比對,一次通過、沒有發現需要返工的形狀或掛載問題(跟上一輪菜刀/啤酒大木杯/遊戲手把三個問題都要返工不同,這輪手算橢圓座標跟挖洞方向都一次到位)。<br><br><b>驗證</b>:跑一次完整 17 原型 × 21 姿勢回歸測試(22 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤;下拉選單確認 89 個選項(88 款配件 + 「無」),22 款新配件全部在列、沒有缺漏。<b>這輪(比照 D/E/F/G)僅完成形狀設計與辨識度確認,握持點採用共用預設值。手部配件庫 A-K 全部到齊後,下一階段是使用者要做的「握持點統一檢視調整」以及後續的手持動畫角度自然度/頭部安全餘裕驗證,這兩項本輪都尚未進行。</b></p>
@@ -3641,11 +3642,34 @@
   // concerns (how far from the body vs. what angle it's carried at) stay
   // independent instead of the offset direction swinging around every
   // time WEAPON_HELD_TILT/MAX_ANGLE's clamp kicks in.
-  // Magnitude (0.8 headR) sized from the same inputs footMountDxFor
-  // already uses for its own clearance margin (leg radius + a bladed
-  // item's own half-width + a visible gap), confirmed by screenshot
-  // rather than left at a guessed value.
-  const WEAPON_HELD_OUTWARD = 0.8;
+  // Magnitude, v48.1 correction: originally shipped at 0.8 (roughly
+  // longlimb's own legW/headR ratio, i.e. the leg's full DIAMETER), which
+  // user testing caught as a second, more severe bug -- it moved the
+  // origin (where the item's grip point lands) a full leg-width away from
+  // the actual mount with nothing drawn to bridge that gap, so any item
+  // whose rendered length near the grip is shorter than 0.8 headR (baton,
+  // torch, mug -- anything compact) visibly detaches from the hand
+  // entirely, floating in open space. Confirmed this was a pure
+  // magnitude problem, not a broken mount reference: the item still
+  // tracks mount.x/mount.y correctly every frame (checked across a walk
+  // cycle -- the floating item swings with the arm, it just trails a
+  // fixed gap behind it), so the fix is shrinking the constant, not
+  // touching how mount is read or passed through drawWeaponParts/
+  // itemEntry/stuckWeaponEntry. Re-picked at 0.42 headR (~= legW/2 for
+  // longlimb, i.e. the leg's RADIUS rather than its full diameter --
+  // enough to move the origin from the leg's centerline to its edge,
+  // which is the minimum a compact item's own capsule-cap width can
+  // still visually bridge) and confirmed by screenshot on both a compact
+  // item (baton -- now touches the leg, no gap) and a long blade
+  // (longsword/katana -- still clears the leg, blade stays visible) on
+  // two archetypes (longlimb, chubby). Short curved/blade items whose
+  // own length is already tight against this margin (curvedSaber) don't
+  // fully clear the leg at this magnitude either -- same as they didn't
+  // fully clear it at 0.8 -- but that's a pre-existing blade-visibility
+  // shortcoming, not a new regression from this change, and individual
+  // items can already override the carry angle via weapon.heldTilt if a
+  // future pass wants to swing a specific short blade further out.
+  const WEAPON_HELD_OUTWARD = 0.42;
 
   // ==================== component XIV: colored accessories (v48) ====================
   // Every prior round's accessory rendered as flat SIL with zero
@@ -3750,6 +3774,19 @@
       }
       for (const p of weapon.parts){
         const partColor = resolveWeaponColor(style, p);
+        // p.glow (v48.1, lightsaber blade): a soft canvas shadow-blur halo
+        // behind this one part, for the "core devices bright, edge haze
+        // is colored" look real lightsabers read as, rather than a flat
+        // color block. Scoped to just this part's fill -- reset to 0
+        // immediately after so it never bleeds onto unrelated parts drawn
+        // later in the same loop (the hilt pieces that follow the blade
+        // must stay crisp, not hazy).
+        if (p.glow){
+          c.shadowColor = partColor;
+          c.shadowBlur = p.glow;
+        } else {
+          c.shadowBlur = 0;
+        }
         if (p.type === 'shaft'){
           capsule(c, 0, y(p.from), 0, y(p.to), p.width * headR, partColor);
         } else if (p.type === 'crossbar'){
@@ -4017,19 +4054,33 @@
     // entry's own opts.rarity:'S', not stored here) but both point the
     // same direction on purpose. Explicit gripRatio at the blade/tsuba
     // junction (1.9/2.53), same reasoning as the other swords' v48
-    // comments. Color is NOT set here -- katana's registry entry passes
-    // rarity:'S' through to drawWeaponParts' style argument, and
-    // RARITY_STYLE['S'] supplies the actual color at draw time (see
-    // component XIV's own comment on why color/rarity never live on
-    // WEAPON_SHAPES itself).
+    // comments. v48.1 color revision: user feedback rejected the original
+    // flat rarity-gold fill (RARITY_STYLE.S applied uniformly to every
+    // part) as not reading as a katana's actual material -- a real blade
+    // is steel, not gold, and painting the whole weapon one tier-color
+    // erases the blade/fitting distinction that makes a sword look like a
+    // sword. Fixed by giving each PART its own explicit part.color (steel
+    // blade, dark tsuka wrap, dark-red tsuba/kashira fittings) -- these
+    // are katana's own fixed material identity, not a rarity-tier
+    // decision, so per resolveWeaponColor's precedence (part.color beats
+    // style.color beats style.rarity) they take over unconditionally and
+    // the registry's rarity:'S' no longer drives the visible color at
+    // all. rarity:'S' stays on the registry entry purely for cataloging
+    // (still the single marker of "this is the batch's rare weapon" for
+    // any future rarity-driven UI -- a border, a sort order -- that reads
+    // the tier without needing a draw-time color); RARITY_STYLE.S itself
+    // is now unused by any shipped item, kept as the lookup table for
+    // whichever FUTURE item wants a plain tier-color instead of its own
+    // material palette (see component XIV's comment on this exact
+    // material-vs-tier distinction).
     katana: {
       totalLen: 1.9 + 0.55 + 0.08,
       gripRatio: 0.75,
       parts: [
-        { type: 'polyline', points: [{ at: 0, dx: 0.1 }, { at: 0.95, dx: 0.05 }, { at: 1.9, dx: 0 }], width: 0.2 },
-        { type: 'crossbar', at: 1.9, halfLen: 0.15, width: 0.22 },
-        { type: 'shaft', from: 1.9, to: 1.9 + 0.55, width: 0.28 },
-        { type: 'circle', at: 1.9 + 0.55 + 0.08, r: 0.08 }
+        { type: 'polyline', points: [{ at: 0, dx: 0.1 }, { at: 0.95, dx: 0.05 }, { at: 1.9, dx: 0 }], width: 0.2, color: '#c7ccd3' },
+        { type: 'crossbar', at: 1.9, halfLen: 0.15, width: 0.22, color: '#5c2028' },
+        { type: 'shaft', from: 1.9, to: 1.9 + 0.55, width: 0.28, color: '#1c1b1d' },
+        { type: 'circle', at: 1.9 + 0.55 + 0.08, r: 0.08, color: '#5c2028' }
       ]
     },
     // 苦無: a small leaf-blade 'polygon' (same technique as the spear's
@@ -4078,15 +4129,39 @@
     // this round are 5 separate HAND_ACCESSORY_REGISTRY entries that all
     // point at THIS one shape with different opts.color, not 5 copies of
     // the shape data (see the registry section's own comment).
+    //
+    // v48.1 blade rework: user rejected the original single flat-color
+    // blade fill as "too blunt/plain" and asked for the actual Star Wars
+    // read -- a bright/white core with a colored glow haze around it, not
+    // one solid color block -- applied identically across all 5 variants
+    // (only the glow hue changes). Split what was one polygon part into
+    // TWO concentric polygons plus recolored the hilt, using
+    // resolveWeaponColor's existing precedence rather than any new
+    // mechanism: the OUTER polygon (bladeGlow, wider, p.glow set for a
+    // soft shadow-blur halo) carries no part.color of its own, so it
+    // falls through to style.color -- the one thing that still varies per
+    // registry entry, now an rgba() with alpha so the halo is genuinely
+    // translucent rather than a flat tint. The INNER polygon (bladeCore,
+    // narrower) gets an explicit part.color of near-white, painted OVER
+    // the glow in the same z-order the parts array already draws in, so
+    // every variant -- including the white one -- reads as "white core,
+    // colored edge" rather than "white blade, white glow" coincidentally
+    // looking flat. The hilt (shaft + both crossbars + pommel circle)
+    // also gets an explicit part.color now: a fixed dark gunmetal that
+    // stays the same real-world "the grip is inert metal, not a light
+    // source" across all 5 variants, wired the same way as katana's
+    // fittings -- an intrinsic material fact of this weapon, not
+    // something a rarity/variant lookup should ever touch.
     lightsaber: {
       totalLen: 1.58 + 0.5,
       gripRatio: 0.76,
       parts: [
-        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.1, dx: 0.1 }, { at: 1.58, dx: 0.1 }, { at: 1.58, dx: -0.1 }, { at: 0.1, dx: -0.1 }] },
-        { type: 'shaft', from: 1.58, to: 1.58 + 0.35, width: 0.34 },
-        { type: 'crossbar', at: 1.7, halfLen: 0.19, width: 0.07 },
-        { type: 'crossbar', at: 1.82, halfLen: 0.19, width: 0.07 },
-        { type: 'circle', at: 1.58 + 0.5, r: 0.08 }
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.15 }, { at: 1.58, dx: 0.15 }, { at: 1.58, dx: -0.15 }, { at: 0.12, dx: -0.15 }], glow: 9 },
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.14, dx: 0.055 }, { at: 1.58, dx: 0.055 }, { at: 1.58, dx: -0.055 }, { at: 0.14, dx: -0.055 }], color: '#f6f9ff' },
+        { type: 'shaft', from: 1.58, to: 1.58 + 0.35, width: 0.34, color: '#3a3b40' },
+        { type: 'crossbar', at: 1.7, halfLen: 0.19, width: 0.07, color: '#3a3b40' },
+        { type: 'crossbar', at: 1.82, halfLen: 0.19, width: 0.07, color: '#3a3b40' },
+        { type: 'circle', at: 1.58 + 0.5, r: 0.08, color: '#3a3b40' }
       ]
     },
     // 手斧: a single curved wedge 'polygon' bulging to ONE side only,
@@ -5865,11 +5940,17 @@
     // "which of 5 blade colors" is each variant's own intrinsic identity,
     // not a tier decision (see component XIV's own comment on this exact
     // precedence choice).
-    lightsaberBlue: stuckWeaponEntry('光劍(螢光藍)', 'lightsaber', { rarity: 'SSS', color: '#3fa9f5' }),
-    lightsaberGreen: stuckWeaponEntry('光劍(螢光綠)', 'lightsaber', { rarity: 'SSS', color: '#39e26b' }),
-    lightsaberRed: stuckWeaponEntry('光劍(螢光紅)', 'lightsaber', { rarity: 'SSS', color: '#ff3b3b' }),
-    lightsaberYellow: stuckWeaponEntry('光劍(螢光黃)', 'lightsaber', { rarity: 'SSS', color: '#f5e13f' }),
-    lightsaberWhite: stuckWeaponEntry('光劍(亮白)', 'lightsaber', { rarity: 'SSS', color: '#f7f5ee' }),
+    // v48.1: opts.color switched from opaque hex to a translucent rgba().
+    // WEAPON_SHAPES.lightsaber's own v48.1 comment explains why this is
+    // safe -- after the blade rework, style.color is consumed by exactly
+    // ONE part (the outer glow polygon), everything else (core/hilt) now
+    // carries its own fixed part.color, so raising this one value's alpha
+    // only ever affects the glow haze, never the hilt or the core.
+    lightsaberBlue: stuckWeaponEntry('光劍(螢光藍)', 'lightsaber', { rarity: 'SSS', color: 'rgba(63,169,245,0.6)' }),
+    lightsaberGreen: stuckWeaponEntry('光劍(螢光綠)', 'lightsaber', { rarity: 'SSS', color: 'rgba(57,226,107,0.6)' }),
+    lightsaberRed: stuckWeaponEntry('光劍(螢光紅)', 'lightsaber', { rarity: 'SSS', color: 'rgba(255,59,59,0.6)' }),
+    lightsaberYellow: stuckWeaponEntry('光劍(螢光黃)', 'lightsaber', { rarity: 'SSS', color: 'rgba(245,225,63,0.6)' }),
+    lightsaberWhite: stuckWeaponEntry('光劍(亮白)', 'lightsaber', { rarity: 'SSS', color: 'rgba(247,245,238,0.65)' }),
 
     // ---- B group: round/block armor & relic items (4) ----
     // All 'flat' footStow -- shield/book/cross/chalice all read better
