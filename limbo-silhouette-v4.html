@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v43 — A 組長條武器補完長劍,16 款全數到齊</title>
+<title>剪影走路/跑步循環 v44 — B/C/F/K 組新增 17 款配件(防具法器/日常工具/手電筒火把/放大鏡團扇拐杖)</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v43</div>
-    <h1>補完長劍,A 組長條武器 16 款全數到齊</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v44</div>
+    <h1>B/C/F/K 組新增 17 款配件(防具法器/日常工具/手電筒火把/放大鏡團扇拐杖)</h1>
+    <p class="sub"><b>沿用 A 組機制,無重新發明</b>:全部 17 款一樣透過 <code>drawWeaponParts()</code>/<code>WEAPON_HELD_TILT</code>/<code>WEAPON_HELD_MAX_ANGLE</code>/<code>gripRatio</code> 渲染,新增的是一個統一慣例、而不是新機制——每款配件的 <code>dist 0</code>(尖端/起點)固定放在該配件「最具辨識度的主體特徵」上(刀刃、鏡片、火焰、掃帚頭、酒杯口……),這個特徵因此同時滿足兩件事:倒插時它是接觸地面的那一端(符合真實斧頭/掃帚/火把插入地面時「工作端朝下」的直覺),手持時只要 <code>gripRatio</code> 設高(握把靠近尾端),它就自然落在「向外延伸、視覺最顯眼」的那一側——跟先前戰斧/流星錘等頭重武器的處理邏輯完全一樣,沒有另外發明新規則。<br><br><b>兩個新零件能力</b>(擴充 <code>drawWeaponParts()</code>,非新函式):①<code>polygon</code> 新增 <code>holes</code> 欄位——這個系統是純色剪影、沒有描邊顏色,同色裝飾線畫在實心形狀上等於隱形,唯一能在實心填色上放出「看得見的線條」的方法是真的挖一個洞(背景色透出來),用跟 <code>ring</code> 一樣的「反向繞線」技巧,擴充成任意多邊形的洞而不只是圓形——用在鳶形盾的十字裝飾(挖出一豎一橫兩個矩形洞)、扳手的開口卡榫(挖出一個延伸出邊界的矩形洞,做出「真正開口」而非封閉孔洞的效果)。②<code>circle</code>/<code>ring</code> 新增可選的 <code>dx</code>(偏軸位移)欄位,預設 0、不影響既有 15 款武器——十字架的左右臂端小圓點裝飾、剪刀的左右兩個指環握把、澆花壺噴嘴末端的水滴,都需要偏離主軸的圓形,原本兩個型別只能畫在軸線正中央。<br><br><b>新增 <code>drawWeaponPartsFlat()</code>:'平放' 呈現</b>——沿用 'stuck' orientation 完全不改的尖端頂地數學,只是把整個局部座標系轉 90 度(<code>footMount.angle</code> 恆為 0,所以這永遠是絕對的四分之一圈,不是相對值),原本朝上的軸線變成沿地面躺平,再用 <code>flatLift</code>(該配件自身最大寬度的一半,比照水壺 <code>bodyY</code> 位移的做法,截圖比對定案而非自動推算)把掛載點往上抬,讓形狀的最低點剛好落在地面線上而不是被地面線切一半。<br><br><b>逐款 stuck/flat 判斷</b>:鳶形盾、魔法書、十字架、聖杯(B 組全數)以及螺絲起子、扳手、鋸子、剪刀、水桶、澆花壺、手電筒、放大鏡、團扇(C/F/K 組多數)採 <code>flat</code>,均為使用者原始分類建議。木製掃帚、釣魚竿、拐杖採 <code>stuck</code>——三者都有夠強的「自己站得住」真實意象(掃帚立在自己的刷毛上、拐杖立在自己的直杖尖上、釣魚竿立在自己的握把/捲線器上)。火把也採 <code>stuck</code>,但刻意不用「主體特徵頂地」這個統一慣例——第一版把火焰放在 <code>dist 0</code>(跟其餘配件一致),結果倒插呈現變成火焰插進地面,截圖比對後判定這不是合理的風格化(不同於斧頭埋進地面、掃帚立在刷毛上這類仍然說得通的畫面,火焰接觸地面直接讀起來就是錯的),改成握柄在 <code>dist 0</code>(插地正確,常見於真實的火把座/庭院火把),<code>gripRatio</code> 也跟著改低(握點貼近握柄端),火焰落在通常會被裝飾用的「內側」區域而非外推的顯眼區——因為火焰本身是塊狀有面積的形狀而非細長線條,即使不在顯眼區也不會像細長桿身那樣被完全大埋掉,截圖確認可讀。<br><br><b>除錯過程</b>:①鳶形盾十字裝飾第一版直向的洞正確挖穿,橫向的洞卻完全沒有效果——追查後是兩個洞的頂點順序繞線方向不一致(直向洞跟外框相反繞線,是洞;橫向洞繞線方向剛好跟外框相同,等於疊加填色、視覺上沒有洞),扳手的開口卡榫第一版同樣的錯誤(洞的繞線方向剛好跟外框同向)。兩者都是把洞的頂點順序反過來後,截圖確認真正挖穿。②魔法書書籤緞帶第一版畫在書頁本體的 dx 範圍內,結果跟書頁同色完全隱形(跟鳶形盾十字裝飾一開始想直接畫同色線條會遇到的問題一樣)——改成緞帶往書本下緣以外延伸(用負值 <code>at</code>,超出書本自身尖端參考點的合法用法,手電筒的放射光線用了同樣的技巧),讓緞帶落在書本輪廓以外的背景區域,才顯示出來。③剪刀第一版兩片刀刃的尖端間距太小,整體讀起來像一把匕首而非一把打開的剪刀,加大尖端間距後才呈現出清楚的「X」交叉。<br><br><b>清單計數提醒(比照 v41 長劍缺漏、標註不猜測)</b>:使用者原始指令 C 組標註「9 項」但實際只列出 8 項(螺絲起子、扳手、鋸子、剪刀、木製掃帚、水桶、澆花壺、釣魚竿),K 組追加標註「2 項」但實際列出 3 項(放大鏡、團扇、拐杖)——這輪依實際列出的品項數量建置(C 組 8 款、K 組 3 款),未自行猜測缺漏的第 9 項是什麼,請確認數量標註是否為筆誤,或是否有遺漏未列出的品項需要補上。<br><br><b>驗證進度</b>:17 原型 × 21 姿勢回歸測試(17 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟)zero console 錯誤;<code>flat</code>/<code>stuck</code> 兩種倒插呈現各自在 2 種代表性原型(含模糊型)下目視檢查,位置落在腳邊、沒有明顯懸空或陷入地面。<b>這輪僅完成形狀設計與辨識度確認,尚未針對這 17 款進行手持動畫角度自然度與頭部安全餘裕的驗證——待使用者確認形狀辨識度後再進行下一輪動畫驗證。</b></p>
     <p class="sub"><b>補完清單缺漏</b>:原始 A 組 16 項清單(短劍、長劍、彎刀、木棍、鐵鎚、手斧、長矛、武士刀、苦無、西洋刺劍、三叉戟、戰斧、流星錘、長杖、木柄鐵鎚、光劍)裡,「長劍」在 v39/v40/v41 三輪都沒有實際建置,v41 的紀錄裡也明確標註過這個疑似謄寫遺漏、待確認是否補上。這輪確認要補上,新增 <code>longsword</code>,套用跟其餘 15 款完全相同的機制與驗證流程,不重新發明。<br><br><b>形狀設計</b>:沿用短劍的直劍身、尖端 <code>polygon</code> 語彙,但拉長(<code>totalLen</code> 1.88 對短劍的 1.33,落在中段刀劍量級,跟彎刀 1.62、武士刀 1.78 同一梯次),並且加上短劍刻意省略的特徵——握柄與劍身交界處的直向 <code>crossbar</code> 十字護手。短劍的辨識重點是「完全沒有護手」,長劍則是「樸素的十字護手」,兩者刻意做出有無護手的對比,同時跟西洋刺劍的大圓弧護手、武士刀的方形鍔用不同零件型別(crossbar/circle/polygon)彼此區隔,不會混淆。握柄比短劍略細(0.15 對 0.17),對應長劍握柄通常較修長的比例。<code>gripRatio</code> 不覆寫,吃共用預設值 0.68(平衡型刀劍類,跟短劍/彎刀/武士刀/西洋刺劍/長杖同一類)。<code>holdStyle</code> 不標註,吃預設單手。<code>rarity: null</code>。<br><br><b>驗證</b>:放大截圖確認長劍側身呈現出清楚的尖端、十字護手、握柄、圓形柄頭四段式輪廓,跟短劍並排比對辨識度足夠(短劍矮小無護手,長劍修長有護手)。17 原型 × 21 姿勢回歸測試(16 款手部武器輪替)zero console 錯誤。針對長劍額外跑一輪坐下/躺下/趴下/跳躍 × 5 種極端原型的安全餘裕驗證(像素 bbox 跟無配件基準比對),最大超出幅度 4px(躺姿,方向背離頭部,跟其餘 15 款已驗證過的安全範圍一致),沒有新增穿模風險。角度公式(<code>WEAPON_HELD_TILT</code>/<code>WEAPON_HELD_MAX_ANGLE</code>/<code>gripRatio</code>)完全不受武器外形資料影響,跟其餘 15 款共用同一段程式碼,不需要重新驗證角度行為本身。</p>
     <p class="sub"><b>問題</b>:上一輪(v41)完成的 15 款長條武器雖然長度分級、角度限幅、握持位置都已確認正確,但使用者提供參考圖比對後指出,短劍/彎刀/武士刀/西洋刺劍/光劍這五款剪影彼此看不出差異,手斧/戰斧也彼此看不出差異——問題出在這些配件先前全部共用「直杆 + 可能一個圓形柄頭」的同一套形狀語彙,只靠 <code>totalLen</code> 長度或些微的斜向偏移角度分級,沒有真正的輪廓形狀差異,剪影本身不具備可辨識的武器特徵(例如彎刀不是真的彎、武士刀護手看不出跟劍身的分野、戰斧斧刃比手斧斧刃只是線條斜一點點)。<br><br><b>新增三種零件型別</b>(<code>drawWeaponParts()</code> 的 <code>parts</code> 清單新增支援):<code>polygon</code>(任意多邊形填色輪廓,<code>points: [{at, dx}, ...]</code> 沿武器軸線描出多邊形頂點再 <code>fill()</code>——取代原本 <code>diagonal</code> 型別畫出來只是一條細線、讀不出「有面積的刀刃」的問題,斧刃/鎚頭/矛頭/苦無/三叉戟的三個分岔尖端、還有帶尖端的劍身都改用這個型別)、<code>polyline</code>(依序串接的膠囊線段,<code>points</code> 陣列可以有 2-3 折,近似畫出真正的弧線——這個畫布尺度畫不出貝茲曲線,用 2-3 段折線逼近彎刀的明顯弧度、武士刀較淺的弧度、流星錘鏈條的鋸齒連接)、<code>ring</code>(用兩次方向相反的 <code>arc()</code>——外圈順時針、內圈逆時針——讓預設的 nonzero fill rule 把內圈判定為鏤空,畫出真正「中間穿透」的圓環,不是實心圓,苦無末端的吊環用這個型別,是這批唯一真的需要鏤空孔洞的特徵)。另外新增 <code>buildStarPoints()</code> 輔助函式,產生外/內半徑交替的頂點清單描出星芒輪廓,流星錘的球頭用這個函式生成一個 7 角星形 <code>polygon</code>。<br><br><b>逐款差異化設計</b>:短劍——直劍身、無護手裝飾,刀尖用 <code>polygon</code> 收窄成真正的尖點(不是膠囊圓頭)。彎刀——<code>polyline</code> 畫出明顯側向弧度的刀身，搭配簡單弧形護手。武士刀——<code>polyline</code> 弧度比彎刀淺很多，握柄用獨立 <code>shaft</code>（寬度跟刀身不同）明確跟刀身分野，方形 <code>crossbar</code> 當鍔（護手）。西洋刺劍——細直 <code>polygon</code> 劍身，搭配全劍最大的圓形護手（劍柄與刀身交界處一個明顯大圓，這是最容易辨識的細劍特徵）。光劍——直劍身，握柄段用比劍身粗、比劍身短的獨立 <code>shaft</code> 明確區隔（能量刃該有的「柄粗刃薄」觀感），柄部加兩條 <code>crossbar</code> 當控制環。手斧——小型單側 4 點凸起楔形斧刃、短握柄。戰斧——斧刃改成 5 點凹弧新月形（兩側各一片，中段刻意往握柄內凹再往外翻出，做出真正的鋸齒雙刃輪廓，不是平滑一片），握柄明顯比手斧長。木棍——維持純直圓柱、無任何裝飾，是這批裡最樸素的一款，用來跟長杖的分節裝飾對比。鐵鎚——鎚頭改成清楚的方形/箱型 <code>polygon</code>，跟斧刃/劍身的形狀語彙完全不同。長矛——矛頭是柳葉形 <code>polygon</code>，杆身維持細直。苦無——短刀身，末端用新增的 <code>ring</code> 型別畫出真正鏤空的吊環，整批裡最短小精幹的一款。三叉戟——頭部拆成三個各自獨立的尖端 <code>polygon</code>（中央一支、左右各一支往外撇），確保三叉清晰可辨、不會被簡化成單一尖點跟長矛混淆。流星錘——<code>buildStarPoints()</code> 生成的 7 角星 <code>polygon</code> 當球頭，球頭跟握柄之間用 <code>polyline</code> 畫一段鋸齒折線表示鎖鏈連接。長杖——杆身用交錯的 <code>shaft</code>/<code>crossbar</code> 分段做出竹節/纏繞裝飾紋理，跟木棍的純樸拉開差異。木柄鐵鎚——鎚頭比一般鐵鎚更大更方，握柄段拉長並保持木柄的圓柱觀感，整體比例更沉重。<br><br><b>除錯過程（兩個形狀反覆調整三次才成功）</b>:①短劍/西洋刺劍/光劍最初的劍身用既有的 <code>shaft</code>（膠囊，兩端預設圓頭）畫，刀尖端因此是圓鈍的，讀起來像一根直棍而非有尖端的劍——改用 <code>polygon</code> 在刀尖處收窄成真正的尖點解決。②戰斧/手斧最初用單一 6 點 <code>polygon</code> 涵蓋整個斧頭寬度，渲染出來是一整片平滑的曲線,像湯匙/鏟子而非斧頭；第二次嘗試拆成「連續握柄 <code>shaft</code> + 獨立凸起翼形 <code>polygon</code>」疊加,翼形內側頂點跟握柄邊緣距離太近,兩者視覺上仍融合成一片平滑形狀，沒有辨識得出的「凹槽」；第三次改成 5 點凹弧新月形（每側斧刃在中段刻意往內凹一個真正的凹頂點，再往外翻出),放大截圖確認終於呈現鋸齒狀的「M-W」雙刃輪廓，明確跟手斧的簡單單側鉤形區分開來。<br><br><b>驗證</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口（渲染完成後已移除,不進正式程式碼)搭配獨立 Playwright 腳本,把 15 款武器各自在乾淨背景上放大渲染(headR=34,遠大於遊戲內實際圖示尺寸),輸出並排標籤截圖供逐款比對,確認 15 款彼此剪影都有可辨識的獨立特徵後,再跑一次完整 17 原型 × 21 姿勢回歸測試(15 款手部武器輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤，確認新增的 <code>polygon</code>/<code>polyline</code>/<code>ring</code> 渲染邏輯沒有在任何原型或姿勢組合下產生執行期錯誤。<b>這輪僅重製形狀,尚未針對新形狀重新驗證手持/倒插的走路循環角度自然度與頭部安全餘裕——待使用者確認形狀辨識度後再進行下一輪動畫驗證。</b><br><br><b>待確認事項（沿用自 v41,尚未處理)</b>:原始 A 組清單裡的「長劍」仍未實作。</p>
     <p class="sub"><b>沿用既有機制,無重新發明</b>:12 款新配件全部透過既有的 <code>stuckWeaponEntry()</code> 工廠函式註冊,共用同一個 <code>drawWeaponParts()</code> 渲染器、<code>WEAPON_HELD_MAX_ANGLE</code> 角度限幅、<code>DEFAULT_WEAPON_GRIP_RATIO</code> 握持位置——沒有為任何一款另外寫渲染邏輯或角度公式。<br><br><b>長度分級</b>(headR 單位,遞增排序):苦無 0.85 &lt; 手斧 1.15 &lt; 鐵鎚 1.3 &lt; 短劍 1.35(已完成)&lt; 木棍 1.5 &lt; 光劍 1.6 &lt; 彎刀 1.65 &lt; 武士刀 1.85 &lt; 流星錘 1.9 &lt; 西洋刺劍 2.0 &lt; 戰斧 2.1 &lt; 木柄鐵鎚 2.7 &lt; 長杖 3.0 &lt; 三叉戟 3.15(已完成)&lt; 長矛 3.2(已完成)——16 個量級全部不同,不是套同一組尺寸換外形。彎刀的「彎」在這個畫布尺度無法真的畫出弧線,改用一個固定側向偏移(刀身從護手端到刀尖端斜向偏移)近似「不是直劍」的識別特徵。<br><br><b>gripRatio 個別覆寫</b>:鐵鎚(0.8)、手斧(0.78)、戰斧(0.85)、流星錘(0.92)、木柄鐵鎚(0.85)五款覆寫共用預設值 0.68——這五款都是「頭重」的工具類武器(鎚頭/斧刃/流星錘球),頭重的器具實際持握時會抓得更靠近尾端以取得揮動槓桿,不會抓在跟平衡刀劍一樣的中段位置,所以握持點刻意往尾端(掛載點)靠。其餘 7 款(彎刀/木棍/武士刀/苦無/西洋刺劍/長杖/光劍)都是刀劍/長柄類的平衡器具,直接吃共用預設值,沒有另外覆寫。<br><br><b>holdStyle 全部維持單手</b>,包含戰斧/流星錘/木柄鐵鎚這三款「較重」的候選——不是照單全收單手,而是重新確認過既有的 <code>holdStyle: 'dual'</code> 機制其實是「同一個形狀在兩個掛載點各畫一份」,適合成對配戴物,標成雙手會讓畫面出現兩把斧頭/兩顆流星錘而不是一把雙手持握的武器,是錯誤的視覺結果。這三款改用 <code>gripRatio</code> 覆寫來表達「較重、握持位置更靠後」,不是靠 <code>holdStyle</code>。真正的雙手單一武器渲染仍是尚未建置的機制。<br><br><b>安全餘裕驗證</b>:12 款 × 坐下/躺下/趴下/跳躍 4 種姿勢 × 5 種極端原型(大頭模糊型、大頭娃娃、全圓形型、標準長腿、小頭高個)全部跑過,目視抽查最高風險組合(頭重長柄武器 × 趴下姿勢)確認無穿模。<code>rarity</code> 全數 <code>null</code>。全部 17 原型 × 21 姿勢回歸測試(15 款手部武器輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟)zero console 錯誤。<br><br><b>待確認事項</b>:原始 A 組清單裡的「長劍」這次的補完清單中沒有出現(既不在已完成的三款,也不在這次的 12 款新增裡),推測是清單謄寫時漏掉,尚未實作——請確認是否要在下一輪補上,或是刻意先跳過。</p>
@@ -3618,8 +3619,13 @@
           // outer tines and similar forking shapes.
           capsule(c, 0, y(p.at), p.dx * headR, y(p.to), p.width * headR, SIL);
         } else if (p.type === 'circle'){
+          // optional p.dx (defaults 0, every existing on-axis use is
+          // unaffected) -- off-axis circles added for kiteShield/cross-
+          // family items whose decorative dots/caps sit beside the main
+          // axis rather than on it (e.g. the cross's left/right arm caps,
+          // watering can's spout droplet).
           c.beginPath();
-          c.arc(0, y(p.at), p.r * headR, 0, Math.PI * 2);
+          c.arc((p.dx || 0) * headR, y(p.at), p.r * headR, 0, Math.PI * 2);
           c.fill();
         } else if (p.type === 'triangle'){
           // isoceles blade/spearhead tip: base at distance p.baseAt (full
@@ -3640,12 +3646,34 @@
           // it became clear that a thin capsule stroke ('diagonal') reads
           // as "a spike," not "a blade with area" -- an axe head and a
           // spear tip both need an actual filled silhouette, not a line.
+          //
+          // Optional p.holes: array of point-lists (same {at,dx} format),
+          // each drawn as an additional subpath of the SAME fill call --
+          // since there's no stroke/outline color available in this
+          // solid-silhouette system, a same-color decorative line drawn ON
+          // a filled shape would simply be invisible. A genuine hole (the
+          // background showing through) is the only way to put a visible
+          // line-shaped mark on a solid fill, using the same
+          // opposite-winding trick 'ring' already established -- a hole
+          // subpath must be wound OPPOSITE to the outer polygon for the
+          // default nonzero fill rule to treat the overlap as unfilled.
+          // Added for kiteShield's cross emblem (see ITEM_SHAPES' own
+          // comment on why it's built as a hole, not a same-color line).
           c.beginPath();
           p.points.forEach(function(pt, idx){
             const px = pt.dx * headR, py = y(pt.at);
             if (idx === 0) c.moveTo(px, py); else c.lineTo(px, py);
           });
           c.closePath();
+          if (p.holes){
+            p.holes.forEach(function(hole){
+              hole.forEach(function(pt, idx){
+                const px = pt.dx * headR, py = y(pt.at);
+                if (idx === 0) c.moveTo(px, py); else c.lineTo(px, py);
+              });
+              c.closePath();
+            });
+          }
           c.fill();
         } else if (p.type === 'polyline'){
           // chained capsule segments through a list of {at, dx} points --
@@ -3667,14 +3695,40 @@
           // behind the accessory (ground/leg) shows through. Needed
           // specifically for kunai's ring pommel, the one feature in this
           // batch that's structurally a loop rather than a solid shape.
-          const cy = y(p.at);
+          // optional p.dx (defaults 0) -- scissors' two finger-hole rings
+          // sit side by side off-axis, unlike kunai's single on-axis one.
+          const cx = (p.dx || 0) * headR, cy = y(p.at);
           c.beginPath();
-          c.arc(0, cy, p.rOuter * headR, 0, Math.PI * 2, false);
-          c.arc(0, cy, p.rInner * headR, 0, Math.PI * 2, true);
+          c.arc(cx, cy, p.rOuter * headR, 0, Math.PI * 2, false);
+          c.arc(cx, cy, p.rInner * headR, 0, Math.PI * 2, true);
           c.fill();
         }
       }
     });
+  }
+
+  // drawWeaponPartsFlat(): 'flat' (平放/lying) presentation for the SAME
+  // tip-to-butt part vocabulary above, for footStow items that read
+  // better lying on their side at the character's feet than planted
+  // upright (see itemEntry()'s own comment on which B/C/F/K items use
+  // 'stuck' vs 'flat'). Reuses 'stuck' orientation's tip-at-mount math
+  // completely unmodified -- footMount.angle is always 0 (footMount's own
+  // comment), so rotating the local frame a further quarter turn always
+  // means the exact same thing regardless of which item is drawn: the
+  // axis that would normally point straight up now lies along the
+  // ground, exactly like turning a planted sword on its side. `lift`
+  // raises the mount by half the item's own max width so its lowest
+  // point lands AT the ground line instead of straddling it -- the same
+  // fix canteen's own bodyY offset already established for its capsule
+  // body, generalized here as a per-item `flatLift` tuned by screenshot
+  // (the true bounding width of an arbitrary part list isn't cheap to
+  // derive automatically across every part type, so this is measured by
+  // eye like gripRatio already is, not computed).
+  function drawWeaponPartsFlat(ctx, mount, headR, item){
+    if (!mount) return;
+    const lift = (item.flatLift != null ? item.flatLift : 0.15) * headR;
+    const flatMount = { x: mount.x, y: mount.y - lift, angle: mount.angle - Math.PI / 2 };
+    drawWeaponParts(ctx, flatMount, headR, item, 'stuck');
   }
 
   // buildStarPoints(): generates an alternating outer/inner-radius point
@@ -3952,6 +4006,311 @@
     }
   };
 
+  // ---------- non-weapon hand accessories (component XI: B/C/F/K) ----------
+  // Same tip-to-butt part vocabulary and drawWeaponParts()/gripRatio/
+  // WEAPON_HELD_TILT/WEAPON_HELD_MAX_ANGLE mechanism as WEAPON_SHAPES --
+  // no reinvention. What's different about this batch is which end of
+  // the axis is "dist 0": for every item below, dist 0 is the object's
+  // own distinctive/business feature (blade, lens, flame, bristle head,
+  // cup rim...), same convention the weapon batch already uses (an axe's
+  // head, not its haft, sits at dist 0). That single choice does double
+  // duty: it's what plants at the ground for 'stuck' items (matching how
+  // a real axe/broom/torch is actually propped -- business end down), and
+  // it's what ends up in the visually prominent "outward" zone for held
+  // items once gripRatio sits high (grip near the butt/handle, exactly
+  // like the head-heavy weapon overrides already established).
+  //
+  // flatLift: only read by drawWeaponPartsFlat() (this file's own
+  // comment on that function). Half the item's own max width, tuned by
+  // screenshot per item -- same reasoning as gripRatio's per-weapon
+  // overrides, just for a different axis.
+  const ITEM_SHAPES = {
+    // 鳶形盾 kiteShield: wide-shouldered teardrop tapering to a point at
+    // dist 0 (the point is what plants in the ground if this were ever
+    // stuck upright, and it's genuinely how a propped kite shield rests
+    // in period art -- not used here since it's a 'flat' item, but the
+    // shape reads correctly either way). The reference image's defining
+    // feature is a bold cross line down the shield face -- since this is
+    // a solid single-color silhouette with no separate outline color, a
+    // same-color line drawn ON the shield would be invisible. Built as
+    // two rectangular HOLES (polygon.holes, see drawWeaponParts' own
+    // comment on the technique) instead: the background shows through in
+    // a "+" shape, which is the only way to put a visible mark on a
+    // solid fill in this system.
+    kiteShield: {
+      totalLen: 1.7,
+      flatLift: 0.52,
+      gripRatio: 0.5,
+      parts: [
+        { type: 'polygon',
+          points: [
+            { at: 0, dx: 0 }, { at: 0.35, dx: 0.24 }, { at: 0.9, dx: 0.52 },
+            { at: 1.55, dx: 0.42 }, { at: 1.7, dx: 0.15 }, { at: 1.7, dx: -0.15 },
+            { at: 1.55, dx: -0.42 }, { at: 0.9, dx: -0.52 }, { at: 0.35, dx: -0.24 }
+          ],
+          holes: [
+            [ { at: 0.4, dx: -0.055 }, { at: 1.55, dx: -0.055 }, { at: 1.55, dx: 0.055 }, { at: 0.4, dx: 0.055 } ],
+            [ { at: 1.03, dx: -0.35 }, { at: 1.03, dx: 0.35 }, { at: 0.87, dx: 0.35 }, { at: 0.87, dx: -0.35 } ]
+          ]
+        }
+      ]
+    },
+    // 魔法書 book: two page polygons with a deliberate gap at dx=0 (the
+    // spine gutter -- "書頁中線明顯" reads as negative space between two
+    // separate shapes, not a drawn line, same reasoning as the shield's
+    // cross). A thin ribbon polygon with a notched V-tail dangles past
+    // the bottom edge (negative 'at', same extrapolation trick as
+    // flashlight's light rays) for the optional bookmark detail --
+    // tried first sitting ON the page near the top edge, but that put it
+    // at the same dx range as the page polygon itself, so the same-color
+    // fill made it completely invisible (found by screenshot); moving it
+    // past the book's own silhouette into open background is what
+    // actually makes a same-color decorative shape readable at all.
+    book: {
+      totalLen: 1.3,
+      flatLift: 0.55,
+      gripRatio: 0.55,
+      parts: [
+        { type: 'polygon', points: [ { at: 0.05, dx: -0.06 }, { at: 0.1, dx: -0.55 }, { at: 1.25, dx: -0.5 }, { at: 1.2, dx: -0.06 } ] },
+        { type: 'polygon', points: [ { at: 0.05, dx: 0.06 }, { at: 0.1, dx: 0.55 }, { at: 1.25, dx: 0.5 }, { at: 1.2, dx: 0.06 } ] },
+        { type: 'polygon', points: [ { at: 0.05, dx: 0.1 }, { at: 0.05, dx: 0.2 }, { at: -0.3, dx: 0.2 }, { at: -0.15, dx: 0.15 }, { at: -0.3, dx: 0.1 } ] }
+      ]
+    },
+    // 十字架 cross: plain vertical+horizontal bar, decorated with small
+    // circle caps at all four arm tips (a "beaded" flare, cheaper and
+    // more reliable than trying to fake a beveled outline with no stroke
+    // color available). Left/right caps use the new circle.dx offset.
+    cross: {
+      totalLen: 1.5,
+      gripRatio: 0.55,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.5, width: 0.22 },
+        { type: 'crossbar', at: 0.95, halfLen: 0.4, width: 0.22 },
+        { type: 'circle', at: 0, r: 0.15 },
+        { type: 'circle', at: 1.5, r: 0.15 },
+        { type: 'circle', at: 0.95, dx: -0.4, r: 0.13 },
+        { type: 'circle', at: 0.95, dx: 0.4, r: 0.13 }
+      ]
+    },
+    // 聖杯 chalice: flat base (crossbar) + thin stem + a flared bowl
+    // (trapezoid polygon) + five small circles tracing the rim for the
+    // reference image's beaded-rim decoration.
+    chalice: {
+      totalLen: 1.4,
+      gripRatio: 0.35,
+      parts: [
+        { type: 'crossbar', at: 0.05, halfLen: 0.28, width: 0.14 },
+        { type: 'shaft', from: 0.1, to: 0.9, width: 0.12 },
+        { type: 'polygon', points: [ { at: 0.85, dx: -0.12 }, { at: 1.1, dx: -0.38 }, { at: 1.4, dx: -0.42 }, { at: 1.4, dx: 0.42 }, { at: 1.1, dx: 0.38 }, { at: 0.85, dx: 0.12 } ] },
+        { type: 'circle', at: 1.4, dx: -0.35, r: 0.05 },
+        { type: 'circle', at: 1.4, dx: -0.17, r: 0.05 },
+        { type: 'circle', at: 1.4, dx: 0, r: 0.05 },
+        { type: 'circle', at: 1.4, dx: 0.17, r: 0.05 },
+        { type: 'circle', at: 1.4, dx: 0.35, r: 0.05 }
+      ]
+    },
+    // 螺絲起子 screwdriver: flat blade tip (thin polygon) + thin shaft +
+    // a visibly THICKER handle capsule -- the shaft/handle width jump is
+    // the whole identity here, same lesson as katana's separate-width
+    // grip.
+    screwdriver: {
+      totalLen: 1.1,
+      gripRatio: 0.82,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0.1 }, { at: 0.08, dx: 0.1 }, { at: 0.08, dx: -0.1 }, { at: 0, dx: -0.1 } ] },
+        { type: 'shaft', from: 0.08, to: 0.7, width: 0.11 },
+        { type: 'shaft', from: 0.7, to: 1.1, width: 0.32 }
+      ]
+    },
+    // 扳手 wrench: a solid jaw block with a rectangular notch HOLE cut
+    // into the outer edge (extends past the block's own boundary so it
+    // reads as a genuinely open slot, not an enclosed hole) -- the open-
+    // end fork is the single most identifying wrench feature, same
+    // priority the rapier's bowl guard had.
+    wrench: {
+      totalLen: 1.15,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon',
+          points: [ { at: 0, dx: -0.25 }, { at: 0.3, dx: -0.25 }, { at: 0.3, dx: 0.25 }, { at: 0, dx: 0.25 } ],
+          holes: [ [ { at: -0.05, dx: -0.1 }, { at: -0.05, dx: 0.1 }, { at: 0.15, dx: 0.1 }, { at: 0.15, dx: -0.1 } ] ]
+        },
+        { type: 'shaft', from: 0.3, to: 1.15, width: 0.16 }
+      ]
+    },
+    // 鋸子 saw: straight top edge, zigzag bottom edge (six teeth) built
+    // as plain polygon vertices -- the tooth silhouette is the core
+    // identifier called out in the brief, same "silhouette carries the
+    // feature" approach as trident's three separate tips.
+    saw: {
+      totalLen: 1.3,
+      gripRatio: 0.82,
+      parts: [
+        { type: 'polygon', points: [
+            { at: 0, dx: 0.1 }, { at: 0.85, dx: 0.14 }, { at: 0.85, dx: -0.14 },
+            { at: 0.75, dx: -0.06 }, { at: 0.68, dx: -0.16 }, { at: 0.58, dx: -0.06 },
+            { at: 0.51, dx: -0.16 }, { at: 0.44, dx: -0.06 }, { at: 0.37, dx: -0.16 },
+            { at: 0.3, dx: -0.06 }, { at: 0.23, dx: -0.16 }, { at: 0.16, dx: -0.06 },
+            { at: 0.09, dx: -0.16 }, { at: 0, dx: -0.06 }
+          ] },
+        { type: 'shaft', from: 0.85, to: 1.3, width: 0.22 }
+      ]
+    },
+    // 剪刀 scissors: two thin crossing blade polygons converging on a
+    // pivot point, with two off-axis ring finger-holes below it (the new
+    // ring.dx offset) -- built at a slightly-open resting angle so the
+    // crossed-blade "X" reads clearly, rather than closed (indistinguishable
+    // from a single blade).
+    scissors: {
+      totalLen: 0.9,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.28 }, { at: 0.45, dx: -0.03 }, { at: 0.52, dx: 0.05 }, { at: 0.1, dx: 0.1 } ] },
+        { type: 'polygon', points: [ { at: 0, dx: 0.28 }, { at: 0.45, dx: 0.03 }, { at: 0.52, dx: -0.05 }, { at: 0.1, dx: -0.1 } ] },
+        { type: 'circle', at: 0.55, r: 0.06 },
+        { type: 'ring', at: 0.78, dx: -0.15, rOuter: 0.16, rInner: 0.08 },
+        { type: 'ring', at: 0.78, dx: 0.15, rOuter: 0.16, rInner: 0.08 }
+      ]
+    },
+    // 木製掃帚 broom: a wide fan/trapezoid bristle head at dist 0 (plants
+    // when stuck, matches a real broom resting on its bristles) plus
+    // three short frayed-strand polylines poking past the fan's own edge
+    // for texture, then a long plain handle.
+    broom: {
+      totalLen: 2.0,
+      gripRatio: 0.88,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.35 }, { at: 0.05, dx: -0.4 }, { at: 0.3, dx: -0.15 }, { at: 0.3, dx: 0.15 }, { at: 0.05, dx: 0.4 }, { at: 0, dx: 0.35 } ] },
+        { type: 'polyline', points: [ { at: 0.28, dx: -0.2 }, { at: -0.03, dx: -0.3 } ], width: 0.03 },
+        { type: 'polyline', points: [ { at: 0.3, dx: 0 }, { at: -0.05, dx: 0 } ], width: 0.03 },
+        { type: 'polyline', points: [ { at: 0.28, dx: 0.2 }, { at: -0.03, dx: 0.3 } ], width: 0.03 },
+        { type: 'shaft', from: 0.3, to: 2.0, width: 0.14 }
+      ]
+    },
+    // 水桶 bucket: trapezoid body (narrow base, wide rim -- dist 0 plants
+    // flat-bottomed when stuck, matches a real bucket standing upright)
+    // + a 2-segment polyline arc handle above the rim, gripped high
+    // (gripRatio near the handle) so the body hangs prominently below
+    // the hand, matching how a bucket is actually carried.
+    bucket: {
+      totalLen: 1.1,
+      flatLift: 0.42,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.28 }, { at: 0.85, dx: -0.42 }, { at: 0.85, dx: 0.42 }, { at: 0, dx: 0.28 } ] },
+        { type: 'polyline', points: [ { at: 0.85, dx: -0.35 }, { at: 1.1, dx: 0 }, { at: 0.85, dx: 0.35 } ], width: 0.07 }
+      ]
+    },
+    // 澆花壺 watering can: rounded oval body + a diagonal spout polygon
+    // jutting to one side + a small circle water-drop at the spout tip
+    // (the new circle.dx offset) + a polyline arc handle on top.
+    wateringCan: {
+      totalLen: 1.2,
+      flatLift: 0.5,
+      gripRatio: 0.82,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.22 }, { at: 0.15, dx: -0.4 }, { at: 0.55, dx: -0.4 }, { at: 0.75, dx: -0.22 }, { at: 0.75, dx: 0.22 }, { at: 0.55, dx: 0.4 }, { at: 0.15, dx: 0.4 }, { at: 0, dx: 0.22 } ] },
+        { type: 'polygon', points: [ { at: 0.55, dx: 0.35 }, { at: 0.75, dx: 0.75 }, { at: 0.7, dx: 0.8 }, { at: 0.45, dx: 0.42 } ] },
+        { type: 'circle', at: 0.75, dx: 0.85, r: 0.06 },
+        { type: 'polyline', points: [ { at: 0.75, dx: -0.15 }, { at: 1.2, dx: 0 }, { at: 0.75, dx: 0.15 } ], width: 0.06 }
+      ]
+    },
+    // 釣魚竿 fishingRod: thin tapering rod (two shaft segments, thinner
+    // toward the tip) with a small hook nub at dist 0, gripped high at
+    // the reel end so the long rod is the prominent outward part.
+    fishingRod: {
+      totalLen: 2.4,
+      gripRatio: 0.9,
+      parts: [
+        { type: 'circle', at: 0, r: 0.05 },
+        { type: 'shaft', from: 0, to: 1.5, width: 0.06 },
+        { type: 'shaft', from: 1.5, to: 2.1, width: 0.1 },
+        { type: 'shaft', from: 2.1, to: 2.4, width: 0.22 },
+        { type: 'circle', at: 2.15, dx: 0.15, r: 0.1 }
+      ]
+    },
+    // 手電筒 flashlight: flared lens head at dist 0 with three short
+    // light-ray polylines poking PAST it (negative 'at', extrapolating
+    // beyond the tip reference point -- the axis formula doesn't require
+    // dist>=0, it's just distance-from-tip), then a plain barrel + tail
+    // cap.
+    flashlight: {
+      totalLen: 1.0,
+      flatLift: 0.2,
+      gripRatio: 0.7,
+      parts: [
+        { type: 'polyline', points: [ { at: 0.05, dx: -0.05 }, { at: -0.12, dx: -0.15 } ], width: 0.04 },
+        { type: 'polyline', points: [ { at: 0.05, dx: 0 }, { at: -0.15, dx: 0 } ], width: 0.04 },
+        { type: 'polyline', points: [ { at: 0.05, dx: 0.05 }, { at: -0.12, dx: 0.15 } ], width: 0.04 },
+        { type: 'polygon', points: [ { at: 0, dx: 0.14 }, { at: 0.08, dx: 0.14 }, { at: 0.08, dx: -0.14 }, { at: 0, dx: -0.14 } ] },
+        { type: 'shaft', from: 0.08, to: 0.8, width: 0.22 },
+        { type: 'circle', at: 0.8, r: 0.13 }
+      ]
+    },
+    // 火把 torch: the ONE item in this batch where dist 0 is the handle,
+    // not the distinctive feature -- tried flame-at-dist-0 first (matching
+    // every other item's "business end plants at the ground" convention),
+    // but a stuck torch then planted flame-first into the ground, which
+    // read as simply wrong rather than a reasonable stylization (unlike
+    // an axe head or bristle head, fire touching the ground doesn't
+    // parse, confirmed by screenshot). Handle plants instead (a torch
+    // resting handle-down is the standard real-world image -- tiki
+    // torches, ceremonial stands), flame is the irregular asymmetric
+    // polygon at the far/totalLen end, and gripRatio stays low (grip
+    // near the handle end, dist 0) rather than the batch's usual high
+    // value -- the flame ends up in the 'trailing' zone instead of
+    // 'outward', but it's a compact filled shape (not a long thin line),
+    // so it stays legible there instead of getting camouflaged the way a
+    // long shaft would.
+    torch: {
+      totalLen: 1.5,
+      gripRatio: 0.2,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.1, width: 0.15 },
+        { type: 'polygon', points: [ { at: 1.1, dx: -0.1 }, { at: 1.25, dx: -0.16 }, { at: 1.35, dx: -0.06 }, { at: 1.5, dx: 0 }, { at: 1.4, dx: 0.14 }, { at: 1.22, dx: 0.08 }, { at: 1.1, dx: 0.1 } ] }
+      ]
+    },
+    // 放大鏡 magnifyingGlass: a true ring lens (hollow frame, matching
+    // the reference image's "圓形鏡框" -- a frame, not a solid disc) +
+    // short neck + handle, gripped high so the lens is the prominent
+    // outward part.
+    magnifyingGlass: {
+      totalLen: 1.3,
+      flatLift: 0.3,
+      gripRatio: 0.88,
+      parts: [
+        { type: 'ring', at: 0.32, rOuter: 0.3, rInner: 0.2 },
+        { type: 'shaft', from: 0.6, to: 1.3, width: 0.15 }
+      ]
+    },
+    // 團扇 fan: a rounded octagon-ish fan face (the wide rounded outline
+    // itself is what reads as "fan," same silhouette-carries-the-feature
+    // approach used throughout this batch) + plain handle.
+    fan: {
+      totalLen: 1.15,
+      flatLift: 0.42,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.1, dx: 0.32 }, { at: 0.35, dx: 0.42 }, { at: 0.55, dx: 0.32 }, { at: 0.62, dx: 0 }, { at: 0.55, dx: -0.32 }, { at: 0.35, dx: -0.42 }, { at: 0.1, dx: -0.32 } ] },
+        { type: 'shaft', from: 0.62, to: 1.15, width: 0.14 }
+      ]
+    },
+    // 拐杖 cane: plain straight shaft (the tip plants at the ground,
+    // matching how a real cane stands on its own) with a curled polyline
+    // hook at the butt -- the hook is a small LOCAL detail right at the
+    // grip rather than a far-flung prominent feature (unlike an axe
+    // head), which is fine since a hook only needs to be recognizable up
+    // close to the hand, not legible from a distance.
+    cane: {
+      totalLen: 1.6,
+      gripRatio: 0.88,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.35, width: 0.16 },
+        { type: 'polyline', points: [ { at: 1.35, dx: 0 }, { at: 1.5, dx: 0.12 }, { at: 1.6, dx: 0.05 }, { at: 1.55, dx: -0.08 } ], width: 0.15 }
+      ]
+    }
+  };
+
   // ---------- companion pet (component V, new accessory class) ----------
   // A standing creature rather than a static object -- deliberately generic
   // ("不一定是貓狗,也可能只是一個發光體或毛球" per the brief), built as a
@@ -4068,6 +4427,30 @@
     };
   }
 
+  // itemEntry(): stuckWeaponEntry()'s counterpart for component XI's
+  // ITEM_SHAPES catalog (B/C/F/K groups) -- identical held-in-hand wiring
+  // (always drawWeaponParts('held'), regardless of footStow placement),
+  // but the footStow side branches on `placement`: 'stuck' reuses
+  // drawWeaponParts('stuck') exactly like a weapon, 'flat' goes through
+  // drawWeaponPartsFlat() instead (this file's own comment on that
+  // function explains why most of this batch -- tools, shield, book,
+  // chalice, cross, bucket, watering can -- reads better lying at the
+  // feet than planted upright, unlike fishingRod/torch/cane/broom which
+  // have a strong enough real-world "stands on its own" pose to keep
+  // 'stuck').
+  function itemEntry(label, shapeKey, placement){
+    const shape = ITEM_SHAPES[shapeKey];
+    const stowDraw = placement === 'flat'
+      ? (ctx, mount, headR) => drawWeaponPartsFlat(ctx, mount, headR, shape)
+      : (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'stuck');
+    return {
+      label: label,
+      rarity: null,
+      draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'held'),
+      footStow: { placement: placement, draw: stowDraw, apex: headR => shape.totalLen * headR }
+    };
+  }
+
   const HAND_ACCESSORY_REGISTRY = {
     sword: {
       label: '劍(手持/收納示範)',
@@ -4116,7 +4499,49 @@
     flailMace: stuckWeaponEntry('流星錘', 'flailMace'),
     staff: stuckWeaponEntry('長杖', 'staff'),
     warHammer: stuckWeaponEntry('木柄鐵鎚', 'warHammer'),
-    lightsaber: stuckWeaponEntry('光劍', 'lightsaber')
+    lightsaber: stuckWeaponEntry('光劍', 'lightsaber'),
+
+    // ---- B group: round/block armor & relic items (4) ----
+    // All 'flat' footStow -- shield/book/cross/chalice all read better
+    // lying at the feet than planted upright (per the user's own
+    // grouping instruction), unlike the long-axis weapon family.
+    kiteShield: itemEntry('鳶形盾', 'kiteShield', 'flat'),
+    book: itemEntry('魔法書', 'book', 'flat'),
+    cross: itemEntry('十字架', 'cross', 'flat'),
+    chalice: itemEntry('聖杯', 'chalice', 'flat'),
+
+    // ---- C group: everyday tools (8; original brief said "9項" but
+    // only lists 8 items -- flagged as a likely miscount rather than
+    // guessed at, same as v41's longsword listing gap) ----
+    // fishingRod and broom are the two items here with a strong enough
+    // "stands on its own" real-world pose (rod propped business-end
+    // down, broom resting on its bristles) to justify 'stuck' instead of
+    // the batch's 'flat' default; the rest are ordinary held tools with
+    // no natural free-standing pose.
+    screwdriver: itemEntry('螺絲起子', 'screwdriver', 'flat'),
+    wrench: itemEntry('扳手', 'wrench', 'flat'),
+    saw: itemEntry('鋸子', 'saw', 'flat'),
+    scissors: itemEntry('剪刀', 'scissors', 'flat'),
+    broom: itemEntry('木製掃帚', 'broom', 'stuck'),
+    bucket: itemEntry('水桶', 'bucket', 'flat'),
+    wateringCan: itemEntry('澆花壺', 'wateringCan', 'flat'),
+    fishingRod: itemEntry('釣魚竿', 'fishingRod', 'stuck'),
+
+    // ---- F group addition (2): flashlight/torch ----
+    // torch gets 'stuck' (a planted torch, handle down, is a genuinely
+    // common real-world image -- tiki torches, ceremonial stands);
+    // flashlight has no comparable free-standing pose, stays 'flat'.
+    flashlight: itemEntry('手電筒', 'flashlight', 'flat'),
+    torch: itemEntry('火把', 'torch', 'stuck'),
+
+    // ---- K group addition (brief said "2項" but lists 3 -- same
+    // miscount pattern as C group above, flagged rather than guessed) ----
+    // cane gets 'stuck': a cane standing on its own straight tip is the
+    // single most standard resting pose for one. magnifyingGlass/fan
+    // have no equivalent, stay 'flat'.
+    magnifyingGlass: itemEntry('放大鏡', 'magnifyingGlass', 'flat'),
+    fan: itemEntry('團扇', 'fan', 'flat'),
+    cane: itemEntry('拐杖', 'cane', 'stuck')
   };
   let currentHandAccessory = '';
 
