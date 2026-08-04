@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v47 — 狀態機面板新增角色放大縮放</title>
+<title>剪影走路/跑步循環 v48 — 手部配件握持系統根因修復 + Direction B 配件著色</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v47</div>
-    <h1>狀態機面板新增角色放大縮放</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48</div>
+    <h1>手部配件握持系統根因修復,啟動 Direction B 配件著色</h1>
+    <p class="sub"><b>問題</b>:使用者回報幾乎所有已完成的手持配件(劍類、盾、十字架、聖杯、剪刀、澆花壺、馬克杯、火把、蔬果、花草、吉他、沙鈴……)都有握持點/握持方向的問題,範圍太廣,不像是個別配件各自的參數錯誤,要求先診斷是否有系統性根因,只用 2-3 款代表性配件(長劍、十字架、剪刀)驗證,不要逐款當獨立問題修。<br><br><b>根因一:握持姿態沒有向外偏移</b>——<code>drawWeaponParts()</code> 的 <code>held</code> 分支過去直接沿用手部掛載點 <code>mount</code> 本身當作武器座標系原點,只疊加 <code>WEAPON_HELD_TILT</code> 角度,沒有任何位置偏移。用長劍量測確認:掛載點座標本身就落在角色手臂輪廓範圍內(不是手臂外緣),武器的整個座標系原點在輪廓內部起算,導致劍身前段(尤其細長的刀鋒/劍尖)有很長一段直接畫在身體剪影裡面,才會看起來「被身體擋住/糊成一團」。新增 <code>WEAPON_HELD_OUTWARD = 0.8</code>(× <code>headR</code>),在套用 <code>heldTilt</code> 之前,先沿著角色朝向的垂直方向把整個武器掛載幀往外推——這是所有握持類配件共用的同一個偏移,不是逐款調位置。<br><br><b>根因二:<code>dist=0</code> 恆為朝外端,並非握持比例可以反轉</b>——一開始以為調整 <code>gripRatio</code>(握持點沿武器軸線的比例)就能讓火把、馬克杯這類「握柄在配件某一端、功能部位在另一端」的配件呈現正確方向,但用十字架/火把兩款配件重新推導 <code>drawWeaponParts()</code> 內 <code>y(dist)</code> 的計算式才發現:不論 <code>gripRatio</code> 設多少,<code>dist=0</code>(配件資料定義的起點)在 <code>held</code> 姿態下永遠對應畫面朝外的那一端,<code>gripRatio</code> 只能滑動握持點沿軸線的位置,無法翻轉哪一端朝外——馬克杯握把、火把火焰、聖杯杯身這類「該露出的部位剛好定義在 <code>dist=0</code>」的配件,單靠 <code>gripRatio</code> 怎麼調都不會露出正確的一端。新增 <code>weapon.heldReverse</code> 布林旗標,設為 true 時對調 <code>y(dist)</code> 內 <code>gripDist - dist</code> 與 <code>dist - gripDist</code> 兩式,讓資料定義端可以整個翻到朝內——套用在聖杯、火把、蘑菇、向日葵/玫瑰/百合/稻穗/小麥束、沙鈴共 9 款。另外盾牌、十字架用劍類預設的 <code>-50°</code> 握持角度並不合適(盾面/十字長邊被轉到不自然的角度),兩根因之外再補一個小型可覆寫機制 <code>weapon.heldTilt</code>,讓個別配件覆寫預設角度而不影響其他配件。<br><br><b>Part 2 個別配件修正(約 24 款,逐款截圖驗證)</b>:A 組劍類——五款握持點對齊劍柄、刀鋒不再被身體遮擋;shortSword 加長、longsword 比 shortSword 更長、curvedSaber 弧度加大、rapier 劍身變薄、katana 定為本批最長並標記稀有度、lightsaber 與 longsword 等長並標記稀有度。B 組——kiteShield 修正握持方向與姿態、cross 改握長邊、chalice 改握杯柄/杯莖。C 組——scissors 重新設計成看得出「打開」的剪刀造型(第一版兩片楔形 <code>polygon</code> 因為兩片各自的回邊互相穿過對方範圍,合併填色後變成一坨類似臉的形狀,改用兩條各自獨立從刀尖經樞紐到握把的 <code>polyline</code> 錐形線才正確分離成可辨識的剪刀)、wateringCan 壺嘴方向轉為朝外、fishingRod 直接整款替換為警棍(<code>baton</code>,不修原本魚竿造型)。D 組——flashlight 燈頭前方加白色光源效果、torch 修正握持方向(<code>heldReverse</code>)、mug 改握握把(<code>gripRatio</code> 0.8→0.42)。E/F 組——carrot、mushroom、sunflower、rose、lily、riceEar、wheatBundle 修正握持方向。H 組——guitar 驗證後確認原 <code>gripRatio:0.86</code> 才是正確值(曾試改 0.5,人物身上比對後畫面反而更差,問題出在根因一,不是這款自己的參數)、maraca 修正握持方向。<br><br><b>Part 3:Direction B——特定配件開始脫離純黑剪影</b>,新增 <code>resolveWeaponColor(style, part)</code> 三層優先權:①<code>part.color</code>(配件資料裡個別部位直接寫死的顏色,用於「這個顏色是配件與生俱來的固定特徵」——火把的火焰、手電筒的光束/光源,這類顏色不該經過稀有度分級,直接寫在 <code>WEAPON_SHAPES</code>/<code>ITEM_SHAPES</code> 對應 part 上);②<code>style.color</code>(登記在 <code>HAND_ACCESSORY_REGISTRY</code> 條目上、由 <code>stuckWeaponEntry</code>/<code>itemEntry</code> 的 <code>opts.color</code> 帶入的整款專屬色,用於「同一個形狀但有多種顏色變體」——光劍的霓虹藍/綠/紅/黃與亮白 5 款各自是獨立登記項,共用同一個 <code>lightsaber</code> 幾何,顏色不寫進形狀資料,寫在各自的登記條目);③<code>style.rarity</code> 查 <code>RARITY_STYLE</code>(沿用 v37 就保留、原本未串接的 <code>rarity</code> 欄位,現在真正接上一個獨立的稀有度→顏色對照表,武士刀標記 <code>rarity:'S'</code> 後自動套用 S 級配色,不需要另外指定顏色,未來任何配件只要標同一個稀有度字串就會自動吃到同一色);找不到以上三者時退回原本純黑剪影 <code>SIL</code>,幾何資料(<code>WEAPON_SHAPES</code>/<code>ITEM_SHAPES</code>)本身維持與著色邏輯解耦,三種「顏色從哪來」的語意（配件固有特徵 / 款式變體 / 稀有度分級）各自對應資料結構裡不同的一層,不會互相打架。這輪保留清單所有 92 款配件,沒有刪除任何項目——刪減/去蕪存菁留待下一輪使用者提供裁剪名單後再處理。</p>
     <p class="sub"><b>問題</b>:握持點統一檢視畫廊(靜態截圖、裁切放大後另外發布成 artifact)雖然能看出問題,但使用者實際要的是能自己在互動測試頁裡直接放大角色,自由切換任何原型/姿勢/配件組合查看,不要每次都靠另外截圖產出一份新畫廊——截圖畫廊只能看事先選好的固定組合,自己在頁面上縮放才能涵蓋所有排列組合。<br><br><b>做法</b>:<code>#stageFsm</code>(狀態機面板的主要角色畫布)外層包一個新的 <code>#stageFsmViewport</code>(<code>overflow:hidden</code>),旁邊加一個「角色放大」滑桿(1x-4x)。畫布本身用 <code>position:absolute; left:...; bottom:0</code> 錨定在 viewport 內——底部對齊 viewport 底部(角色腳邊的參考位置本來就接近畫布底緣),水平位置則動態算出讓角色掛載點 <code>cx=240</code>(跟 <code>stepFsm()</code> 自己用的同一個值)對齊 viewport 正中央。滑桿調大時,畫布本身的顯示寬度變大(瀏覽器對 <code>&lt;canvas&gt;</code> 這種替代元素,只設定寬度時會自動保持 480:360 內在比例,跟 <code>&lt;img&gt;</code> 一樣,不需要額外算高度),而 viewport 的可視窗口同時朝角色實際的像素範圍收攏,兩者疊加的效果才是「角色变大」而不是「畫布變大、角色還是一樣小」。<br><br><b>除錯過程(兩個根因,由淺入深)</b>:①第一版只把 viewport 高度往下收(畫布仍是全寬 480 顯示),放大後角色的確變高了,但畫面變成一個很寬的空景加一個小小的角色,橫向完全沒收攏——用截圖比對兩個版本才注意到問題不是「角色沒有變大」(數學上確實变大了,寬度 320→902px 時角色高度也等比例變大),而是「角色佔畫面的比例沒有變」,因為裁切只動了垂直方向。②加上水平裁切後,放大直接壞掉(4x 縮放後截圖是一整塊 124×80px 的純黑色)——用 <code>getBoundingClientRect()</code> 逐步比對抓出根因:畫布沿用初始化時設定的 <code>style.width:'100%'</code>,這個「100%」是相對於離它最近的「已定位」祖先元素算的,而把 <code>#stageFsmViewport</code> 設成 <code>position:relative</code> 之後,這個祖先正好就是 viewport 本身——而這次改動同時也在縮小 viewport 的寬度(做水平裁切),等於每次滑桿一動,畫布的「100% 寬度」基準,就是「上一次已經縮小過的 viewport」,一路複合縮小下去。修正方式是不再依賴這條 <code>width:'100%'</code> 規則,滑桿每次都改成對一個「穩定不會被裁切邏輯影響」的祖先容器(viewport 的父層,<code>.context-panel</code>)重新量測寬度上限,畫布寬度用 <code>style.width</code> 明確指定像素值,不再假手瀏覽器的百分比繼承。<br><br><b>裁切範圍怎麼定</b>:沒有憑空猜測,直接用 <code>getImageData()</code> 掃描一次實際渲染出來的角色(<code>longlimb</code> 原型、手持短劍、停下站姿),量出角色剪影本身只佔約 21×45 個邏輯像素(對比畫布總尺寸 480×360)——這個量測結果拿來定裁切目標的緊縮端(4x 時顯示邏輯座標 140×90 的視窗,大約是角色本身尺寸的 2 倍留白),1x 時維持顯示完整 480×360(不裁切,跳躍/歡呼等會伸展到畫面上緣的姿勢在低倍率時不會被誤裁)。<br><br><b>驗證</b>:非連續跳倍率(1x 直接跳 4x,不是滑桿依序拖過中間值)、往返縮放(4x 再拉回 1x,確認畫布/viewport 尺寸精確復原成原始的 320×240,不會累積誤差)、換一個明顯比劍寬的配件(木吉他)搭配跳躍姿勢(角色在空中,測試低倍率下高聳姿勢不被誤裁),全部目視確認正常。完整 17 原型 × 21 姿勢回歸測試(88 款配件輪替)重新跑過,zero console 錯誤——這次改動完全是 DOM 結構(畫布外多包一層 viewport div)跟 CSS,沒有動到 <code>stepFsm()</code>/<code>drawCharacter()</code> 等繪製邏輯本身,回歸測試主要是確認新包的 <code>&lt;div&gt;</code> 沒有意外影響到既有的座標/點擊邏輯。</p>
     <p class="sub"><b>沿用既有機制,無重新發明</b>:全部 22 款一樣透過 <code>itemEntry()</code>/<code>ITEM_SHAPES</code>/<code>drawWeaponParts()</code>/<code>drawWeaponPartsFlat()</code> 渲染,跟 D/E/F/G 組完全相同的機制。這輪完成後手部配件庫 A 到 K 組全部到齊,總計 <b>88 款</b>正式配件(另有 2 款示範用的原型 <code>sword</code>/<code>canteen</code>,不計入分類清單),完整清單總覽見下方使用者回報段落。<br><br><b>兩個技術重用,沒有新機制</b>:①<code>polyline</code> 弧線握把(上一輪為了 <code>drawWeaponPartsFlat()</code> 旋轉後握把不能維持「貼合本體」而改用的技法)這輪套用在魔法神燈的握把、魔術方塊的做法沒有直接用到但同一套「跨一段 <code>at</code> 範圍」原則有延伸到量角器的半圓輪廓與羽毛球拍的橢圓握框上。②<code>polygon</code>+相反繞線 <code>holes</code>(挖洞技法)這輪用在三個新地方——直尺的 6 個刻度缺口、魔術方塊的九宮格線、木製面具的兩個杏眼鏤空,證明這個技法不只適用於矩形洞(先前的鳶形盾十字、扳手開口都是矩形),任意凸邊形洞都適用。<br><br><b>橢圓形近似</b>(新的幾何生成手法,非新渲染機制):羽毛球拍的中空拍框、量角器的半圓輪廓都需要橢圓/圓弧外框,但 <code>circle</code>/<code>ring</code> 兩個既有型別只支援正圓。沿用 <code>buildStarPoints()</code> 本來就有的「角度採樣」概念——固定半徑、遍歷 0-360 度(量角器只需 180 度)算出一圈 <code>{at, dx}</code> 頂點——但半徑改成橢圓的 rx/ry 而非星形的內外半徑交替,手算 8-9 個採樣點出來當 <code>polygon</code> 的 <code>points</code>(羽毛球拍的拍框洞用同一手法算內外兩圈,外圈跟內圈刻意用相反的角度遍歷順序生成,確保繞線方向相反、洞真的挖得穿)。截圖確認羽毛球拍拍框第一次手算就正確挖穿,量角器半圓輪廓也一次到位,沒有重演上一輪鳶形盾/扳手洞挖錯方向要來回除錯的狀況。<br><br><b>逐組差異化設計重點</b>:H 組(木吉他/小喇叭/直笛/沙鈴/大聲公)木吉他靠全目錄最長的 <code>totalLen</code>(2.15)+雙圓疊body+鏤空音孔獨立於其他四款；小喇叭跟大聲公共用「喇叭口 <code>polygon</code>」語彙但刻意用「有無活塞鈕」拉開(小喇叭 3 顆活塞鈕、大聲公完全沒有,只有握把+扳機),避免兩者混淆；直笛用單一喙型 <code>triangle</code> 尖嘴+6 孔識別,長度介於武器類量級。<br>I 組(鉛筆/直尺/量角器/信封/地球儀/魔術方塊)鉛筆是全目錄最直白的「尖端+木身+箍圈+橡皮擦」四段式應用;直尺跟量角器都是扁平幾何形但用「長直條 vs 半圓」拉開;信封用五點五邊形(矩形+三角屋頂融合)+郵票鏤空環;地球儀用「穿透球體的軸桿」(細桿先畫、球體圓形後畫蓋掉中段,只露出南北極兩截,球體圓形本身就有遮蓋效果,不需要額外裁切邏輯)。<br>J 組(仙女棒/燈籠/氣球/紙飛機/魔法神燈/巫毒娃娃)仙女棒的火花用 5 條方向不規則的短折線(刻意不用 <code>buildStarPoints()</code> 那種工整放射,讀起來才像「迸發」而非花朵);紙飛機是單一 6 點 <code>polygon</code> 就做出機頭+雙翼+尾部凹口的經典紙飛機輪廓,是這批裡效率最高的形狀;巫毒娃娃直接複用薑餅人的人形骨架(雙腿/軀幹/雙臂/頭),唯一差異是軀幹兩側加 3 根穿出輪廓外的細針(針必須穿出邊界才看得見,同色線畫在實心填色內部等於隱形,這是全系統從鳶形盾十字裝飾就確立的規則,這裡是第 N 次套用而非新發現)。<br>K 組(羽毛球拍/桌球拍/牙刷/木製面具/試管)羽毛球拍/桌球拍是這批裡差異化要求最明確的一對——拍框「中空橢圓+長細柄」對比桌球拍「實心正圓+短粗柄」,拍面性質(空 vs 實)、握柄長度(1.6 vs 0.75 個 <code>totalLen</code>)兩條線索疊加,不只靠尺寸;木製面具用兩個杏眼鏤空跟同樣是淚滴輪廓的鳶形盾拉開差異。<br><br><b>雙手持握的標註與判斷(使用者指令第 4 點)</b>:這輪評估了使用者明確點名的三個候選——木吉他(彈奏需要雙手)、羽毛球拍/桌球拍(揮擊動作)——三者全部維持 <code>holdStyle</code> 省略(單手預設),原因跟上一輪遊戲手把/相機一致且已經在各自的資料註解裡個別說明:吉他跟球拍現實中雖然雙手參與,但都是「單一物件」(一把吉他、一支球拍),不是「成對配戴物」,既有的 <code>dual</code> 機制只會畫出兩把吉他或兩支球拍,不是一把雙手共同操作的物件,套用會是錯誤結果;球拍額外類比既有的劍/長矛判斷先例——真人打羽球/桌球實際是單手持拍揮擊,不是雙手共握一支拍子,語意上本來就該單手。<br><br>這輪唯一真正標成 <code>holdStyle: 'dual'</code> 的是沙鈴(maraca)——沒有在使用者原始候選名單裡,是這輪自己額外判斷出來的:一組沙鈴是兩支同款搖鈴、一手一支的成對配戴物,正好符合既有 <code>dual</code> 機制「同一形狀在兩個掛載點各畫一份」的原始設計初衷(跟先前 v37 紀錄裡設想的「一對鈴鐺」範例完全同類),是全目錄第一款真正該用 <code>dual</code> 的配件,用 IIFE 包一層 <code>itemEntry()</code> 呼叫、渲染完再蓋一個 <code>holdStyle: 'dual'</code> 上去,沒有改動 <code>itemEntry()</code> 本身的簽章(其餘 87 款都不需要這個欄位,不值得為了一款配件把它變成 <code>itemEntry()</code> 的正式參數)。<br><br><b>除錯過程</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口(驗證完成後已移除,不進正式程式碼)把 22 款配件各自放大截圖比對,一次通過、沒有發現需要返工的形狀或掛載問題(跟上一輪菜刀/啤酒大木杯/遊戲手把三個問題都要返工不同,這輪手算橢圓座標跟挖洞方向都一次到位)。<br><br><b>驗證</b>:跑一次完整 17 原型 × 21 姿勢回歸測試(22 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤;下拉選單確認 89 個選項(88 款配件 + 「無」),22 款新配件全部在列、沒有缺漏。<b>這輪(比照 D/E/F/G)僅完成形狀設計與辨識度確認,握持點採用共用預設值。手部配件庫 A-K 全部到齊後,下一階段是使用者要做的「握持點統一檢視調整」以及後續的手持動畫角度自然度/頭部安全餘裕驗證,這兩項本輪都尚未進行。</b></p>
     <p class="sub"><b>沿用既有機制,無重新發明</b>:全部 31 款一樣透過 <code>itemEntry()</code>/<code>ITEM_SHAPES</code>/<code>drawWeaponParts()</code>/<code>drawWeaponPartsFlat()</code> 渲染,跟 B/C/F/K 組完全相同的機制,新增的是形狀資料本身,不是新程式邏輯。<br><br><b>清單處理</b>:D 組(廚房餐具 8 款)、F 組(植物/自然物 10 款)、G 組(3C/科技 6 款)品項數量跟指令標註一致,直接建置。E 組(食物)指令標題標「8 項」但清單只列出 7 個具名品項(胡蘿蔔、棒棒糖、冰淇淋、披薩片、雞腿、拐杖糖、薑餅人),外加一句「原清單的甜筒可與冰淇淋合併或保留獨立,由你判斷」——參考圖裡的「冰淇淋」圖示本身已經是甜筒+一球冰淇淋的組合造型,沒有另外畫一個獨立的甜筒圖示,所以判斷合併,只做 <code>iceCream</code> 一款,不額外造一個容易跟它高度重複的甜筒。這個判斷明確標註在這裡,不是靜默處理。<br><br><b>逐組差異化設計重點</b>:D 組(平底鍋/湯勺/菜刀/叉子/馬克杯/啤酒大木杯/茶壺/保溫瓶)刻意讓最容易混淆的幾對用不同零件語彙拉開——平底鍋(大圓盤+短粗柄)跟湯勺(小圓杯+長細柄+勾)是柄:杯比例互為反向;菜刀用單一寬楔形 <code>polygon</code>(刃寬達 0.24,約劍身兩倍)跟既有劍系「窄長對稱尖」的語彙區隔;馬克杯/啤酒大木杯/茶壺三款同屬「杯身+側柄」語彙,靠杯身高寬比、握把弧度大小、有無壺蓋/壺嘴三個獨立線索疊加區分,不只靠尺寸。E 組胡蘿蔔(錐形根莖+葉梢)、棒棒糖(大圓糖+內圈鏤空螺旋+細柄)、冰淇淋(三角錐+鋸齒漩渦頂)、披薩片(寬扇形+三顆配料圓點)、雞腿(圓潤肉身+細骨柄+骨節圓)、拐杖糖(細杆+緊勾+斜紋)、薑餅人(全目錄唯一人形——髖部分岔雙腿+梯形軀幹+雙臂+圓頭+三顆鈕扣)七款彼此形狀語彙都不同,不是同一套語彙換比例。F 組向日葵/玫瑰花/百合花共用「莖+花頭」語彙,但花頭改用 <code>buildStarPoints()</code> 的角數/內外半徑對比拉開差異(向日葵 12 角、對比小,密集小花瓣+深色花心圓;玫瑰花 8 角、對比更小,呈現圓潤扇貝邊+小花苞圓;百合花只 6 角、對比極大,呈現稀疏尖銳星芒+雄蕊小點),仙人掌盆栽/四葉草盆栽因為盆栽底座的關係全部採 <code>flat</code>(不採 <code>stuck</code>,跟頭尾配件同一批已有的「盆栽不能插地」判斷邏輯一致),稻穗(單枝下垂+8 顆散落穀粒)跟小麥束(5 枝散射+綁帶+5 顆碩大穀粒)刻意連姿態(前者 <code>flat</code> 躺姿、後者 <code>stuck</code> 立姿)都不同,不只形狀不同。G 組手機/平板只靠寬高比拉開(手機 dx±0.19 窄長,平板 dx±0.34 寬短)+平板獨有的鏤空 Home 鍵環;遊戲手把/相機/手槍是全新的「橫向」或「原有直軸剛好貼合」設計,見下方個別說明。<br><br><b>雙手持握的標註與限制(使用者指令第 3 點)</b>:評估過遊戲手把、相機這兩款——兩者現實中確實需要雙手操作,主動標註於此,但沒有設成 <code>holdStyle: 'dual'</code>。既有的 <code>dual</code> 機制經 v41 已確認是「同一個形狀在兩個掛載點各畫一份」,適合成對配戴物(例如一對鈴鐺),標成 <code>dual</code> 會讓畫面出現兩個手把/兩台相機,不是一個橫跨雙手的單一裝置,是錯誤的視覺結果。真正的「單一物件、雙手共同握持」錨定機制目前不存在,這輪維持兩者 <code>holdStyle</code> 省略(吃單手預設),限制留在這裡明確記錄,不是遺漏。<br><br><b>遊戲手把的座標軸特例</b>:這是全目錄第一款刻意用「橫向」設計的配件——遊戲手把現實中寬度遠大於高度,如果照其餘配件的慣例把 <code>dist 0</code> 放在主體特徵、沿掛載軸垂直延伸,畫出來會是一個窄窄立起來的東西,完全不像手把。改成讓 <code>at</code>(通常代表沿掛載軸的長度)只承擔手把很淺的前後厚度,實際的左右寬度全部塞進 <code>dx</code>(<code>dx</code> 換算成畫面座標時本來就不受 <code>totalLen</code> 限制,永遠直接乘 <code>headR</code>,見 <code>drawWeaponParts()</code> 裡 <code>y()</code>/像素座標的公式拆分)。第一版直接照 C/F/K 組的慣例把它註冊成 <code>flat</code>,結果 <code>drawWeaponPartsFlat()</code> 自己還會再轉 90 度,兩次旋轉疊加後手把整個轉成一個細長的逗號形狀,完全不像手把,截圖比對後才發現雙重旋轉的問題——改成 <code>stuck</code>(直接沿用配件自己未旋轉的軸線,形狀本身刻意設計成橫向,不需要 <code>flat</code> 那道額外的轉向)後,截圖確認呈現正確的寬扁太陽眼鏡狀輪廓,清楚跟其餘直立配件區隔。<br><br><b>除錯過程</b>:①菜刀第一版刀刃 <code>polygon</code> 頂點順序寫錯(正負 dx 兩側的繞線方向在中途跳動、不是單純沿正側去、沿負側回),渲染出一個自我相交的蝴蝶結形狀,縮成一小撇讀起來像閃電符號而非刀刃——改成嚴格沿正 dx 側去、負 dx 側回的簡單多邊形繞線後,截圖確認呈現正確的寬楔形。②啤酒大木杯第一版沿用手電筒光線的「負 <code>at</code> 外推」技巧把杯蓋畫在 <code>dist 0</code> 之前,結果杯蓋跑到本體下方、跑出地面線以下,倒插視覺上像是懸空多一截而非「蓋子在杯口上方」——根因是誤用了手電筒那個外推技巧,手電筒的光線本來就該長在尖端(<code>dist 0</code>)之外,但啤酒杯的蓋子該長在本體「另一端」(<code>totalLen</code> 端)之外,兩者方向相反;改成杯蓋往本體本身最大 <code>at</code> 值以外延伸(比照木劍握柄圓頭長在劍身末端以外的既有寫法),截圖確認蓋子正確落在杯口上方。③馬克杯/啤酒大木杯/茶壺三款握把最初都用單點偏軸 <code>ring</code>(比照剪刀指環的既有寫法),在配件自己的原始軸線(手持/倒插視角)上看起來正確,但這批多數配件走 <code>flat</code> 收納,<code>drawWeaponPartsFlat()</code> 會把整個局部座標轉 90 度——原本在「側邊」的偏軸裝飾轉完後跑到「上方/下方」,讀起來像是一個懸空的扣環而非貼合杯身的握把(截圖比對發現的,不是憑空假設)。改成比照水桶握把既有寫法,用跨一段 <code>at</code> 範圍的 3 點 <code>polyline</code> 弧線(而不是單點偏軸圓環)貼著杯身邊緣畫,不管有沒有經過 <code>flat</code> 旋轉,弧線都跟主體維持「附著」的視覺關係,不會變成一個孤立的圓圈——套用到三款握把,並移除保溫瓶/相機兩款原本次要、非辨識度必要的小背帶圓環裝飾(同一個偏軸單點鏤空問題,但這兩款的背帶本來就不是識別度所需的核心特徵,直接拿掉比重新設計更乾淨)。<br><br><b>驗證</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口(驗證完成後已移除,不進正式程式碼)把 31 款配件各自放大截圖比對辨識度,抓出上述菜刀/啤酒大木杯/遊戲手把三個真正的形狀或掛載問題並修正。接著跑一次完整 17 原型 × 21 姿勢回歸測試(31 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤;另外針對 <code>flat</code>/<code>stuck</code> 兩種倒插呈現,在 <code>longlimb</code>(標準長腿)、<code>boxChubbyBlur</code>(模糊型)兩種代表性原型上跑正面站定收納姿勢的截圖(31 款 × 2 原型,共 62 張),zero console 錯誤,目視抽查數款(含全目錄最高、最寬的薑餅人/遊戲手把)確認位置落在腳邊、沒有明顯懸空或陷入地面。<b>這輪跟 B/C/F/K 組一樣,僅完成形狀設計與辨識度確認,握持點全數採用共用預設值(未逐款微調),尚未針對這 31 款進行手持動畫角度自然度與頭部安全餘裕的驗證——待使用者確認形狀辨識度、並完成後續所有分類的一次性握持點檢視後,再統一進行下一輪動畫與握持點驗證。</b></p>
@@ -3608,34 +3609,163 @@
   // further back); most should just take this default.
   const DEFAULT_WEAPON_GRIP_RATIO = 0.68;
 
-  function drawWeaponParts(ctx, mount, headR, weapon, orientation){
+  // WEAPON_HELD_OUTWARD: root-cause fix for "almost every held accessory
+  // reads as invisible/merged into the leg" (v48 diagnosis). Traced with
+  // a temporary mounts-debug hook rather than guessed: at idle rest,
+  // handNear sits at roughly (244, 322) in a 480x360 stage where the
+  // near leg's own centerline runs through nearly the same x, and
+  // groundY is only 330 -- the hand mount is essentially AT ankle
+  // height, immediately beside the leg, not out at hip/waist level. The
+  // 'held' formula (WEAPON_HELD_TILT/gripRatio) only ever ROTATES and
+  // slides the item ALONG its own axis through that exact point; nothing
+  // in the mechanism ever moved the point itself away from the body. For
+  // a short item (many totalLen ~1-1.5 headR) whose grip sits close to
+  // its own midpoint, that keeps almost its entire rendered length
+  // within the leg's own radius -- same fill color, no outline, so the
+  // overlapping portion is genuinely indistinguishable from the leg, not
+  // just "hard to see". This is exactly the same class of problem
+  // footMountDxFor() already solved for the STOWED state (an explicit
+  // clearance margin so a foot-stowed item doesn't sit inside the leg's
+  // own silhouette) -- 'held' orientation never got its own equivalent
+  // margin. Direction uses perp(mount.angle) (the arm's own real-time
+  // angle, NOT the tilted/clamped draw angle -- deliberately decoupled,
+  // see below) rotated -90 deg, which resolves to world (+1,0) i.e.
+  // straight ahead of the body at rest (mount.angle=PI, arm hanging
+  // straight down) -- pushing the whole grip point that same "away from
+  // the body, into open space in front" direction the existing perp/OUT
+  // convention already uses everywhere else in this file (flat-footStow,
+  // single-point head accessories), not a new invented axis. Using the
+  // UNTILTED mount.angle (not mount.angle+WEAPON_HELD_TILT) keeps this
+  // offset tied to the arm's actual anatomical position regardless of
+  // whatever artistic carry-tilt a given frame applies -- the two
+  // concerns (how far from the body vs. what angle it's carried at) stay
+  // independent instead of the offset direction swinging around every
+  // time WEAPON_HELD_TILT/MAX_ANGLE's clamp kicks in.
+  // Magnitude (0.8 headR) sized from the same inputs footMountDxFor
+  // already uses for its own clearance margin (leg radius + a bladed
+  // item's own half-width + a visible gap), confirmed by screenshot
+  // rather than left at a guessed value.
+  const WEAPON_HELD_OUTWARD = 0.8;
+
+  // ==================== component XIV: colored accessories (v48) ====================
+  // Every prior round's accessory rendered as flat SIL with zero
+  // exceptions; this round introduces the first departure, per explicit
+  // direction. Deliberately does NOT add a color/rarity field onto
+  // WEAPON_SHAPES/ITEM_SHAPES itself -- those objects describe pure
+  // geometry ("what to draw") for every one of the ~90 entries already in
+  // this file, and the "rarity is a decoupled lookup, not baked onto the
+  // accessory's own data" principle was already established back at v37
+  // specifically at the REGISTRY level (HAND_ACCESSORY_REGISTRY entries
+  // each carry their own `rarity`, reserved unread until now) -- adding a
+  // SECOND, differently-scoped rarity/color field onto the raw shape data
+  // would fork that concept into two places instead of reusing the one
+  // that already exists. So color resolution takes a `style` argument
+  // (computed by the REGISTRY factory functions below, not stored on the
+  // shape) rather than reading anything off `weapon` itself.
+  //
+  // RARITY_STYLE: tier -> visual treatment lookup, exactly the table the
+  // v37 comment reserved this design for. katana is the first real
+  // consumer -- its registry entry sets rarity:'S' and gets its blade
+  // color by LOOKING UP this table at draw time, no color value stored
+  // anywhere on katana's own WEAPON_SHAPES entry. Retiering the whole 'S'
+  // look later, or adding a future glow/border effect, only ever touches
+  // this one table.
+  const RARITY_STYLE = {
+    S: { color: '#d9a441' },
+    SSS: { color: '#e9e6df' }
+  };
+
+  // resolveWeaponColor(): precedence, most to least specific --
+  // 1) part.color -- a single FEATURE colored regardless of the rest of
+  //    the item (torch's flame, flashlight's beam); the shaft/handle
+  //    around it stays SIL.
+  // 2) style.color -- an item-level override for variant SKUs of the
+  //    SAME shape. Lightsaber's 5 colors are 5 separate registry entries
+  //    (same WEAPON_SHAPES.lightsaber geometry, different style.color
+  //    passed in by the registry factory), NOT derived from rarity --
+  //    "which of 5 blade colors" isn't a rarity-TIER decision, it's the
+  //    variant's own intrinsic identity, even though every one of the 5
+  //    also carries rarity:'SSS' for cataloging.
+  // 3) RARITY_STYLE[style.rarity] -- the decoupled, tier-driven default.
+  //    katana's ONLY color source; its registry entry has no color of
+  //    its own, only a rarity tier.
+  // 4) SIL -- everything else, completely unchanged from every prior
+  //    round (style omitted entirely).
+  function resolveWeaponColor(style, part){
+    if (part && part.color) return part.color;
+    if (!style) return SIL;
+    if (style.color) return style.color;
+    if (style.rarity && RARITY_STYLE[style.rarity]) return RARITY_STYLE[style.rarity].color;
+    return SIL;
+  }
+
+  function drawWeaponParts(ctx, mount, headR, weapon, orientation, style){
     if (!mount) return;
     const flip = orientation === 'held';
     let drawMount = mount;
     if (flip){
-      const rawAngle = mount.angle + WEAPON_HELD_TILT;
-      drawMount = { x: mount.x, y: mount.y, angle: Math.min(rawAngle, WEAPON_HELD_MAX_ANGLE) };
+      // weapon.heldTilt (v48): overrides WEAPON_HELD_TILT for items where
+      // the rakish -50deg sword-carry diagonal reads wrong. Found on
+      // kiteShield/cross: both looked like they were being brandished at
+      // a jaunty angle rather than carried/held upright, because the
+      // -50deg tilt was tuned specifically for BLADED weapons (see that
+      // constant's own comment -- "carried across the wrist" is a
+      // sword-holding image, not how a shield or a crucifix is actually
+      // held, which stays much closer to vertical/parallel to the arm).
+      // Defaults to WEAPON_HELD_TILT so every other item is unaffected.
+      const tilt = weapon.heldTilt != null ? weapon.heldTilt : WEAPON_HELD_TILT;
+      const rawAngle = mount.angle + tilt;
+      const perpAngle = mount.angle - Math.PI / 2;
+      const px = Math.sin(perpAngle), py = -Math.cos(perpAngle);
+      drawMount = {
+        x: mount.x + px * WEAPON_HELD_OUTWARD * headR,
+        y: mount.y + py * WEAPON_HELD_OUTWARD * headR,
+        angle: Math.min(rawAngle, WEAPON_HELD_MAX_ANGLE)
+      };
     }
     const gripRatio = weapon.gripRatio != null ? weapon.gripRatio : DEFAULT_WEAPON_GRIP_RATIO;
     const gripDist = flip ? gripRatio * weapon.totalLen : 0;
+    // weapon.heldReverse (v48): for the small "torch-exception" family
+    // (dist0 = the PLANTABLE base, not the distinctive feature -- torch's
+    // own comment explains why: a flame/flower-head/mushroom-cap plants
+    // wrong end-first), dist0 is structurally ALWAYS the outward-facing
+    // end when held, for ANY gripRatio value -- y(0) = -gripDist*headR is
+    // negative (outward) whenever gripRatio>0, and y(totalLen) is
+    // positive (inward) whenever gripRatio<1, regardless of how big or
+    // small gripDist itself is. gripRatio only ever changes how FAR each
+    // end reaches, never WHICH direction either end faces. That's correct
+    // for the ordinary "dist0 = business end" convention (a sword's blade
+    // tip should always point outward), but it's backwards for this
+    // family: the handle/stem (dist0) ends up pointing away from the
+    // body while the flower head/flame/rattle -- the part actually worth
+    // presenting -- ends up hidden toward the body, the opposite of
+    // "holding it up to show it". 'stuck' orientation is NOT affected by
+    // this flag (it already plants dist0/the base correctly, that part
+    // was never wrong) -- only 'held' mirrors which end is outward.
+    const reverseHeld = flip && weapon.heldReverse;
     drawInMountFrame(ctx, drawMount, function(c){
-      function y(dist){ return flip ? (dist - gripDist) * headR : -dist * headR; }
+      function y(dist){
+        if (!flip) return -dist * headR;
+        return (reverseHeld ? gripDist - dist : dist - gripDist) * headR;
+      }
       for (const p of weapon.parts){
+        const partColor = resolveWeaponColor(style, p);
         if (p.type === 'shaft'){
-          capsule(c, 0, y(p.from), 0, y(p.to), p.width * headR, SIL);
+          capsule(c, 0, y(p.from), 0, y(p.to), p.width * headR, partColor);
         } else if (p.type === 'crossbar'){
-          capsule(c, -p.halfLen * headR, y(p.at), p.halfLen * headR, y(p.at), p.width * headR, SIL);
+          capsule(c, -p.halfLen * headR, y(p.at), p.halfLen * headR, y(p.at), p.width * headR, partColor);
         } else if (p.type === 'diagonal'){
           // fans out from a point ON the main axis (x=0, distance p.at) to
           // an offset point (x=p.dx, distance p.to) -- used for trident's
           // outer tines and similar forking shapes.
-          capsule(c, 0, y(p.at), p.dx * headR, y(p.to), p.width * headR, SIL);
+          capsule(c, 0, y(p.at), p.dx * headR, y(p.to), p.width * headR, partColor);
         } else if (p.type === 'circle'){
           // optional p.dx (defaults 0, every existing on-axis use is
           // unaffected) -- off-axis circles added for kiteShield/cross-
           // family items whose decorative dots/caps sit beside the main
           // axis rather than on it (e.g. the cross's left/right arm caps,
           // watering can's spout droplet).
+          c.fillStyle = partColor;
           c.beginPath();
           c.arc((p.dx || 0) * headR, y(p.at), p.r * headR, 0, Math.PI * 2);
           c.fill();
@@ -3644,6 +3774,7 @@
           // width p.baseWidth), apex at distance p.tipAt (usually 0, the
           // weapon's own tip).
           const baseY = y(p.baseAt), tipY = y(p.tipAt), hw = p.baseWidth / 2 * headR;
+          c.fillStyle = partColor;
           c.beginPath();
           c.moveTo(-hw, baseY);
           c.lineTo(hw, baseY);
@@ -3671,6 +3802,7 @@
           // default nonzero fill rule to treat the overlap as unfilled.
           // Added for kiteShield's cross emblem (see ITEM_SHAPES' own
           // comment on why it's built as a hole, not a same-color line).
+          c.fillStyle = partColor;
           c.beginPath();
           p.points.forEach(function(pt, idx){
             const px = pt.dx * headR, py = y(pt.at);
@@ -3698,7 +3830,7 @@
           for (let i = 0; i < p.points.length - 1; i++){
             const a = p.points[i], b = p.points[i + 1];
             const w = Array.isArray(p.width) ? p.width[i] : p.width;
-            capsule(c, a.dx * headR, y(a.at), b.dx * headR, y(b.at), w * headR, SIL);
+            capsule(c, a.dx * headR, y(a.at), b.dx * headR, y(b.at), w * headR, partColor);
           }
         } else if (p.type === 'ring'){
           // true annulus (a hole punched through, not a filled disc) --
@@ -3710,6 +3842,7 @@
           // optional p.dx (defaults 0) -- scissors' two finger-hole rings
           // sit side by side off-axis, unlike kunai's single on-axis one.
           const cx = (p.dx || 0) * headR, cy = y(p.at);
+          c.fillStyle = partColor;
           c.beginPath();
           c.arc(cx, cy, p.rOuter * headR, 0, Math.PI * 2, false);
           c.arc(cx, cy, p.rInner * headR, 0, Math.PI * 2, true);
@@ -3736,11 +3869,11 @@
   // (the true bounding width of an arbitrary part list isn't cheap to
   // derive automatically across every part type, so this is measured by
   // eye like gripRatio already is, not computed).
-  function drawWeaponPartsFlat(ctx, mount, headR, item){
+  function drawWeaponPartsFlat(ctx, mount, headR, item, style){
     if (!mount) return;
     const lift = (item.flatLift != null ? item.flatLift : 0.15) * headR;
     const flatMount = { x: mount.x, y: mount.y - lift, angle: mount.angle - Math.PI / 2 };
-    drawWeaponParts(ctx, flatMount, headR, item, 'stuck');
+    drawWeaponParts(ctx, flatMount, headR, item, 'stuck', style);
   }
 
   // buildStarPoints(): generates an alternating outer/inner-radius point
@@ -3790,12 +3923,22 @@
     // no-guard version was indistinguishable from a thin nail). The point
     // is now the actual differentiator "no guard, but still clearly a
     // blade" relies on.
+    // v48: lengthened (blade 0.85 -> 1.1, totalLen 1.33 -> 1.58) per user
+    // request, and gripRatio now set explicitly (0.70, = the blade/handle
+    // junction distance / totalLen) instead of falling through to
+    // DEFAULT_WEAPON_GRIP_RATIO -- the default was tuned as a general
+    // "balanced blade" compromise before any of this batch's grip
+    // problems were diagnosed; an explicit ratio landing the grip exactly
+    // at the blade/handle seam is what "held point aligns with the hilt,
+    // blade not swallowed by the leg" actually requires, for every sword
+    // in this v48 pass, not just this one.
     shortSword: {
-      totalLen: 0.85 + 0.35 + 0.13,
+      totalLen: 1.1 + 0.35 + 0.13,
+      gripRatio: 0.70,
       parts: [
-        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.12 }, { at: 0.85, dx: 0.12 }, { at: 0.85, dx: -0.12 }, { at: 0.12, dx: -0.12 }] },
-        { type: 'shaft', from: 0.85, to: 0.85 + 0.35, width: 0.17 },
-        { type: 'circle', at: 0.85 + 0.35, r: 0.13 }
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.12 }, { at: 1.1, dx: 0.12 }, { at: 1.1, dx: -0.12 }, { at: 0.12, dx: -0.12 }] },
+        { type: 'shaft', from: 1.1, to: 1.1 + 0.35, width: 0.17 },
+        { type: 'circle', at: 1.1 + 0.35, r: 0.13 }
       ]
     },
     // 長劍: same straight-pointed blade language as shortSword, but longer
@@ -3804,13 +3947,18 @@
     // as "no guard at all"; longsword reads as "plain cross-guard"; neither
     // is confused with rapier's oversized round bowl guard or katana's
     // square tsuba, since crossbar/circle/polygon each look distinct.
+    // v48: lengthened (blade 1.3 -> 1.5) to keep clear separation above
+    // shortSword's own v48 lengthening (1.58 vs 2.08 now, was 1.33 vs
+    // 1.88), explicit gripRatio at the blade/guard junction (1.5/2.08)
+    // same reasoning as shortSword's own v48 comment.
     longsword: {
-      totalLen: 1.3 + 0.48 + 0.1,
+      totalLen: 1.5 + 0.48 + 0.1,
+      gripRatio: 0.72,
       parts: [
-        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.1 }, { at: 1.3, dx: 0.1 }, { at: 1.3, dx: -0.1 }, { at: 0.12, dx: -0.1 }] },
-        { type: 'crossbar', at: 1.3, halfLen: 0.22, width: 0.08 },
-        { type: 'shaft', from: 1.3, to: 1.3 + 0.48, width: 0.15 },
-        { type: 'circle', at: 1.3 + 0.48 + 0.1, r: 0.1 }
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.1 }, { at: 1.5, dx: 0.1 }, { at: 1.5, dx: -0.1 }, { at: 0.12, dx: -0.1 }] },
+        { type: 'crossbar', at: 1.5, halfLen: 0.22, width: 0.08 },
+        { type: 'shaft', from: 1.5, to: 1.5 + 0.48, width: 0.15 },
+        { type: 'circle', at: 1.5 + 0.48 + 0.1, r: 0.1 }
       ]
     },
     // 長矛: a true leaf/rhombus spearhead (widest partway down, tapering
@@ -3841,10 +3989,16 @@
     // tip, straightening toward the guard -- a scimitar profile) plus a
     // small arced guard (three points forming a shallow bow, not a
     // straight crossbar).
+    // v48: bend nearly doubled (tip offset 0.26 -> 0.42, mid offset
+    // 0.14 -> 0.24) per user request that the curve read as more clearly
+    // "not a straight blade" -- explicit gripRatio at the blade/guard
+    // junction (1.0/1.62), same reasoning as shortSword/longsword's own
+    // v48 comments.
     curvedSaber: {
       totalLen: 1.0 + 0.5 + 0.12,
+      gripRatio: 0.62,
       parts: [
-        { type: 'polyline', points: [{ at: 0, dx: 0.26 }, { at: 0.42, dx: 0.14 }, { at: 1.0, dx: 0 }], width: 0.24 },
+        { type: 'polyline', points: [{ at: 0, dx: 0.42 }, { at: 0.4, dx: 0.24 }, { at: 1.0, dx: 0 }], width: 0.24 },
         { type: 'polyline', points: [{ at: 0.96, dx: -0.28 }, { at: 1.04, dx: 0 }, { at: 0.96, dx: 0.28 }], width: 0.16 },
         { type: 'shaft', from: 1.0, to: 1.0 + 0.5, width: 0.2 },
         { type: 'circle', at: 1.0 + 0.5, r: 0.12 }
@@ -3855,13 +4009,27 @@
     // stepped width jump so "blade" and "tsuka" read as two different
     // parts, not one continuous taper. Small squared tsuba via a chunky
     // crossbar (wide relative to its length, not a thin bar).
+    // v48: lengthened (blade 1.15 -> 1.9, totalLen 1.78 -> 2.53) so
+    // katana is the LONGEST weapon in this round's 5-sword pass
+    // (shortSword 1.58, curvedSaber 1.62, rapier 2.04, lightsaber 2.08,
+    // katana 2.53) per user request to mark it as this batch's rare
+    // weapon -- length and rarity are separate signals (see the registry
+    // entry's own opts.rarity:'S', not stored here) but both point the
+    // same direction on purpose. Explicit gripRatio at the blade/tsuba
+    // junction (1.9/2.53), same reasoning as the other swords' v48
+    // comments. Color is NOT set here -- katana's registry entry passes
+    // rarity:'S' through to drawWeaponParts' style argument, and
+    // RARITY_STYLE['S'] supplies the actual color at draw time (see
+    // component XIV's own comment on why color/rarity never live on
+    // WEAPON_SHAPES itself).
     katana: {
-      totalLen: 1.15 + 0.55 + 0.08,
+      totalLen: 1.9 + 0.55 + 0.08,
+      gripRatio: 0.75,
       parts: [
-        { type: 'polyline', points: [{ at: 0, dx: 0.1 }, { at: 0.6, dx: 0.05 }, { at: 1.15, dx: 0 }], width: 0.2 },
-        { type: 'crossbar', at: 1.15, halfLen: 0.15, width: 0.22 },
-        { type: 'shaft', from: 1.15, to: 1.15 + 0.55, width: 0.28 },
-        { type: 'circle', at: 1.15 + 0.55 + 0.08, r: 0.08 }
+        { type: 'polyline', points: [{ at: 0, dx: 0.1 }, { at: 0.95, dx: 0.05 }, { at: 1.9, dx: 0 }], width: 0.2 },
+        { type: 'crossbar', at: 1.9, halfLen: 0.15, width: 0.22 },
+        { type: 'shaft', from: 1.9, to: 1.9 + 0.55, width: 0.28 },
+        { type: 'circle', at: 1.9 + 0.55 + 0.08, r: 0.08 }
       ]
     },
     // 苦無: a small leaf-blade 'polygon' (same technique as the spear's
@@ -3880,12 +4048,19 @@
     // 西洋刺劍: the bowl/cup guard IS the identifying feature -- a large
     // circle (0.34r, comfortably bigger than any other weapon's pommel)
     // dwarfing the thin straight blade on either side of it.
+    // v48: blade thinned (dx 0.11 -> 0.06, i.e. full width 0.22 -> 0.12)
+    // per user request that it not read as thick/generic -- the bowl
+    // guard was always the identifying feature per the comment above, so
+    // a thinner blade actually sharpens that contrast rather than
+    // competing with it. Explicit gripRatio at the blade/guard junction
+    // (1.5/2.04), same reasoning as this round's other sword edits.
     rapier: {
       totalLen: 1.5 + 0.42 + 0.12,
+      gripRatio: 0.74,
       parts: [
         // pointed blade (see shortSword's own comment on why 'shaft' alone
         // isn't enough -- its rounded cap reads as a rod, not a rapier tip)
-        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.11 }, { at: 1.5, dx: 0.11 }, { at: 1.5, dx: -0.11 }, { at: 0.12, dx: -0.11 }] },
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.12, dx: 0.06 }, { at: 1.5, dx: 0.06 }, { at: 1.5, dx: -0.06 }, { at: 0.12, dx: -0.06 }] },
         { type: 'circle', at: 1.5, r: 0.34 },
         { type: 'shaft', from: 1.5, to: 1.5 + 0.42, width: 0.22 },
         { type: 'circle', at: 1.5 + 0.42 + 0.12, r: 0.12 }
@@ -3897,14 +4072,21 @@
     // thin grip-texture rings. Blade width kept at the established 0.22
     // floor rather than pushed thinner, to survive the blur pass; the
     // "delicate blade" read comes from the hilt contrast instead.
+    // v48: lengthened (blade 1.2 -> 1.58) so totalLen matches longsword's
+    // own v48 length (2.08) exactly, per user request. This is still a
+    // single geometry template -- the 5 color variants requested for
+    // this round are 5 separate HAND_ACCESSORY_REGISTRY entries that all
+    // point at THIS one shape with different opts.color, not 5 copies of
+    // the shape data (see the registry section's own comment).
     lightsaber: {
-      totalLen: 1.2 + 0.5,
+      totalLen: 1.58 + 0.5,
+      gripRatio: 0.76,
       parts: [
-        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.1, dx: 0.1 }, { at: 1.2, dx: 0.1 }, { at: 1.2, dx: -0.1 }, { at: 0.1, dx: -0.1 }] },
-        { type: 'shaft', from: 1.2, to: 1.2 + 0.35, width: 0.34 },
-        { type: 'crossbar', at: 1.32, halfLen: 0.19, width: 0.07 },
-        { type: 'crossbar', at: 1.44, halfLen: 0.19, width: 0.07 },
-        { type: 'circle', at: 1.2 + 0.5, r: 0.08 }
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.1, dx: 0.1 }, { at: 1.58, dx: 0.1 }, { at: 1.58, dx: -0.1 }, { at: 0.1, dx: -0.1 }] },
+        { type: 'shaft', from: 1.58, to: 1.58 + 0.35, width: 0.34 },
+        { type: 'crossbar', at: 1.7, halfLen: 0.19, width: 0.07 },
+        { type: 'crossbar', at: 1.82, halfLen: 0.19, width: 0.07 },
+        { type: 'circle', at: 1.58 + 0.5, r: 0.08 }
       ]
     },
     // 手斧: a single curved wedge 'polygon' bulging to ONE side only,
@@ -4049,10 +4231,15 @@
     // comment on the technique) instead: the background shows through in
     // a "+" shape, which is the only way to put a visible mark on a
     // solid fill in this system.
+    // v48: heldTilt override (-12deg vs the default -50deg) -- a shield
+    // isn't carried at a sword's rakish across-the-wrist angle, it hangs
+    // close to vertical at the wearer's side (point down, wide shoulder
+    // up), per user request to fix the held gesture.
     kiteShield: {
       totalLen: 1.7,
       flatLift: 0.52,
       gripRatio: 0.5,
+      heldTilt: -12 * Math.PI / 180,
       parts: [
         { type: 'polygon',
           points: [
@@ -4092,9 +4279,16 @@
     // circle caps at all four arm tips (a "beaded" flare, cheaper and
     // more reliable than trying to fake a beveled outline with no stroke
     // color available). Left/right caps use the new circle.dx offset.
+    // v48: heldTilt override (-15deg) -- same reasoning as kiteShield's
+    // own v48 comment, a held crucifix/cross stays close to vertical
+    // rather than the sword-carry diagonal; gripRatio unchanged (0.55
+    // already lands the grip on the vertical bar, below the crossbar --
+    // "grip the long edge" per user request was about the tilt reading
+    // as brandished-at-an-angle, not about which part was gripped).
     cross: {
       totalLen: 1.5,
       gripRatio: 0.55,
+      heldTilt: -15 * Math.PI / 180,
       parts: [
         { type: 'shaft', from: 0, to: 1.5, width: 0.22 },
         { type: 'crossbar', at: 0.95, halfLen: 0.4, width: 0.22 },
@@ -4107,9 +4301,19 @@
     // 聖杯 chalice: flat base (crossbar) + thin stem + a flared bowl
     // (trapezoid polygon) + five small circles tracing the rim for the
     // reference image's beaded-rim decoration.
+    // v48: heldReverse:true -- chalice is the SAME "torch-exception" case
+    // as the flower/mushroom family (dist0 = the base/foot, chosen so
+    // 'flat' lying reads correctly, NOT the distinctive bowl), which the
+    // v48 diagnosis found always renders dist0 on the OUTWARD side
+    // regardless of gripRatio -- the bowl was ending up hidden toward the
+    // body instead of presented outward. heldReverse flips that for
+    // 'held' only; gripRatio (0.35, landing the grip mid-stem at 0.49 of
+    // 1.4) already puts the grip on the stem correctly once reversed, no
+    // change needed there.
     chalice: {
       totalLen: 1.4,
       gripRatio: 0.35,
+      heldReverse: true,
       parts: [
         { type: 'crossbar', at: 0.05, halfLen: 0.28, width: 0.14 },
         { type: 'shaft', from: 0.1, to: 0.9, width: 0.12 },
@@ -4168,20 +4372,34 @@
         { type: 'shaft', from: 0.85, to: 1.3, width: 0.22 }
       ]
     },
-    // 剪刀 scissors: two thin crossing blade polygons converging on a
-    // pivot point, with two off-axis ring finger-holes below it (the new
-    // ring.dx offset) -- built at a slightly-open resting angle so the
-    // crossed-blade "X" reads clearly, rather than closed (indistinguishable
-    // from a single blade).
+    // 剪刀 scissors: v48 SECOND REDESIGN. The first v48 attempt (wide
+    // 4-point wedge polygons for each blade) rendered as one fused
+    // triangular blob instead of two visible crossing blades -- each
+    // "blade" polygon's own return edge crossed back through the OTHER
+    // blade's own area, so the union read as a single kite/bird shape
+    // (confirmed by an isolated render: it looked like a face, two ring
+    // "eyes" over a solid triangular "beak", not scissors at all).
+    // Root cause was building each blade as a short wedge from tip to
+    // pivot only, with the pivot/handles as unconnected separate parts --
+    // real open scissors are two long THIN units, each running in a
+    // roughly straight line from its own blade tip, through the pivot,
+    // to its own finger-loop handle on the OPPOSITE side, crossing the
+    // other unit only at the pivot. Rebuilt as exactly that: two
+    // 'polyline's (tapering width array, blade-width at the tip end down
+    // to handle-arm-width) each running tip -> pivot -> handle-anchor in
+    // one continuous line, so the two units cross cleanly at a single
+    // point instead of overlapping across an area. A 'circle' marks the
+    // pivot screw, a 'ring' finger hole caps each polyline's own handle
+    // end.
     scissors: {
-      totalLen: 0.9,
+      totalLen: 1.15,
       gripRatio: 0.85,
       parts: [
-        { type: 'polygon', points: [ { at: 0, dx: -0.28 }, { at: 0.45, dx: -0.03 }, { at: 0.52, dx: 0.05 }, { at: 0.1, dx: 0.1 } ] },
-        { type: 'polygon', points: [ { at: 0, dx: 0.28 }, { at: 0.45, dx: 0.03 }, { at: 0.52, dx: -0.05 }, { at: 0.1, dx: -0.1 } ] },
-        { type: 'circle', at: 0.55, r: 0.06 },
-        { type: 'ring', at: 0.78, dx: -0.15, rOuter: 0.16, rInner: 0.08 },
-        { type: 'ring', at: 0.78, dx: 0.15, rOuter: 0.16, rInner: 0.08 }
+        { type: 'polyline', points: [ { at: 0, dx: 0.45 }, { at: 0.6, dx: 0.02 }, { at: 1.05, dx: -0.28 } ], width: [ 0.1, 0.05 ] },
+        { type: 'polyline', points: [ { at: 0, dx: -0.45 }, { at: 0.6, dx: -0.02 }, { at: 1.05, dx: 0.28 } ], width: [ 0.1, 0.05 ] },
+        { type: 'circle', at: 0.6, r: 0.07 },
+        { type: 'ring', at: 1.05, dx: -0.28, rOuter: 0.2, rInner: 0.1 },
+        { type: 'ring', at: 1.05, dx: 0.28, rOuter: 0.2, rInner: 0.1 }
       ]
     },
     // 木製掃帚 broom: a wide fan/trapezoid bristle head at dist 0 (plants
@@ -4216,29 +4434,37 @@
     // 澆花壺 watering can: rounded oval body + a diagonal spout polygon
     // jutting to one side + a small circle water-drop at the spout tip
     // (the new circle.dx offset) + a polyline arc handle on top.
+    // v48: spout + droplet dx sign flipped (+ -> -) per user request --
+    // screenshot showed the spout pointing back toward the body/leg (the
+    // +dx side happened to face inward for this item's held angle), the
+    // opposite of how a watering can is actually presented (spout out
+    // and away from the body, visible).
     wateringCan: {
       totalLen: 1.2,
       flatLift: 0.5,
       gripRatio: 0.82,
       parts: [
         { type: 'polygon', points: [ { at: 0, dx: -0.22 }, { at: 0.15, dx: -0.4 }, { at: 0.55, dx: -0.4 }, { at: 0.75, dx: -0.22 }, { at: 0.75, dx: 0.22 }, { at: 0.55, dx: 0.4 }, { at: 0.15, dx: 0.4 }, { at: 0, dx: 0.22 } ] },
-        { type: 'polygon', points: [ { at: 0.55, dx: 0.35 }, { at: 0.75, dx: 0.75 }, { at: 0.7, dx: 0.8 }, { at: 0.45, dx: 0.42 } ] },
-        { type: 'circle', at: 0.75, dx: 0.85, r: 0.06 },
+        { type: 'polygon', points: [ { at: 0.55, dx: -0.35 }, { at: 0.75, dx: -0.75 }, { at: 0.7, dx: -0.8 }, { at: 0.45, dx: -0.42 } ] },
+        { type: 'circle', at: 0.75, dx: -0.85, r: 0.06 },
         { type: 'polyline', points: [ { at: 0.75, dx: -0.15 }, { at: 1.2, dx: 0 }, { at: 0.75, dx: 0.15 } ], width: 0.06 }
       ]
     },
-    // 釣魚竿 fishingRod: thin tapering rod (two shaft segments, thinner
-    // toward the tip) with a small hook nub at dist 0, gripped high at
-    // the reel end so the long rod is the prominent outward part.
-    fishingRod: {
-      totalLen: 2.4,
-      gripRatio: 0.9,
+    // 警棍 baton: v48 replacement for 釣魚竿/fishingRod per user request
+    // ("直接替換成警棍,不需要修正原本的釣魚竿造型") -- fishingRod's own
+    // shape (a very thin 0.06-0.1 wide rod) is exactly the profile the
+    // v48 diagnosis identified as hardest to keep visible against the
+    // leg, and the user opted to swap the item rather than rework that
+    // geometry. Plain rod + a visibly thicker grip section (0.13 -> 0.19,
+    // same width-jump-as-feature language as screwdriver's handle) + a
+    // wrist-strap ring at the butt.
+    baton: {
+      totalLen: 1.3,
+      gripRatio: 0.82,
       parts: [
-        { type: 'circle', at: 0, r: 0.05 },
-        { type: 'shaft', from: 0, to: 1.5, width: 0.06 },
-        { type: 'shaft', from: 1.5, to: 2.1, width: 0.1 },
-        { type: 'shaft', from: 2.1, to: 2.4, width: 0.22 },
-        { type: 'circle', at: 2.15, dx: 0.15, r: 0.1 }
+        { type: 'shaft', from: 0, to: 1.0, width: 0.13 },
+        { type: 'shaft', from: 1.0, to: 1.3, width: 0.19 },
+        { type: 'ring', at: 1.28, dx: 0.16, rOuter: 0.08, rInner: 0.04 }
       ]
     },
     // 手電筒 flashlight: flared lens head at dist 0 with three short
@@ -4246,14 +4472,25 @@
     // beyond the tip reference point -- the axis formula doesn't require
     // dist>=0, it's just distance-from-tip), then a plain barrel + tail
     // cap.
+    // v48: added a genuine light-beam effect at the front, per direction
+    // B -- a wide translucent white 'polygon' cone (rgba alpha, same
+    // canvas fillStyle mechanism as every opaque part.color, just with
+    // an alpha channel) extending further past the lens than the
+    // original rays did, with the 3 existing rays now solid bright white
+    // ON TOP of the cone (drawn after it in the parts array, so they
+    // layer correctly) instead of SIL -- the soft translucent cone reads
+    // as "glow", the crisp opaque lines on top read as "rays", together
+    // they're a more legible beam than 3 thin SIL lines ever were against
+    // this system's mid-tone background.
     flashlight: {
       totalLen: 1.0,
       flatLift: 0.2,
       gripRatio: 0.7,
       parts: [
-        { type: 'polyline', points: [ { at: 0.05, dx: -0.05 }, { at: -0.12, dx: -0.15 } ], width: 0.04 },
-        { type: 'polyline', points: [ { at: 0.05, dx: 0 }, { at: -0.15, dx: 0 } ], width: 0.04 },
-        { type: 'polyline', points: [ { at: 0.05, dx: 0.05 }, { at: -0.12, dx: 0.15 } ], width: 0.04 },
+        { type: 'polygon', points: [ { at: 0.06, dx: -0.14 }, { at: -0.55, dx: -0.42 }, { at: -0.55, dx: 0.42 }, { at: 0.06, dx: 0.14 } ], color: 'rgba(255,247,214,0.32)' },
+        { type: 'polyline', points: [ { at: 0.05, dx: -0.05 }, { at: -0.3, dx: -0.22 } ], width: 0.045, color: '#fdf6dc' },
+        { type: 'polyline', points: [ { at: 0.05, dx: 0 }, { at: -0.35, dx: 0 } ], width: 0.045, color: '#fdf6dc' },
+        { type: 'polyline', points: [ { at: 0.05, dx: 0.05 }, { at: -0.3, dx: 0.22 } ], width: 0.045, color: '#fdf6dc' },
         { type: 'polygon', points: [ { at: 0, dx: 0.14 }, { at: 0.08, dx: 0.14 }, { at: 0.08, dx: -0.14 }, { at: 0, dx: -0.14 } ] },
         { type: 'shaft', from: 0.08, to: 0.8, width: 0.22 },
         { type: 'circle', at: 0.8, r: 0.13 }
@@ -4274,12 +4511,21 @@
     // 'outward', but it's a compact filled shape (not a long thin line),
     // so it stays legible there instead of getting camouflaged the way a
     // long shaft would.
+    // v48: heldReverse:true added (see this file's own component XIV
+    // comment -- torch is the item that pattern was originally named
+    // after) so the flame presents outward instead of trailing toward
+    // the body, plus the flame polygon now carries its own part.color
+    // (a warm orange -- intrinsic to the feature itself, not a rarity
+    // tier, per the user's explicit direction B distinction). Handle
+    // stays SIL/uncolored -- resolveWeaponColor's precedence means only
+    // THIS part picks up the color, nothing else on the item does.
     torch: {
       totalLen: 1.5,
       gripRatio: 0.2,
+      heldReverse: true,
       parts: [
         { type: 'shaft', from: 0, to: 1.1, width: 0.15 },
-        { type: 'polygon', points: [ { at: 1.1, dx: -0.1 }, { at: 1.25, dx: -0.16 }, { at: 1.35, dx: -0.06 }, { at: 1.5, dx: 0 }, { at: 1.4, dx: 0.14 }, { at: 1.22, dx: 0.08 }, { at: 1.1, dx: 0.1 } ] }
+        { type: 'polygon', points: [ { at: 1.1, dx: -0.1 }, { at: 1.25, dx: -0.16 }, { at: 1.35, dx: -0.06 }, { at: 1.5, dx: 0 }, { at: 1.4, dx: 0.14 }, { at: 1.22, dx: 0.08 }, { at: 1.1, dx: 0.1 } ], color: '#ff8c3a' }
       ]
     },
     // 放大鏡 magnifyingGlass: a true ring lens (hollow frame, matching
@@ -4412,10 +4658,14 @@
     // the way bucket's own arc handle already does -- same fix, applied
     // retroactively here once the ring version's flat-pose weakness was
     // found.
+    // v48: gripRatio moved from 0.8 (near the base) to 0.42 -- the
+    // handle's own arc spans 'at' 0.15-0.6 (center ~0.375/0.9=0.417),
+    // matching the grip point to that center per user request to
+    // actually hold the handle rather than the body.
     mug: {
       totalLen: 0.9,
       flatLift: 0.28,
-      gripRatio: 0.8,
+      gripRatio: 0.42,
       parts: [
         { type: 'polygon', points: [ { at: 0, dx: -0.28 }, { at: 0, dx: 0.28 }, { at: 0.75, dx: 0.24 }, { at: 0.75, dx: -0.24 } ] },
         { type: 'polyline', points: [ { at: 0.15, dx: 0.28 }, { at: 0.38, dx: 0.5 }, { at: 0.6, dx: 0.28 } ], width: 0.07 }
@@ -4496,10 +4746,18 @@
     // style extrapolation, same trick as flashlight's rays/carrot's own
     // leaf fan) -- root taper + leaf fan is unambiguous against every
     // other E-group item.
+    // v48: gripRatio moved from 0.35 (mid-root, an awkward hold on the
+    // vegetable itself) to 0.77 (the root/leaf junction, at 1.0/1.3) per
+    // user request to fix the held direction -- carrot already follows
+    // the ordinary "dist0 = business end" convention (unlike the flower/
+    // torch family), so raising gripRatio is enough on its own; no
+    // heldReverse needed here, the root tip already points outward
+    // correctly, it just needed to be held by the greens instead of by
+    // its own middle.
     carrot: {
       totalLen: 1.3,
       flatLift: 0.22,
-      gripRatio: 0.35,
+      gripRatio: 0.77,
       parts: [
         { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.3, dx: 0.08 }, { at: 0.7, dx: 0.15 }, { at: 1.0, dx: 0.22 }, { at: 1.0, dx: -0.22 }, { at: 0.7, dx: -0.15 }, { at: 0.3, dx: -0.08 } ] },
         { type: 'polyline', points: [ { at: 1.0, dx: -0.1 }, { at: 1.25, dx: -0.18 } ], width: 0.06 },
@@ -4625,6 +4883,7 @@
     sunflower: {
       totalLen: 1.76,
       gripRatio: 0.1,
+      heldReverse: true,
       parts: [
         { type: 'shaft', from: 0, to: 1.25, width: 0.07 },
         { type: 'polygon', points: [ { at: 0.4, dx: 0.05 }, { at: 0.55, dx: 0.35 }, { at: 0.65, dx: 0.28 }, { at: 0.5, dx: 0.05 } ] },
@@ -4642,6 +4901,7 @@
     rose: {
       totalLen: 1.61,
       gripRatio: 0.15,
+      heldReverse: true,
       parts: [
         { type: 'shaft', from: 0, to: 1.15, width: 0.05 },
         { type: 'polygon', points: [ { at: 0.25, dx: -0.03 }, { at: 0.19, dx: -0.12 }, { at: 0.23, dx: -0.03 } ] },
@@ -4660,6 +4920,7 @@
     lily: {
       totalLen: 1.75,
       gripRatio: 0.15,
+      heldReverse: true,
       parts: [
         { type: 'shaft', from: 0, to: 1.2, width: 0.06 },
         { type: 'polygon', points: [ { at: 0.5, dx: -0.04 }, { at: 0.68, dx: -0.3 }, { at: 0.78, dx: -0.22 }, { at: 0.6, dx: -0.04 } ] },
@@ -4713,6 +4974,7 @@
     mushroom: {
       totalLen: 0.78,
       gripRatio: 0.15,
+      heldReverse: true,
       parts: [
         { type: 'shaft', from: 0, to: 0.4, width: 0.14 },
         { type: 'polygon', points: [ { at: 0.35, dx: -0.1 }, { at: 0.4, dx: -0.42 }, { at: 0.55, dx: -0.48 }, { at: 0.68, dx: -0.3 }, { at: 0.75, dx: 0 }, { at: 0.68, dx: 0.3 }, { at: 0.55, dx: 0.48 }, { at: 0.4, dx: 0.42 }, { at: 0.35, dx: 0.1 } ] },
@@ -4749,6 +5011,7 @@
       totalLen: 1.4,
       flatLift: 0.1,
       gripRatio: 0.1,
+      heldReverse: true,
       parts: [
         { type: 'polyline', points: [ { at: 0, dx: 0 }, { at: 0.9, dx: 0.02 }, { at: 1.15, dx: 0.15 } ], width: 0.035 },
         { type: 'circle', at: 1.0, dx: -0.06, r: 0.045 },
@@ -4771,6 +5034,7 @@
     wheatBundle: {
       totalLen: 1.41,
       gripRatio: 0.15,
+      heldReverse: true,
       parts: [
         { type: 'shaft', from: 0, to: 1.3, width: 0.03 },
         { type: 'diagonal', at: 0.05, to: 1.25, dx: -0.18, width: 0.03 },
@@ -4964,6 +5228,14 @@
     // one instrument spanning both hands. That single-object two-hand
     // mount is still an unbuilt mechanism, not something this round
     // silently works around.
+    // v48: gripRatio 0.86 kept -- tested lowering it to 0.5 (grip near
+    // the body/neck join) on the theory that the grip should sit lower,
+    // but an isolated render comparison showed 0.86 reads clearly as a
+    // whole guitar (body+neck+headstock all extending outward together)
+    // while 0.5 hides most of the body inward and leaves only the small
+    // headstock visible -- confirmed the original ratio was correct and
+    // the real problem was the v48 leg-occlusion bug (WEAPON_HELD_OUTWARD,
+    // fixed globally above), not this item's own gripRatio.
     guitar: {
       totalLen: 2.15,
       flatLift: 0.34,
@@ -5036,6 +5308,7 @@
       totalLen: 0.9,
       flatLift: 0.28,
       gripRatio: 0.15,
+      heldReverse: true,
       parts: [
         { type: 'shaft', from: 0, to: 0.5, width: 0.09 },
         { type: 'circle', at: 0.75, r: 0.28 },
@@ -5477,15 +5750,27 @@
   // (omitted, per the registry-wide default) -- see the batch-level note
   // further down on why none of this round's 16 stuck-category weapons
   // set 'dual'.
-  function stuckWeaponEntry(label, shapeKey){
+  //
+  // opts.rarity / opts.color (v48, both optional, default undefined):
+  // threaded straight into drawWeaponParts' own `style` argument (see
+  // component XIV's own comment on resolveWeaponColor for the precedence
+  // rule) -- this is the ONLY place a weapon's rarity tier or explicit
+  // color is recorded; WEAPON_SHAPES itself never gains a color/rarity
+  // field. `rarity` on the returned registry entry (previously always
+  // hardcoded null) now reflects opts.rarity too, so the entry's own
+  // rarity and its actual rendered color source are never able to
+  // disagree with each other.
+  function stuckWeaponEntry(label, shapeKey, opts){
     const shape = WEAPON_SHAPES[shapeKey];
+    const rarity = (opts && opts.rarity) || null;
+    const style = opts ? { rarity: opts.rarity, color: opts.color } : undefined;
     return {
       label: label,
-      rarity: null,
-      draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'held'),
+      rarity: rarity,
+      draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'held', style),
       footStow: {
         placement: 'stuck',
-        draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'stuck'),
+        draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'stuck', style),
         apex: headR => shape.totalLen * headR
       }
     };
@@ -5502,15 +5787,19 @@
   // feet than planted upright, unlike fishingRod/torch/cane/broom which
   // have a strong enough real-world "stands on its own" pose to keep
   // 'stuck').
-  function itemEntry(label, shapeKey, placement){
+  // opts.rarity / opts.color (v48): same contract as stuckWeaponEntry's
+  // own opts -- see that factory's comment.
+  function itemEntry(label, shapeKey, placement, opts){
     const shape = ITEM_SHAPES[shapeKey];
+    const rarity = (opts && opts.rarity) || null;
+    const style = opts ? { rarity: opts.rarity, color: opts.color } : undefined;
     const stowDraw = placement === 'flat'
-      ? (ctx, mount, headR) => drawWeaponPartsFlat(ctx, mount, headR, shape)
-      : (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'stuck');
+      ? (ctx, mount, headR) => drawWeaponPartsFlat(ctx, mount, headR, shape, style)
+      : (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'stuck', style);
     return {
       label: label,
-      rarity: null,
-      draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'held'),
+      rarity: rarity,
+      draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'held', style),
       footStow: { placement: placement, draw: stowDraw, apex: headR => shape.totalLen * headR }
     };
   }
@@ -5556,14 +5845,31 @@
     woodenStick: stuckWeaponEntry('木棍', 'woodenStick'),
     ironHammer: stuckWeaponEntry('鐵鎚', 'ironHammer'),
     handAxe: stuckWeaponEntry('手斧', 'handAxe'),
-    katana: stuckWeaponEntry('武士刀', 'katana'),
+    // v48: katana is this round's rare weapon -- rarity:'S' flows through
+    // to drawWeaponParts' style argument, which looks up RARITY_STYLE.S's
+    // color at draw time (see component XIV's own comment). No color
+    // value lives here or on WEAPON_SHAPES.katana; only the tier does.
+    katana: stuckWeaponEntry('武士刀', 'katana', { rarity: 'S' }),
     kunai: stuckWeaponEntry('苦無', 'kunai'),
     rapier: stuckWeaponEntry('西洋刺劍', 'rapier'),
     battleAxe: stuckWeaponEntry('戰斧', 'battleAxe'),
     flailMace: stuckWeaponEntry('流星錘', 'flailMace'),
     staff: stuckWeaponEntry('長杖', 'staff'),
     warHammer: stuckWeaponEntry('木柄鐵鎚', 'warHammer'),
-    lightsaber: stuckWeaponEntry('光劍', 'lightsaber'),
+    // v48: single 'lightsaber' entry replaced by 5 color-variant entries
+    // per user request -- all 5 point at the SAME WEAPON_SHAPES.lightsaber
+    // geometry (totalLen/parts defined once), only opts.color differs.
+    // rarity:'SSS' is on every one of the 5 for cataloging (this is the
+    // catalog's single rarest item family), but the actual displayed
+    // color always comes from opts.color, never a RARITY_STYLE lookup --
+    // "which of 5 blade colors" is each variant's own intrinsic identity,
+    // not a tier decision (see component XIV's own comment on this exact
+    // precedence choice).
+    lightsaberBlue: stuckWeaponEntry('光劍(螢光藍)', 'lightsaber', { rarity: 'SSS', color: '#3fa9f5' }),
+    lightsaberGreen: stuckWeaponEntry('光劍(螢光綠)', 'lightsaber', { rarity: 'SSS', color: '#39e26b' }),
+    lightsaberRed: stuckWeaponEntry('光劍(螢光紅)', 'lightsaber', { rarity: 'SSS', color: '#ff3b3b' }),
+    lightsaberYellow: stuckWeaponEntry('光劍(螢光黃)', 'lightsaber', { rarity: 'SSS', color: '#f5e13f' }),
+    lightsaberWhite: stuckWeaponEntry('光劍(亮白)', 'lightsaber', { rarity: 'SSS', color: '#f7f5ee' }),
 
     // ---- B group: round/block armor & relic items (4) ----
     // All 'flat' footStow -- shield/book/cross/chalice all read better
@@ -5577,11 +5883,10 @@
     // ---- C group: everyday tools (8; original brief said "9項" but
     // only lists 8 items -- flagged as a likely miscount rather than
     // guessed at, same as v41's longsword listing gap) ----
-    // fishingRod and broom are the two items here with a strong enough
-    // "stands on its own" real-world pose (rod propped business-end
-    // down, broom resting on its bristles) to justify 'stuck' instead of
-    // the batch's 'flat' default; the rest are ordinary held tools with
-    // no natural free-standing pose.
+    // broom is the one item here with a strong enough "stands on its
+    // own" real-world pose (resting on its bristles) to justify 'stuck'
+    // instead of the batch's 'flat' default; the rest are ordinary held
+    // tools with no natural free-standing pose.
     screwdriver: itemEntry('螺絲起子', 'screwdriver', 'flat'),
     wrench: itemEntry('扳手', 'wrench', 'flat'),
     saw: itemEntry('鋸子', 'saw', 'flat'),
@@ -5589,7 +5894,10 @@
     broom: itemEntry('木製掃帚', 'broom', 'stuck'),
     bucket: itemEntry('水桶', 'bucket', 'flat'),
     wateringCan: itemEntry('澆花壺', 'wateringCan', 'flat'),
-    fishingRod: itemEntry('釣魚竿', 'fishingRod', 'stuck'),
+    // v48: 釣魚竿/fishingRod replaced by 警棍/baton per user request --
+    // 'stuck' kept (a baton propped upright is a reasonable resting
+    // pose, same as the fishingRod slot it's taking over).
+    baton: itemEntry('警棍', 'baton', 'stuck'),
 
     // ---- F group addition (2): flashlight/torch ----
     // torch gets 'stuck' (a planted torch, handle down, is a genuinely
