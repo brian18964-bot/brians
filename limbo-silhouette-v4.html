@@ -5934,7 +5934,7 @@
   // via getImageData rather than guessed) as zoom increases, tapering
   // from the full 480x360 frame at zoom=1.
   //
-  // Two bugs found and fixed while building this, in order:
+  // Three bugs found and fixed while building this, in order:
   // 1) A first draft only cropped vertically, leaving the full
   //    480-wide canvas visible -- character got taller but stayed a
   //    small dot in a wide near-empty letterbox at high zoom.
@@ -5946,21 +5946,31 @@
   //    handler was ALSO shrinking the viewport's width for the
   //    horizontal crop. Each zoom step's canvas width was computed
   //    relative to the PREVIOUS step's already-shrunk viewport,
-  //    compounding smaller every time the slider moved. Fixed by
-  //    computing the canvas's width against a STABLE ancestor
-  //    (#stageFsmViewport's own parent, which this handler never
-  //    resizes) instead of letting it inherit from the viewport, and
-  //    setting canvas.style.width explicitly rather than leaving it on
-  //    the original width:'100%' rule.
+  //    compounding smaller every time the slider moved. First fix set
+  //    canvas.style.width explicitly against a snapshot of the
+  //    viewport's PARENT width instead of the live viewport -- worked on
+  //    a desktop-width test, but see bug 3.
+  // 3) User-reported on an actual phone: dragging to 4x visibly shrank
+  //    the crop box but the character inside never got bigger. Root
+  //    cause of the "fix" in bug 2 -- clamping canvas width to a snapshot
+  //    of the parent container's width was never actually necessary (the
+  //    canvas is position:absolute inside a fixed-size, overflow:hidden
+  //    viewport, so growing it past its container is invisible/harmless
+  //    and never inflates the container -- absolutely-positioned
+  //    children don't affect a parent's layout size), it was a leftover
+  //    desktop-session assumption. On a narrow mobile viewport that
+  //    parent-width snapshot was only ~350px, so "4x" never grew the
+  //    canvas past ~350px -- the crop window kept tightening around the
+  //    SAME small rendered character instead of an actually bigger one.
+  //    Removed the clamp entirely; canvas width now scales with zoom
+  //    alone, unbounded by container width.
   const fsmZoomSlider = document.getElementById('fsmZoomSlider');
   const fsmZoomVal = document.getElementById('fsmZoomVal');
   const fsmCanvasEl = document.getElementById('stageFsm');
   const fsmViewport = document.getElementById('stageFsmViewport');
-  const fsmStableParentWidth = fsmViewport.parentElement.clientWidth;
   fsmZoomSlider.addEventListener('input', function(){
     const zoom = parseFloat(this.value);
-    const desiredCanvasW = 320 * zoom;
-    const canvasW = Math.min(desiredCanvasW, fsmStableParentWidth);
+    const canvasW = 320 * zoom;
     fsmCanvasEl.style.width = canvasW + 'px';
     fsmCanvasEl.style.maxWidth = 'none';
     const cssPerLogicalPx = canvasW / 480;
