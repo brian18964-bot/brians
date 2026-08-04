@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v45 — D/E/F/G 組新增 31 款配件(廚房餐具/食物/植物自然物/3C科技)</title>
+<title>剪影走路/跑步循環 v46 — H/I/J/K 組新增 22 款配件,手部配件庫(A-K)全部到齊</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v45</div>
-    <h1>D/E/F/G 組新增 31 款配件(廚房餐具/食物/植物自然物/3C科技)</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v46</div>
+    <h1>H/I/J/K 組新增 22 款配件,手部配件庫(A-K)全部到齊</h1>
+    <p class="sub"><b>沿用既有機制,無重新發明</b>:全部 22 款一樣透過 <code>itemEntry()</code>/<code>ITEM_SHAPES</code>/<code>drawWeaponParts()</code>/<code>drawWeaponPartsFlat()</code> 渲染,跟 D/E/F/G 組完全相同的機制。這輪完成後手部配件庫 A 到 K 組全部到齊,總計 <b>88 款</b>正式配件(另有 2 款示範用的原型 <code>sword</code>/<code>canteen</code>,不計入分類清單),完整清單總覽見下方使用者回報段落。<br><br><b>兩個技術重用,沒有新機制</b>:①<code>polyline</code> 弧線握把(上一輪為了 <code>drawWeaponPartsFlat()</code> 旋轉後握把不能維持「貼合本體」而改用的技法)這輪套用在魔法神燈的握把、魔術方塊的做法沒有直接用到但同一套「跨一段 <code>at</code> 範圍」原則有延伸到量角器的半圓輪廓與羽毛球拍的橢圓握框上。②<code>polygon</code>+相反繞線 <code>holes</code>(挖洞技法)這輪用在三個新地方——直尺的 6 個刻度缺口、魔術方塊的九宮格線、木製面具的兩個杏眼鏤空,證明這個技法不只適用於矩形洞(先前的鳶形盾十字、扳手開口都是矩形),任意凸邊形洞都適用。<br><br><b>橢圓形近似</b>(新的幾何生成手法,非新渲染機制):羽毛球拍的中空拍框、量角器的半圓輪廓都需要橢圓/圓弧外框,但 <code>circle</code>/<code>ring</code> 兩個既有型別只支援正圓。沿用 <code>buildStarPoints()</code> 本來就有的「角度採樣」概念——固定半徑、遍歷 0-360 度(量角器只需 180 度)算出一圈 <code>{at, dx}</code> 頂點——但半徑改成橢圓的 rx/ry 而非星形的內外半徑交替,手算 8-9 個採樣點出來當 <code>polygon</code> 的 <code>points</code>(羽毛球拍的拍框洞用同一手法算內外兩圈,外圈跟內圈刻意用相反的角度遍歷順序生成,確保繞線方向相反、洞真的挖得穿)。截圖確認羽毛球拍拍框第一次手算就正確挖穿,量角器半圓輪廓也一次到位,沒有重演上一輪鳶形盾/扳手洞挖錯方向要來回除錯的狀況。<br><br><b>逐組差異化設計重點</b>:H 組(木吉他/小喇叭/直笛/沙鈴/大聲公)木吉他靠全目錄最長的 <code>totalLen</code>(2.15)+雙圓疊body+鏤空音孔獨立於其他四款；小喇叭跟大聲公共用「喇叭口 <code>polygon</code>」語彙但刻意用「有無活塞鈕」拉開(小喇叭 3 顆活塞鈕、大聲公完全沒有,只有握把+扳機),避免兩者混淆；直笛用單一喙型 <code>triangle</code> 尖嘴+6 孔識別,長度介於武器類量級。<br>I 組(鉛筆/直尺/量角器/信封/地球儀/魔術方塊)鉛筆是全目錄最直白的「尖端+木身+箍圈+橡皮擦」四段式應用;直尺跟量角器都是扁平幾何形但用「長直條 vs 半圓」拉開;信封用五點五邊形(矩形+三角屋頂融合)+郵票鏤空環;地球儀用「穿透球體的軸桿」(細桿先畫、球體圓形後畫蓋掉中段,只露出南北極兩截,球體圓形本身就有遮蓋效果,不需要額外裁切邏輯)。<br>J 組(仙女棒/燈籠/氣球/紙飛機/魔法神燈/巫毒娃娃)仙女棒的火花用 5 條方向不規則的短折線(刻意不用 <code>buildStarPoints()</code> 那種工整放射,讀起來才像「迸發」而非花朵);紙飛機是單一 6 點 <code>polygon</code> 就做出機頭+雙翼+尾部凹口的經典紙飛機輪廓,是這批裡效率最高的形狀;巫毒娃娃直接複用薑餅人的人形骨架(雙腿/軀幹/雙臂/頭),唯一差異是軀幹兩側加 3 根穿出輪廓外的細針(針必須穿出邊界才看得見,同色線畫在實心填色內部等於隱形,這是全系統從鳶形盾十字裝飾就確立的規則,這裡是第 N 次套用而非新發現)。<br>K 組(羽毛球拍/桌球拍/牙刷/木製面具/試管)羽毛球拍/桌球拍是這批裡差異化要求最明確的一對——拍框「中空橢圓+長細柄」對比桌球拍「實心正圓+短粗柄」,拍面性質(空 vs 實)、握柄長度(1.6 vs 0.75 個 <code>totalLen</code>)兩條線索疊加,不只靠尺寸;木製面具用兩個杏眼鏤空跟同樣是淚滴輪廓的鳶形盾拉開差異。<br><br><b>雙手持握的標註與判斷(使用者指令第 4 點)</b>:這輪評估了使用者明確點名的三個候選——木吉他(彈奏需要雙手)、羽毛球拍/桌球拍(揮擊動作)——三者全部維持 <code>holdStyle</code> 省略(單手預設),原因跟上一輪遊戲手把/相機一致且已經在各自的資料註解裡個別說明:吉他跟球拍現實中雖然雙手參與,但都是「單一物件」(一把吉他、一支球拍),不是「成對配戴物」,既有的 <code>dual</code> 機制只會畫出兩把吉他或兩支球拍,不是一把雙手共同操作的物件,套用會是錯誤結果;球拍額外類比既有的劍/長矛判斷先例——真人打羽球/桌球實際是單手持拍揮擊,不是雙手共握一支拍子,語意上本來就該單手。<br><br>這輪唯一真正標成 <code>holdStyle: 'dual'</code> 的是沙鈴(maraca)——沒有在使用者原始候選名單裡,是這輪自己額外判斷出來的:一組沙鈴是兩支同款搖鈴、一手一支的成對配戴物,正好符合既有 <code>dual</code> 機制「同一形狀在兩個掛載點各畫一份」的原始設計初衷(跟先前 v37 紀錄裡設想的「一對鈴鐺」範例完全同類),是全目錄第一款真正該用 <code>dual</code> 的配件,用 IIFE 包一層 <code>itemEntry()</code> 呼叫、渲染完再蓋一個 <code>holdStyle: 'dual'</code> 上去,沒有改動 <code>itemEntry()</code> 本身的簽章(其餘 87 款都不需要這個欄位,不值得為了一款配件把它變成 <code>itemEntry()</code> 的正式參數)。<br><br><b>除錯過程</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口(驗證完成後已移除,不進正式程式碼)把 22 款配件各自放大截圖比對,一次通過、沒有發現需要返工的形狀或掛載問題(跟上一輪菜刀/啤酒大木杯/遊戲手把三個問題都要返工不同,這輪手算橢圓座標跟挖洞方向都一次到位)。<br><br><b>驗證</b>:跑一次完整 17 原型 × 21 姿勢回歸測試(22 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤;下拉選單確認 89 個選項(88 款配件 + 「無」),22 款新配件全部在列、沒有缺漏。<b>這輪(比照 D/E/F/G)僅完成形狀設計與辨識度確認,握持點採用共用預設值。手部配件庫 A-K 全部到齊後,下一階段是使用者要做的「握持點統一檢視調整」以及後續的手持動畫角度自然度/頭部安全餘裕驗證,這兩項本輪都尚未進行。</b></p>
     <p class="sub"><b>沿用既有機制,無重新發明</b>:全部 31 款一樣透過 <code>itemEntry()</code>/<code>ITEM_SHAPES</code>/<code>drawWeaponParts()</code>/<code>drawWeaponPartsFlat()</code> 渲染,跟 B/C/F/K 組完全相同的機制,新增的是形狀資料本身,不是新程式邏輯。<br><br><b>清單處理</b>:D 組(廚房餐具 8 款)、F 組(植物/自然物 10 款)、G 組(3C/科技 6 款)品項數量跟指令標註一致,直接建置。E 組(食物)指令標題標「8 項」但清單只列出 7 個具名品項(胡蘿蔔、棒棒糖、冰淇淋、披薩片、雞腿、拐杖糖、薑餅人),外加一句「原清單的甜筒可與冰淇淋合併或保留獨立,由你判斷」——參考圖裡的「冰淇淋」圖示本身已經是甜筒+一球冰淇淋的組合造型,沒有另外畫一個獨立的甜筒圖示,所以判斷合併,只做 <code>iceCream</code> 一款,不額外造一個容易跟它高度重複的甜筒。這個判斷明確標註在這裡,不是靜默處理。<br><br><b>逐組差異化設計重點</b>:D 組(平底鍋/湯勺/菜刀/叉子/馬克杯/啤酒大木杯/茶壺/保溫瓶)刻意讓最容易混淆的幾對用不同零件語彙拉開——平底鍋(大圓盤+短粗柄)跟湯勺(小圓杯+長細柄+勾)是柄:杯比例互為反向;菜刀用單一寬楔形 <code>polygon</code>(刃寬達 0.24,約劍身兩倍)跟既有劍系「窄長對稱尖」的語彙區隔;馬克杯/啤酒大木杯/茶壺三款同屬「杯身+側柄」語彙,靠杯身高寬比、握把弧度大小、有無壺蓋/壺嘴三個獨立線索疊加區分,不只靠尺寸。E 組胡蘿蔔(錐形根莖+葉梢)、棒棒糖(大圓糖+內圈鏤空螺旋+細柄)、冰淇淋(三角錐+鋸齒漩渦頂)、披薩片(寬扇形+三顆配料圓點)、雞腿(圓潤肉身+細骨柄+骨節圓)、拐杖糖(細杆+緊勾+斜紋)、薑餅人(全目錄唯一人形——髖部分岔雙腿+梯形軀幹+雙臂+圓頭+三顆鈕扣)七款彼此形狀語彙都不同,不是同一套語彙換比例。F 組向日葵/玫瑰花/百合花共用「莖+花頭」語彙,但花頭改用 <code>buildStarPoints()</code> 的角數/內外半徑對比拉開差異(向日葵 12 角、對比小,密集小花瓣+深色花心圓;玫瑰花 8 角、對比更小,呈現圓潤扇貝邊+小花苞圓;百合花只 6 角、對比極大,呈現稀疏尖銳星芒+雄蕊小點),仙人掌盆栽/四葉草盆栽因為盆栽底座的關係全部採 <code>flat</code>(不採 <code>stuck</code>,跟頭尾配件同一批已有的「盆栽不能插地」判斷邏輯一致),稻穗(單枝下垂+8 顆散落穀粒)跟小麥束(5 枝散射+綁帶+5 顆碩大穀粒)刻意連姿態(前者 <code>flat</code> 躺姿、後者 <code>stuck</code> 立姿)都不同,不只形狀不同。G 組手機/平板只靠寬高比拉開(手機 dx±0.19 窄長,平板 dx±0.34 寬短)+平板獨有的鏤空 Home 鍵環;遊戲手把/相機/手槍是全新的「橫向」或「原有直軸剛好貼合」設計,見下方個別說明。<br><br><b>雙手持握的標註與限制(使用者指令第 3 點)</b>:評估過遊戲手把、相機這兩款——兩者現實中確實需要雙手操作,主動標註於此,但沒有設成 <code>holdStyle: 'dual'</code>。既有的 <code>dual</code> 機制經 v41 已確認是「同一個形狀在兩個掛載點各畫一份」,適合成對配戴物(例如一對鈴鐺),標成 <code>dual</code> 會讓畫面出現兩個手把/兩台相機,不是一個橫跨雙手的單一裝置,是錯誤的視覺結果。真正的「單一物件、雙手共同握持」錨定機制目前不存在,這輪維持兩者 <code>holdStyle</code> 省略(吃單手預設),限制留在這裡明確記錄,不是遺漏。<br><br><b>遊戲手把的座標軸特例</b>:這是全目錄第一款刻意用「橫向」設計的配件——遊戲手把現實中寬度遠大於高度,如果照其餘配件的慣例把 <code>dist 0</code> 放在主體特徵、沿掛載軸垂直延伸,畫出來會是一個窄窄立起來的東西,完全不像手把。改成讓 <code>at</code>(通常代表沿掛載軸的長度)只承擔手把很淺的前後厚度,實際的左右寬度全部塞進 <code>dx</code>(<code>dx</code> 換算成畫面座標時本來就不受 <code>totalLen</code> 限制,永遠直接乘 <code>headR</code>,見 <code>drawWeaponParts()</code> 裡 <code>y()</code>/像素座標的公式拆分)。第一版直接照 C/F/K 組的慣例把它註冊成 <code>flat</code>,結果 <code>drawWeaponPartsFlat()</code> 自己還會再轉 90 度,兩次旋轉疊加後手把整個轉成一個細長的逗號形狀,完全不像手把,截圖比對後才發現雙重旋轉的問題——改成 <code>stuck</code>(直接沿用配件自己未旋轉的軸線,形狀本身刻意設計成橫向,不需要 <code>flat</code> 那道額外的轉向)後,截圖確認呈現正確的寬扁太陽眼鏡狀輪廓,清楚跟其餘直立配件區隔。<br><br><b>除錯過程</b>:①菜刀第一版刀刃 <code>polygon</code> 頂點順序寫錯(正負 dx 兩側的繞線方向在中途跳動、不是單純沿正側去、沿負側回),渲染出一個自我相交的蝴蝶結形狀,縮成一小撇讀起來像閃電符號而非刀刃——改成嚴格沿正 dx 側去、負 dx 側回的簡單多邊形繞線後,截圖確認呈現正確的寬楔形。②啤酒大木杯第一版沿用手電筒光線的「負 <code>at</code> 外推」技巧把杯蓋畫在 <code>dist 0</code> 之前,結果杯蓋跑到本體下方、跑出地面線以下,倒插視覺上像是懸空多一截而非「蓋子在杯口上方」——根因是誤用了手電筒那個外推技巧,手電筒的光線本來就該長在尖端(<code>dist 0</code>)之外,但啤酒杯的蓋子該長在本體「另一端」(<code>totalLen</code> 端)之外,兩者方向相反;改成杯蓋往本體本身最大 <code>at</code> 值以外延伸(比照木劍握柄圓頭長在劍身末端以外的既有寫法),截圖確認蓋子正確落在杯口上方。③馬克杯/啤酒大木杯/茶壺三款握把最初都用單點偏軸 <code>ring</code>(比照剪刀指環的既有寫法),在配件自己的原始軸線(手持/倒插視角)上看起來正確,但這批多數配件走 <code>flat</code> 收納,<code>drawWeaponPartsFlat()</code> 會把整個局部座標轉 90 度——原本在「側邊」的偏軸裝飾轉完後跑到「上方/下方」,讀起來像是一個懸空的扣環而非貼合杯身的握把(截圖比對發現的,不是憑空假設)。改成比照水桶握把既有寫法,用跨一段 <code>at</code> 範圍的 3 點 <code>polyline</code> 弧線(而不是單點偏軸圓環)貼著杯身邊緣畫,不管有沒有經過 <code>flat</code> 旋轉,弧線都跟主體維持「附著」的視覺關係,不會變成一個孤立的圓圈——套用到三款握把,並移除保溫瓶/相機兩款原本次要、非辨識度必要的小背帶圓環裝飾(同一個偏軸單點鏤空問題,但這兩款的背帶本來就不是識別度所需的核心特徵,直接拿掉比重新設計更乾淨)。<br><br><b>驗證</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口(驗證完成後已移除,不進正式程式碼)把 31 款配件各自放大截圖比對辨識度,抓出上述菜刀/啤酒大木杯/遊戲手把三個真正的形狀或掛載問題並修正。接著跑一次完整 17 原型 × 21 姿勢回歸測試(31 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤;另外針對 <code>flat</code>/<code>stuck</code> 兩種倒插呈現,在 <code>longlimb</code>(標準長腿)、<code>boxChubbyBlur</code>(模糊型)兩種代表性原型上跑正面站定收納姿勢的截圖(31 款 × 2 原型,共 62 張),zero console 錯誤,目視抽查數款(含全目錄最高、最寬的薑餅人/遊戲手把)確認位置落在腳邊、沒有明顯懸空或陷入地面。<b>這輪跟 B/C/F/K 組一樣,僅完成形狀設計與辨識度確認,握持點全數採用共用預設值(未逐款微調),尚未針對這 31 款進行手持動畫角度自然度與頭部安全餘裕的驗證——待使用者確認形狀辨識度、並完成後續所有分類的一次性握持點檢視後,再統一進行下一輪動畫與握持點驗證。</b></p>
     <p class="sub"><b>沿用 A 組機制,無重新發明</b>:全部 17 款一樣透過 <code>drawWeaponParts()</code>/<code>WEAPON_HELD_TILT</code>/<code>WEAPON_HELD_MAX_ANGLE</code>/<code>gripRatio</code> 渲染,新增的是一個統一慣例、而不是新機制——每款配件的 <code>dist 0</code>(尖端/起點)固定放在該配件「最具辨識度的主體特徵」上(刀刃、鏡片、火焰、掃帚頭、酒杯口……),這個特徵因此同時滿足兩件事:倒插時它是接觸地面的那一端(符合真實斧頭/掃帚/火把插入地面時「工作端朝下」的直覺),手持時只要 <code>gripRatio</code> 設高(握把靠近尾端),它就自然落在「向外延伸、視覺最顯眼」的那一側——跟先前戰斧/流星錘等頭重武器的處理邏輯完全一樣,沒有另外發明新規則。<br><br><b>兩個新零件能力</b>(擴充 <code>drawWeaponParts()</code>,非新函式):①<code>polygon</code> 新增 <code>holes</code> 欄位——這個系統是純色剪影、沒有描邊顏色,同色裝飾線畫在實心形狀上等於隱形,唯一能在實心填色上放出「看得見的線條」的方法是真的挖一個洞(背景色透出來),用跟 <code>ring</code> 一樣的「反向繞線」技巧,擴充成任意多邊形的洞而不只是圓形——用在鳶形盾的十字裝飾(挖出一豎一橫兩個矩形洞)、扳手的開口卡榫(挖出一個延伸出邊界的矩形洞,做出「真正開口」而非封閉孔洞的效果)。②<code>circle</code>/<code>ring</code> 新增可選的 <code>dx</code>(偏軸位移)欄位,預設 0、不影響既有 15 款武器——十字架的左右臂端小圓點裝飾、剪刀的左右兩個指環握把、澆花壺噴嘴末端的水滴,都需要偏離主軸的圓形,原本兩個型別只能畫在軸線正中央。<br><br><b>新增 <code>drawWeaponPartsFlat()</code>:'平放' 呈現</b>——沿用 'stuck' orientation 完全不改的尖端頂地數學,只是把整個局部座標系轉 90 度(<code>footMount.angle</code> 恆為 0,所以這永遠是絕對的四分之一圈,不是相對值),原本朝上的軸線變成沿地面躺平,再用 <code>flatLift</code>(該配件自身最大寬度的一半,比照水壺 <code>bodyY</code> 位移的做法,截圖比對定案而非自動推算)把掛載點往上抬,讓形狀的最低點剛好落在地面線上而不是被地面線切一半。<br><br><b>逐款 stuck/flat 判斷</b>:鳶形盾、魔法書、十字架、聖杯(B 組全數)以及螺絲起子、扳手、鋸子、剪刀、水桶、澆花壺、手電筒、放大鏡、團扇(C/F/K 組多數)採 <code>flat</code>,均為使用者原始分類建議。木製掃帚、釣魚竿、拐杖採 <code>stuck</code>——三者都有夠強的「自己站得住」真實意象(掃帚立在自己的刷毛上、拐杖立在自己的直杖尖上、釣魚竿立在自己的握把/捲線器上)。火把也採 <code>stuck</code>,但刻意不用「主體特徵頂地」這個統一慣例——第一版把火焰放在 <code>dist 0</code>(跟其餘配件一致),結果倒插呈現變成火焰插進地面,截圖比對後判定這不是合理的風格化(不同於斧頭埋進地面、掃帚立在刷毛上這類仍然說得通的畫面,火焰接觸地面直接讀起來就是錯的),改成握柄在 <code>dist 0</code>(插地正確,常見於真實的火把座/庭院火把),<code>gripRatio</code> 也跟著改低(握點貼近握柄端),火焰落在通常會被裝飾用的「內側」區域而非外推的顯眼區——因為火焰本身是塊狀有面積的形狀而非細長線條,即使不在顯眼區也不會像細長桿身那樣被完全大埋掉,截圖確認可讀。<br><br><b>除錯過程</b>:①鳶形盾十字裝飾第一版直向的洞正確挖穿,橫向的洞卻完全沒有效果——追查後是兩個洞的頂點順序繞線方向不一致(直向洞跟外框相反繞線,是洞;橫向洞繞線方向剛好跟外框相同,等於疊加填色、視覺上沒有洞),扳手的開口卡榫第一版同樣的錯誤(洞的繞線方向剛好跟外框同向)。兩者都是把洞的頂點順序反過來後,截圖確認真正挖穿。②魔法書書籤緞帶第一版畫在書頁本體的 dx 範圍內,結果跟書頁同色完全隱形(跟鳶形盾十字裝飾一開始想直接畫同色線條會遇到的問題一樣)——改成緞帶往書本下緣以外延伸(用負值 <code>at</code>,超出書本自身尖端參考點的合法用法,手電筒的放射光線用了同樣的技巧),讓緞帶落在書本輪廓以外的背景區域,才顯示出來。③剪刀第一版兩片刀刃的尖端間距太小,整體讀起來像一把匕首而非一把打開的剪刀,加大尖端間距後才呈現出清楚的「X」交叉。<br><br><b>清單計數提醒(比照 v41 長劍缺漏、標註不猜測)</b>:使用者原始指令 C 組標註「9 項」但實際只列出 8 項(螺絲起子、扳手、鋸子、剪刀、木製掃帚、水桶、澆花壺、釣魚竿),K 組追加標註「2 項」但實際列出 3 項(放大鏡、團扇、拐杖)——這輪依實際列出的品項數量建置(C 組 8 款、K 組 3 款),未自行猜測缺漏的第 9 項是什麼,請確認數量標註是否為筆誤,或是否有遺漏未列出的品項需要補上。<br><br><b>驗證進度</b>:17 原型 × 21 姿勢回歸測試(17 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟)zero console 錯誤;<code>flat</code>/<code>stuck</code> 兩種倒插呈現各自在 2 種代表性原型(含模糊型)下目視檢查,位置落在腳邊、沒有明顯懸空或陷入地面。<b>這輪僅完成形狀設計與辨識度確認,尚未針對這 17 款進行手持動畫角度自然度與頭部安全餘裕的驗證——待使用者確認形狀辨識度後再進行下一輪動畫驗證。</b></p>
     <p class="sub"><b>補完清單缺漏</b>:原始 A 組 16 項清單(短劍、長劍、彎刀、木棍、鐵鎚、手斧、長矛、武士刀、苦無、西洋刺劍、三叉戟、戰斧、流星錘、長杖、木柄鐵鎚、光劍)裡,「長劍」在 v39/v40/v41 三輪都沒有實際建置,v41 的紀錄裡也明確標註過這個疑似謄寫遺漏、待確認是否補上。這輪確認要補上,新增 <code>longsword</code>,套用跟其餘 15 款完全相同的機制與驗證流程,不重新發明。<br><br><b>形狀設計</b>:沿用短劍的直劍身、尖端 <code>polygon</code> 語彙,但拉長(<code>totalLen</code> 1.88 對短劍的 1.33,落在中段刀劍量級,跟彎刀 1.62、武士刀 1.78 同一梯次),並且加上短劍刻意省略的特徵——握柄與劍身交界處的直向 <code>crossbar</code> 十字護手。短劍的辨識重點是「完全沒有護手」,長劍則是「樸素的十字護手」,兩者刻意做出有無護手的對比,同時跟西洋刺劍的大圓弧護手、武士刀的方形鍔用不同零件型別(crossbar/circle/polygon)彼此區隔,不會混淆。握柄比短劍略細(0.15 對 0.17),對應長劍握柄通常較修長的比例。<code>gripRatio</code> 不覆寫,吃共用預設值 0.68(平衡型刀劍類,跟短劍/彎刀/武士刀/西洋刺劍/長杖同一類)。<code>holdStyle</code> 不標註,吃預設單手。<code>rarity: null</code>。<br><br><b>驗證</b>:放大截圖確認長劍側身呈現出清楚的尖端、十字護手、握柄、圓形柄頭四段式輪廓,跟短劍並排比對辨識度足夠(短劍矮小無護手,長劍修長有護手)。17 原型 × 21 姿勢回歸測試(16 款手部武器輪替)zero console 錯誤。針對長劍額外跑一輪坐下/躺下/趴下/跳躍 × 5 種極端原型的安全餘裕驗證(像素 bbox 跟無配件基準比對),最大超出幅度 4px(躺姿,方向背離頭部,跟其餘 15 款已驗證過的安全範圍一致),沒有新增穿模風險。角度公式(<code>WEAPON_HELD_TILT</code>/<code>WEAPON_HELD_MAX_ANGLE</code>/<code>gripRatio</code>)完全不受武器外形資料影響,跟其餘 15 款共用同一段程式碼,不需要重新驗證角度行為本身。</p>
@@ -4919,6 +4920,448 @@
         { type: 'polygon', points: [ { at: 0.5, dx: -0.09 }, { at: 0.5, dx: 0.03 }, { at: 0.9, dx: 0.15 }, { at: 0.9, dx: 0.03 } ] },
         { type: 'ring', at: 0.55, dx: 0.02, rOuter: 0.09, rInner: 0.055 }
       ]
+    },
+
+    // ==================== H/I/J/K group addition (component XIII) ====================
+    // Same mechanism as every prior batch, still no reinvention. This
+    // round completes the hand accessory catalog (A-K). Two techniques
+    // get reused at a bigger scale than before: (a) the arc-'polyline'
+    // handle established last round for mug/beerStein/teapot (an
+    // attached span, not an isolated off-axis primitive, so it survives
+    // drawWeaponPartsFlat()'s quarter-turn without detaching visually);
+    // (b) 'polygon' + opposite-wound 'holes' for badmintonRacket's true
+    // hollow oval frame and rubiksCube's grid lines, generated from
+    // sampled ellipse points (same angle-sampling idea buildStarPoints()
+    // already uses for a star, applied here to a plain oval since no
+    // ellipse primitive exists).
+
+    // ---- H group: instruments/performance props (5) ----
+    // 木吉他 guitar: a two-lobe body (small 'circle' upper bout + big
+    // 'circle' lower bout, the closest approximation of a figure-8 body
+    // this primitive set allows) with a hollow 'ring' soundhole, a long
+    // thin neck, and a small paddle-shaped headstock with 3 tuning-peg
+    // dots -- by far the longest item in this batch, which alone
+    // separates it from every other H/I/J/K silhouette. dist0 = body
+    // (distinctive end), gripRatio high so the neck/headstock sits near
+    // the hand and the body hangs outward, matching how a guitar is
+    // actually carried by the neck.
+    // holdStyle: considered as a 'dual' candidate per the user's own
+    // prompt (a guitar is genuinely played with both hands -- one
+    // fretting, one strumming), but stays 'single' for the same reason
+    // as gamepad/camera above: the existing 'dual' mechanism draws the
+    // SAME shape independently at both hand mounts (correct for a
+    // matched worn pair), which would render two separate guitars, not
+    // one instrument spanning both hands. That single-object two-hand
+    // mount is still an unbuilt mechanism, not something this round
+    // silently works around.
+    guitar: {
+      totalLen: 2.15,
+      flatLift: 0.34,
+      gripRatio: 0.86,
+      parts: [
+        { type: 'circle', at: 0.32, r: 0.34 },
+        { type: 'circle', at: 0.62, r: 0.24 },
+        { type: 'ring', at: 0.32, rOuter: 0.1, rInner: 0.06 },
+        { type: 'shaft', from: 0.86, to: 1.9, width: 0.08 },
+        { type: 'polygon', points: [ { at: 1.9, dx: -0.12 }, { at: 1.9, dx: 0.12 }, { at: 2.15, dx: 0.16 }, { at: 2.15, dx: -0.16 } ] },
+        { type: 'circle', at: 2.0, dx: -0.14, r: 0.025 },
+        { type: 'circle', at: 2.05, dx: 0.14, r: 0.025 },
+        { type: 'circle', at: 2.12, dx: -0.13, r: 0.025 }
+      ]
+    },
+    // 小喇叭 trumpet: a flared 'polygon' bell (dist0, the business end,
+    // same convention as every wind/blade item) + a straight body shaft +
+    // 3 off-axis 'circle' valve buttons in a row (the single feature that
+    // reads as "brass instrument" rather than "megaphone" -- see
+    // megaphone below, which deliberately omits valves) + a thinner
+    // mouthpipe + a small mouthpiece knob at the butt.
+    trumpet: {
+      totalLen: 1.0,
+      flatLift: 0.24,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0.22 }, { at: 0.06, dx: 0.24 }, { at: 0.32, dx: 0.07 }, { at: 0.32, dx: -0.07 }, { at: 0.06, dx: -0.24 }, { at: 0, dx: -0.22 } ] },
+        { type: 'shaft', from: 0.32, to: 0.8, width: 0.13 },
+        { type: 'circle', at: 0.45, dx: 0.14, r: 0.04 },
+        { type: 'circle', at: 0.56, dx: 0.14, r: 0.04 },
+        { type: 'circle', at: 0.67, dx: 0.14, r: 0.04 },
+        { type: 'shaft', from: 0.8, to: 0.95, width: 0.05 },
+        { type: 'circle', at: 1.0, r: 0.035 }
+      ]
+    },
+    // 直笛 recorder: a long, mostly-straight tapered body (mouthpiece at
+    // dist0, matching every wind instrument's "business end first"
+    // convention) with a small 'triangle' beak tip, 6 finger-hole
+    // circles descending the body, and a flared bell at the butt.
+    // 'stuck': the one straight, long, unadorned instrument in this
+    // group, matching the user's own "long straight items may plant"
+    // guidance.
+    recorder: {
+      totalLen: 1.2,
+      gripRatio: 0.5,
+      parts: [
+        { type: 'triangle', baseAt: 0.08, tipAt: 0, baseWidth: 0.1 },
+        { type: 'polygon', points: [ { at: 0.05, dx: -0.05 }, { at: 0.05, dx: 0.05 }, { at: 1.1, dx: 0.1 }, { at: 1.1, dx: -0.1 } ] },
+        { type: 'circle', at: 0.3, r: 0.025 },
+        { type: 'circle', at: 0.42, r: 0.025 },
+        { type: 'circle', at: 0.54, r: 0.025 },
+        { type: 'circle', at: 0.7, r: 0.025 },
+        { type: 'circle', at: 0.82, r: 0.025 },
+        { type: 'circle', at: 0.94, r: 0.025 },
+        { type: 'polygon', points: [ { at: 1.1, dx: -0.1 }, { at: 1.1, dx: 0.1 }, { at: 1.2, dx: 0.14 }, { at: 1.2, dx: -0.14 } ] }
+      ]
+    },
+    // 沙鈴 maraca: the torch-style exception again (dist0 = handle, the
+    // plantable end, NOT the rattle ball -- a ball-first plant would read
+    // wrong the same way torch's flame-first draft did), rattle ball at
+    // the far/totalLen end with 3 tiny texture dots. holdStyle: 'dual' --
+    // flagged and tagged (not just flagged) because a maraca set is
+    // genuinely a MATCHING PAIR, one shaker per hand, which is exactly
+    // what the existing 'dual' mechanism draws correctly (unlike
+    // gamepad/camera above, which are ONE object spanning both hands and
+    // would render wrong under 'dual' -- see those two items' own
+    // comments). Maraca is this whole catalog's first item where 'dual'
+    // is actually the correct call.
+    maraca: {
+      totalLen: 0.9,
+      flatLift: 0.28,
+      gripRatio: 0.15,
+      parts: [
+        { type: 'shaft', from: 0, to: 0.5, width: 0.09 },
+        { type: 'circle', at: 0.75, r: 0.28 },
+        { type: 'circle', at: 0.7, dx: -0.1, r: 0.025 },
+        { type: 'circle', at: 0.78, dx: 0.12, r: 0.025 },
+        { type: 'circle', at: 0.82, dx: -0.05, r: 0.02 }
+      ]
+    },
+    // 大聲公 megaphone: a flared 'polygon' bell (dist0, business end,
+    // wider and plainer than trumpet's -- NO valve buttons, the single
+    // feature that keeps it from reading as a brass instrument) + a
+    // raked pistol-style grip (reusing pistol's own angled-polygon grip
+    // technique) + a small trigger dot.
+    megaphone: {
+      totalLen: 1.0,
+      flatLift: 0.34,
+      gripRatio: 0.72,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0.32 }, { at: 0.05, dx: 0.34 }, { at: 0.55, dx: 0.1 }, { at: 0.6, dx: 0.1 }, { at: 0.6, dx: -0.1 }, { at: 0.55, dx: -0.1 }, { at: 0.05, dx: -0.34 }, { at: 0, dx: -0.32 } ] },
+        { type: 'polygon', points: [ { at: 0.5, dx: -0.08 }, { at: 0.5, dx: 0.04 }, { at: 0.85, dx: 0.14 }, { at: 0.85, dx: 0.02 } ] },
+        { type: 'circle', at: 0.55, dx: -0.14, r: 0.03 }
+      ]
+    },
+
+    // ---- I group: stationery/misc (6) ----
+    // 鉛筆 pencil: the most literal application of this catalog's
+    // "dist0 = business end" rule -- a 'polygon' sharpened point, a plain
+    // wood-body 'shaft', a slightly wider ferrule 'shaft' segment, and an
+    // eraser-tip 'circle' at the butt. No new technique, just the
+    // clearest possible instance of the existing one.
+    pencil: {
+      totalLen: 1.33,
+      flatLift: 0.1,
+      gripRatio: 0.7,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.12, dx: 0.1 }, { at: 0.12, dx: -0.1 } ] },
+        { type: 'shaft', from: 0.12, to: 1.1, width: 0.1 },
+        { type: 'shaft', from: 1.1, to: 1.18, width: 0.13 },
+        { type: 'circle', at: 1.25, r: 0.075 }
+      ]
+    },
+    // 直尺 ruler: a long thin 'polygon' bar with 6 rectangular tick-mark
+    // 'holes' punched along one edge -- same reasoning as kiteShield's
+    // cross/wrench's notch: a same-color mark drawn ON the fill is
+    // invisible in this solid-silhouette system, a genuine hole is the
+    // only way to put a visible tick pattern on the bar.
+    ruler: {
+      totalLen: 1.6,
+      flatLift: 0.07,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon',
+          points: [ { at: 0, dx: -0.07 }, { at: 0, dx: 0.07 }, { at: 1.6, dx: 0.07 }, { at: 1.6, dx: -0.07 } ],
+          holes: [
+            [ { at: 0.15, dx: 0.02 }, { at: 0.2, dx: 0.02 }, { at: 0.2, dx: 0.07 }, { at: 0.15, dx: 0.07 } ],
+            [ { at: 0.35, dx: 0.02 }, { at: 0.4, dx: 0.02 }, { at: 0.4, dx: 0.07 }, { at: 0.35, dx: 0.07 } ],
+            [ { at: 0.55, dx: 0.02 }, { at: 0.6, dx: 0.02 }, { at: 0.6, dx: 0.07 }, { at: 0.55, dx: 0.07 } ],
+            [ { at: 0.75, dx: 0.02 }, { at: 0.8, dx: 0.02 }, { at: 0.8, dx: 0.07 }, { at: 0.75, dx: 0.07 } ],
+            [ { at: 0.95, dx: 0.02 }, { at: 1.0, dx: 0.02 }, { at: 1.0, dx: 0.07 }, { at: 0.95, dx: 0.07 } ],
+            [ { at: 1.15, dx: 0.02 }, { at: 1.2, dx: 0.02 }, { at: 1.2, dx: 0.07 }, { at: 1.15, dx: 0.07 } ]
+          ]
+        }
+      ]
+    },
+    // 量角器 protractor: a flat-bottomed half-disc 'polygon' -- 9 points
+    // sampled around a semicircle (same angle-sampling idea
+    // buildStarPoints() already uses, just constant-radius and 180
+    // degrees instead of alternating-radius and 360) plus a small
+    // baseline center-mark circle. The D-shaped silhouette alone is
+    // unambiguous against every other flat item in the catalog.
+    protractor: {
+      totalLen: 0.5,
+      flatLift: 0.42,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [
+            { at: 0, dx: -0.42 }, { at: 0.161, dx: -0.388 }, { at: 0.297, dx: -0.297 }, { at: 0.388, dx: -0.161 },
+            { at: 0.42, dx: 0 }, { at: 0.388, dx: 0.161 }, { at: 0.297, dx: 0.297 }, { at: 0.161, dx: 0.388 }, { at: 0, dx: 0.42 }
+          ] },
+        { type: 'circle', at: 0, r: 0.03 }
+      ]
+    },
+    // 信封 envelope: a 5-point 'polygon' pentagon (triangular flap fused
+    // onto a rectangle body -- the classic envelope silhouette) with a
+    // small hollow 'ring' stamp in the corner as the one extra detail
+    // that nudges it away from reading as a plain house icon.
+    envelope: {
+      totalLen: 0.75,
+      flatLift: 0.35,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.25, dx: 0.35 }, { at: 0.75, dx: 0.35 }, { at: 0.75, dx: -0.35 }, { at: 0.25, dx: -0.35 } ] },
+        { type: 'ring', at: 0.35, dx: 0.22, rOuter: 0.08, rInner: 0.05 }
+      ]
+    },
+    // 地球儀 globe: a stand-mounted sphere -- 'polygon' trapezoid base +
+    // thin neck 'shaft' + a thin axis 'shaft' that runs THROUGH the
+    // sphere (drawn before the sphere's own 'circle' so the sphere masks
+    // its middle, leaving only a small poke visible past each pole,
+    // reusing flashlight's rays/carrot's leaves "extend past the shape's
+    // own reference point" idea) + the sphere itself. The axis poke is
+    // what reads as "globe" rather than "ball on a stick".
+    globe: {
+      totalLen: 1.0,
+      flatLift: 0.42,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.18 }, { at: 0, dx: 0.18 }, { at: 0.12, dx: 0.08 }, { at: 0.12, dx: -0.08 } ] },
+        { type: 'shaft', from: 0.12, to: 0.98, width: 0.035 },
+        { type: 'circle', at: 0.6, r: 0.35 }
+      ]
+    },
+    // 魔術方塊 rubiksCube: a solid 'polygon' square with 4 thin rectangular
+    // 'holes' (2 vertical, 2 horizontal, at the 1/3 and 2/3 marks) cut
+    // through it forming a "#" grid -- same hole-on-a-solid-fill
+    // technique as ruler's ticks, applied as a 3x3 grid instead of a
+    // single-edge tick row.
+    rubiksCube: {
+      totalLen: 0.7,
+      flatLift: 0.35,
+      gripRatio: 0.75,
+      parts: [
+        { type: 'polygon',
+          points: [ { at: 0, dx: -0.35 }, { at: 0, dx: 0.35 }, { at: 0.7, dx: 0.35 }, { at: 0.7, dx: -0.35 } ],
+          holes: [
+            [ { at: 0, dx: -0.15 }, { at: 0, dx: -0.09 }, { at: 0.7, dx: -0.09 }, { at: 0.7, dx: -0.15 } ],
+            [ { at: 0, dx: 0.09 }, { at: 0, dx: 0.15 }, { at: 0.7, dx: 0.15 }, { at: 0.7, dx: 0.09 } ],
+            [ { at: 0.2, dx: -0.35 }, { at: 0.26, dx: -0.35 }, { at: 0.26, dx: 0.35 }, { at: 0.2, dx: 0.35 } ],
+            [ { at: 0.44, dx: -0.35 }, { at: 0.5, dx: -0.35 }, { at: 0.5, dx: 0.35 }, { at: 0.44, dx: 0.35 } ]
+          ]
+        }
+      ]
+    },
+
+    // ---- J group: festive/fantasy items (6) ----
+    // 仙女棒 sparkler: a thin 'shaft' + 5 short spark 'polyline' rays
+    // radiating around dist0 plus a tiny bright-core 'circle' -- the
+    // rays deliberately fan in several directions (not a single
+    // symmetric burst) to read as "sparking", unlike the flower family's
+    // orderly buildStarPoints() rosettes. 'stuck': matches the user's own
+    // "baton-like elongated item" guidance.
+    sparkler: {
+      totalLen: 1.0,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'shaft', from: 0.15, to: 1.0, width: 0.045 },
+        { type: 'circle', at: 0, r: 0.04 },
+        { type: 'polyline', points: [ { at: 0.05, dx: 0 }, { at: -0.05, dx: 0.08 } ], width: 0.02 },
+        { type: 'polyline', points: [ { at: 0.02, dx: 0.03 }, { at: -0.08, dx: -0.02 } ], width: 0.02 },
+        { type: 'polyline', points: [ { at: 0.08, dx: -0.05 }, { at: 0.15, dx: -0.15 } ], width: 0.02 },
+        { type: 'polyline', points: [ { at: 0.03, dx: -0.04 }, { at: -0.06, dx: -0.1 } ], width: 0.02 },
+        { type: 'polyline', points: [ { at: 0.1, dx: 0.06 }, { at: 0.18, dx: 0.14 } ], width: 0.02 }
+      ]
+    },
+    // 燈籠 lantern: a bulging barrel 'polygon' body between two small cap
+    // polygons, a thin dangling tassel 'polyline' below and a hanging
+    // loop 'shaft' above. 'flat': same round-vessel-lies-on-its-side
+    // reasoning as mug/beerStein/teapot, no plant-into-ground pose fits.
+    lantern: {
+      totalLen: 1.05,
+      flatLift: 0.4,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polyline', points: [ { at: 0, dx: 0 }, { at: 0.15, dx: 0 } ], width: 0.04 },
+        { type: 'polygon', points: [ { at: 0.15, dx: -0.15 }, { at: 0.15, dx: 0.15 }, { at: 0.22, dx: 0.2 }, { at: 0.22, dx: -0.2 } ] },
+        { type: 'polygon', points: [ { at: 0.22, dx: -0.2 }, { at: 0.35, dx: -0.4 }, { at: 0.65, dx: -0.4 }, { at: 0.78, dx: -0.2 }, { at: 0.78, dx: 0.2 }, { at: 0.65, dx: 0.4 }, { at: 0.35, dx: 0.4 }, { at: 0.22, dx: 0.2 } ] },
+        { type: 'polygon', points: [ { at: 0.78, dx: -0.2 }, { at: 0.78, dx: 0.2 }, { at: 0.85, dx: 0.15 }, { at: 0.85, dx: -0.15 } ] },
+        { type: 'shaft', from: 0.85, to: 1.05, width: 0.03 }
+      ]
+    },
+    // 氣球 balloon: a plain 'circle' body (dist0) + a small triangular
+    // knot + a 3-segment wavy 'polyline' string trailing to totalLen --
+    // the ONE item that does NOT need torch's dist0-exception, because
+    // "grip the string, balloon floats outward at the far/high-gripRatio
+    // end" is already the catalog's ordinary default behavior, not a
+    // special case.
+    balloon: {
+      totalLen: 1.0,
+      flatLift: 0.32,
+      gripRatio: 0.88,
+      parts: [
+        { type: 'circle', at: 0.32, r: 0.32 },
+        { type: 'polygon', points: [ { at: 0.62, dx: -0.04 }, { at: 0.62, dx: 0.04 }, { at: 0.68, dx: 0 } ] },
+        { type: 'polyline', points: [ { at: 0.68, dx: 0 }, { at: 0.8, dx: 0.06 }, { at: 0.9, dx: -0.06 }, { at: 1.0, dx: 0.03 } ], width: 0.02 }
+      ]
+    },
+    // 紙飛機 paperAirplane: a single 6-point 'polygon' dart -- nose tip,
+    // out to a wingtip, IN to a notch near the centerline, out to a
+    // trailing tail point, back in to the mirrored notch, out to the
+    // other wingtip, closing to the nose. The two notches are what
+    // create the classic paper-airplane tail silhouette instead of a
+    // plain arrowhead.
+    paperAirplane: {
+      totalLen: 0.9,
+      flatLift: 0.18,
+      gripRatio: 0.6,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.7, dx: 0.38 }, { at: 0.5, dx: 0.06 }, { at: 0.9, dx: 0 }, { at: 0.5, dx: -0.06 }, { at: 0.7, dx: -0.38 } ] }
+      ]
+    },
+    // 魔法神燈 magicLamp: dist0 = the long upturned spout (a multi-segment
+    // 'polyline' curving up and back, much longer than teapot's short
+    // diagonal spout -- the single feature that keeps this from reading
+    // as "another teapot"), feeding into a low asymmetric bulbous body,
+    // a lid knob offset onto the body's own hump, and an arc 'polyline'
+    // handle at the back (same attached-arc technique as mug/teapot/
+    // beerStein).
+    magicLamp: {
+      totalLen: 0.9,
+      flatLift: 0.28,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polyline', points: [ { at: 0, dx: 0 }, { at: 0.15, dx: 0.05 }, { at: 0.3, dx: 0.22 }, { at: 0.4, dx: 0.35 } ], width: 0.07 },
+        { type: 'polygon', points: [ { at: 0.35, dx: 0.15 }, { at: 0.45, dx: 0.35 }, { at: 0.6, dx: 0.4 }, { at: 0.8, dx: 0.28 }, { at: 0.85, dx: 0.05 }, { at: 0.75, dx: -0.15 }, { at: 0.5, dx: -0.15 }, { at: 0.4, dx: 0.05 } ] },
+        { type: 'circle', at: 0.62, dx: 0.42, r: 0.05 },
+        { type: 'polyline', points: [ { at: 0.55, dx: -0.15 }, { at: 0.7, dx: -0.32 }, { at: 0.82, dx: -0.15 } ], width: 0.06 }
+      ]
+    },
+    // 巫毒娃娃 voodooDoll: reuses gingerbreadMan's exact humanoid skeleton
+    // (2 'diagonal' legs, a trapezoid torso, 2 'diagonal' arms, a
+    // 'circle' head, dist0 = feet, 'stuck' = stands on its own two feet)
+    // -- the one addition is 3 thin 'diagonal' pins poking OUT past the
+    // torso's own edge (visible because they extend into the background
+    // beyond the fill, same "poke past the boundary" logic as every
+    // other extending-decoration in this catalog, not drawn invisibly ON
+    // the fill). The pins are the single feature that separates this
+    // from a second gingerbread man.
+    voodooDoll: {
+      totalLen: 1.2,
+      gripRatio: 0.5,
+      parts: [
+        { type: 'diagonal', at: 0.3, to: 0, dx: -0.15, width: 0.12 },
+        { type: 'diagonal', at: 0.3, to: 0, dx: 0.15, width: 0.12 },
+        { type: 'polygon', points: [ { at: 0.3, dx: -0.24 }, { at: 0.3, dx: 0.24 }, { at: 0.75, dx: 0.28 }, { at: 0.75, dx: -0.28 } ] },
+        { type: 'diagonal', at: 0.75, to: 0.92, dx: -0.38, width: 0.11 },
+        { type: 'diagonal', at: 0.75, to: 0.92, dx: 0.38, width: 0.11 },
+        { type: 'circle', at: 1.0, r: 0.2 },
+        { type: 'diagonal', at: 0.45, to: 0.55, dx: 0.4, width: 0.02 },
+        { type: 'diagonal', at: 0.55, to: 0.62, dx: -0.38, width: 0.02 },
+        { type: 'diagonal', at: 0.65, to: 0.72, dx: 0.35, width: 0.02 }
+      ]
+    },
+
+    // ---- K group: sports/misc (5 -- user's own brief already tags this
+    // whole group 'flat', no per-item judgment call needed) ----
+    // 羽毛球拍 badmintonRacket: a true hollow oval frame -- 8-point outer
+    // 'polygon' + an 8-point inner 'holes' oval (opposite winding,
+    // reversed sampling order, same technique ruler/rubiksCube/
+    // kiteShield already established for a genuine cut-through) sampled
+    // around an ellipse (same angle-sampling idea buildStarPoints()
+    // uses, extended to non-circular radii since no ellipse primitive
+    // exists) + a LONG thin handle shaft. holdStyle stays 'single' --
+    // considered as a 'dual' candidate per the user's own prompt, but a
+    // racket (like a sword) is swung with ONE hand in real play; 'dual'
+    // would draw two independent rackets, one per hand, which is wrong
+    // for a single swung implement, same reasoning already established
+    // for every bladed weapon in this catalog.
+    badmintonRacket: {
+      totalLen: 1.6,
+      flatLift: 0.32,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon',
+          points: [
+            { at: 0.32, dx: 0.22 }, { at: 0.532, dx: 0.156 }, { at: 0.62, dx: 0 }, { at: 0.532, dx: -0.156 },
+            { at: 0.32, dx: -0.22 }, { at: 0.108, dx: -0.156 }, { at: 0.02, dx: 0 }, { at: 0.108, dx: 0.156 }
+          ],
+          holes: [
+            [
+              { at: 0.157, dx: 0.113 }, { at: 0.09, dx: 0 }, { at: 0.157, dx: -0.113 }, { at: 0.32, dx: -0.16 },
+              { at: 0.483, dx: -0.113 }, { at: 0.55, dx: 0 }, { at: 0.483, dx: 0.113 }, { at: 0.32, dx: 0.16 }
+            ]
+          ]
+        },
+        { type: 'shaft', from: 0.62, to: 1.5, width: 0.05 },
+        { type: 'shaft', from: 1.5, to: 1.6, width: 0.08 }
+      ]
+    },
+    // 桌球拍 pingpongPaddle: the deliberate opposite proportions from
+    // badmintonRacket -- a solid (not hollow) round 'circle' face and a
+    // SHORT stubby handle 'shaft' (0.2 long vs. racket's 0.88-long
+    // handle), matching the user's own "拍面大小、握柄長度" differentiation
+    // brief.
+    pingpongPaddle: {
+      totalLen: 0.75,
+      flatLift: 0.3,
+      gripRatio: 0.7,
+      parts: [
+        { type: 'circle', at: 0.28, r: 0.3 },
+        { type: 'shaft', from: 0.55, to: 0.75, width: 0.13 }
+      ]
+    },
+    // 牙刷 toothbrush: a flat rectangular head 'polygon' at dist0 with 3
+    // short bristle-strand 'polyline's poking past its own edge (same
+    // fringe technique as broom's bristles) + a long thin handle shaft.
+    toothbrush: {
+      totalLen: 1.3,
+      flatLift: 0.09,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.08 }, { at: 0, dx: 0.08 }, { at: 0.22, dx: 0.09 }, { at: 0.22, dx: -0.09 } ] },
+        { type: 'polyline', points: [ { at: 0.03, dx: -0.06 }, { at: -0.05, dx: -0.06 } ], width: 0.02 },
+        { type: 'polyline', points: [ { at: 0.03, dx: 0 }, { at: -0.05, dx: 0 } ], width: 0.02 },
+        { type: 'polyline', points: [ { at: 0.03, dx: 0.06 }, { at: -0.05, dx: 0.06 } ], width: 0.02 },
+        { type: 'shaft', from: 0.22, to: 1.3, width: 0.045 }
+      ]
+    },
+    // 木製面具 woodenMask: a rounded face-outline 'polygon' with two
+    // almond-shaped eye 'holes' -- the eye holes are what separate this
+    // from a plain oval/shield shape (compare kiteShield, which is a
+    // similar teardrop silhouette but with a cross hole instead of eyes).
+    woodenMask: {
+      totalLen: 0.9,
+      flatLift: 0.35,
+      gripRatio: 0.75,
+      parts: [
+        { type: 'polygon',
+          points: [ { at: 0, dx: 0 }, { at: 0.15, dx: 0.32 }, { at: 0.45, dx: 0.4 }, { at: 0.75, dx: 0.28 }, { at: 0.9, dx: 0 }, { at: 0.75, dx: -0.28 }, { at: 0.45, dx: -0.4 }, { at: 0.15, dx: -0.32 } ],
+          holes: [
+            [ { at: 0.35, dx: 0.08 }, { at: 0.42, dx: 0.02 }, { at: 0.5, dx: 0.08 }, { at: 0.42, dx: 0.24 } ],
+            [ { at: 0.35, dx: -0.08 }, { at: 0.42, dx: -0.24 }, { at: 0.5, dx: -0.08 }, { at: 0.42, dx: -0.02 } ]
+          ]
+        }
+      ]
+    },
+    // 試管 testTube: a plain capsule 'shaft' (its default rounded caps are
+    // exactly a test tube's own rounded bottom, no extra part needed for
+    // that) + a wider stopper/cork 'polygon' cap at the open top.
+    testTube: {
+      totalLen: 1.0,
+      flatLift: 0.08,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'shaft', from: 0.1, to: 0.85, width: 0.16 },
+        { type: 'polygon', points: [ { at: 0.85, dx: -0.1 }, { at: 0.85, dx: 0.1 }, { at: 1.0, dx: 0.13 }, { at: 1.0, dx: -0.13 } ] }
+      ]
     }
   };
 
@@ -5198,7 +5641,41 @@
     gamepad: itemEntry('遊戲手把', 'gamepad', 'stuck'),
     microphone: itemEntry('麥克風', 'microphone', 'flat'),
     camera: itemEntry('相機', 'camera', 'flat'),
-    pistol: itemEntry('手槍', 'pistol', 'flat')
+    pistol: itemEntry('手槍', 'pistol', 'flat'),
+
+    // ---- H group: instruments/performance props (5) ----
+    guitar: itemEntry('木吉他', 'guitar', 'flat'),
+    trumpet: itemEntry('小喇叭', 'trumpet', 'flat'),
+    recorder: itemEntry('直笛', 'recorder', 'stuck'),
+    maraca: (function(){
+      const e = itemEntry('沙鈴', 'maraca', 'flat');
+      e.holdStyle = 'dual';
+      return e;
+    })(),
+    megaphone: itemEntry('大聲公', 'megaphone', 'flat'),
+
+    // ---- I group: stationery/misc (6) ----
+    pencil: itemEntry('鉛筆', 'pencil', 'flat'),
+    ruler: itemEntry('直尺', 'ruler', 'flat'),
+    protractor: itemEntry('量角器', 'protractor', 'flat'),
+    envelope: itemEntry('信封', 'envelope', 'flat'),
+    globe: itemEntry('地球儀', 'globe', 'flat'),
+    rubiksCube: itemEntry('魔術方塊', 'rubiksCube', 'flat'),
+
+    // ---- J group: festive/fantasy items (6) ----
+    sparkler: itemEntry('仙女棒', 'sparkler', 'stuck'),
+    lantern: itemEntry('燈籠', 'lantern', 'flat'),
+    balloon: itemEntry('氣球', 'balloon', 'flat'),
+    paperAirplane: itemEntry('紙飛機', 'paperAirplane', 'flat'),
+    magicLamp: itemEntry('魔法神燈', 'magicLamp', 'flat'),
+    voodooDoll: itemEntry('巫毒娃娃', 'voodooDoll', 'stuck'),
+
+    // ---- K group: sports/misc (5) -- all 'flat' per the user's own brief ----
+    badmintonRacket: itemEntry('羽毛球拍', 'badmintonRacket', 'flat'),
+    pingpongPaddle: itemEntry('桌球拍', 'pingpongPaddle', 'flat'),
+    toothbrush: itemEntry('牙刷', 'toothbrush', 'flat'),
+    woodenMask: itemEntry('木製面具', 'woodenMask', 'flat'),
+    testTube: itemEntry('試管', 'testTube', 'flat')
   };
   let currentHandAccessory = '';
 
