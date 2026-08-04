@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v44 — B/C/F/K 組新增 17 款配件(防具法器/日常工具/手電筒火把/放大鏡團扇拐杖)</title>
+<title>剪影走路/跑步循環 v45 — D/E/F/G 組新增 31 款配件(廚房餐具/食物/植物自然物/3C科技)</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v44</div>
-    <h1>B/C/F/K 組新增 17 款配件(防具法器/日常工具/手電筒火把/放大鏡團扇拐杖)</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v45</div>
+    <h1>D/E/F/G 組新增 31 款配件(廚房餐具/食物/植物自然物/3C科技)</h1>
+    <p class="sub"><b>沿用既有機制,無重新發明</b>:全部 31 款一樣透過 <code>itemEntry()</code>/<code>ITEM_SHAPES</code>/<code>drawWeaponParts()</code>/<code>drawWeaponPartsFlat()</code> 渲染,跟 B/C/F/K 組完全相同的機制,新增的是形狀資料本身,不是新程式邏輯。<br><br><b>清單處理</b>:D 組(廚房餐具 8 款)、F 組(植物/自然物 10 款)、G 組(3C/科技 6 款)品項數量跟指令標註一致,直接建置。E 組(食物)指令標題標「8 項」但清單只列出 7 個具名品項(胡蘿蔔、棒棒糖、冰淇淋、披薩片、雞腿、拐杖糖、薑餅人),外加一句「原清單的甜筒可與冰淇淋合併或保留獨立,由你判斷」——參考圖裡的「冰淇淋」圖示本身已經是甜筒+一球冰淇淋的組合造型,沒有另外畫一個獨立的甜筒圖示,所以判斷合併,只做 <code>iceCream</code> 一款,不額外造一個容易跟它高度重複的甜筒。這個判斷明確標註在這裡,不是靜默處理。<br><br><b>逐組差異化設計重點</b>:D 組(平底鍋/湯勺/菜刀/叉子/馬克杯/啤酒大木杯/茶壺/保溫瓶)刻意讓最容易混淆的幾對用不同零件語彙拉開——平底鍋(大圓盤+短粗柄)跟湯勺(小圓杯+長細柄+勾)是柄:杯比例互為反向;菜刀用單一寬楔形 <code>polygon</code>(刃寬達 0.24,約劍身兩倍)跟既有劍系「窄長對稱尖」的語彙區隔;馬克杯/啤酒大木杯/茶壺三款同屬「杯身+側柄」語彙,靠杯身高寬比、握把弧度大小、有無壺蓋/壺嘴三個獨立線索疊加區分,不只靠尺寸。E 組胡蘿蔔(錐形根莖+葉梢)、棒棒糖(大圓糖+內圈鏤空螺旋+細柄)、冰淇淋(三角錐+鋸齒漩渦頂)、披薩片(寬扇形+三顆配料圓點)、雞腿(圓潤肉身+細骨柄+骨節圓)、拐杖糖(細杆+緊勾+斜紋)、薑餅人(全目錄唯一人形——髖部分岔雙腿+梯形軀幹+雙臂+圓頭+三顆鈕扣)七款彼此形狀語彙都不同,不是同一套語彙換比例。F 組向日葵/玫瑰花/百合花共用「莖+花頭」語彙,但花頭改用 <code>buildStarPoints()</code> 的角數/內外半徑對比拉開差異(向日葵 12 角、對比小,密集小花瓣+深色花心圓;玫瑰花 8 角、對比更小,呈現圓潤扇貝邊+小花苞圓;百合花只 6 角、對比極大,呈現稀疏尖銳星芒+雄蕊小點),仙人掌盆栽/四葉草盆栽因為盆栽底座的關係全部採 <code>flat</code>(不採 <code>stuck</code>,跟頭尾配件同一批已有的「盆栽不能插地」判斷邏輯一致),稻穗(單枝下垂+8 顆散落穀粒)跟小麥束(5 枝散射+綁帶+5 顆碩大穀粒)刻意連姿態(前者 <code>flat</code> 躺姿、後者 <code>stuck</code> 立姿)都不同,不只形狀不同。G 組手機/平板只靠寬高比拉開(手機 dx±0.19 窄長,平板 dx±0.34 寬短)+平板獨有的鏤空 Home 鍵環;遊戲手把/相機/手槍是全新的「橫向」或「原有直軸剛好貼合」設計,見下方個別說明。<br><br><b>雙手持握的標註與限制(使用者指令第 3 點)</b>:評估過遊戲手把、相機這兩款——兩者現實中確實需要雙手操作,主動標註於此,但沒有設成 <code>holdStyle: 'dual'</code>。既有的 <code>dual</code> 機制經 v41 已確認是「同一個形狀在兩個掛載點各畫一份」,適合成對配戴物(例如一對鈴鐺),標成 <code>dual</code> 會讓畫面出現兩個手把/兩台相機,不是一個橫跨雙手的單一裝置,是錯誤的視覺結果。真正的「單一物件、雙手共同握持」錨定機制目前不存在,這輪維持兩者 <code>holdStyle</code> 省略(吃單手預設),限制留在這裡明確記錄,不是遺漏。<br><br><b>遊戲手把的座標軸特例</b>:這是全目錄第一款刻意用「橫向」設計的配件——遊戲手把現實中寬度遠大於高度,如果照其餘配件的慣例把 <code>dist 0</code> 放在主體特徵、沿掛載軸垂直延伸,畫出來會是一個窄窄立起來的東西,完全不像手把。改成讓 <code>at</code>(通常代表沿掛載軸的長度)只承擔手把很淺的前後厚度,實際的左右寬度全部塞進 <code>dx</code>(<code>dx</code> 換算成畫面座標時本來就不受 <code>totalLen</code> 限制,永遠直接乘 <code>headR</code>,見 <code>drawWeaponParts()</code> 裡 <code>y()</code>/像素座標的公式拆分)。第一版直接照 C/F/K 組的慣例把它註冊成 <code>flat</code>,結果 <code>drawWeaponPartsFlat()</code> 自己還會再轉 90 度,兩次旋轉疊加後手把整個轉成一個細長的逗號形狀,完全不像手把,截圖比對後才發現雙重旋轉的問題——改成 <code>stuck</code>(直接沿用配件自己未旋轉的軸線,形狀本身刻意設計成橫向,不需要 <code>flat</code> 那道額外的轉向)後,截圖確認呈現正確的寬扁太陽眼鏡狀輪廓,清楚跟其餘直立配件區隔。<br><br><b>除錯過程</b>:①菜刀第一版刀刃 <code>polygon</code> 頂點順序寫錯(正負 dx 兩側的繞線方向在中途跳動、不是單純沿正側去、沿負側回),渲染出一個自我相交的蝴蝶結形狀,縮成一小撇讀起來像閃電符號而非刀刃——改成嚴格沿正 dx 側去、負 dx 側回的簡單多邊形繞線後,截圖確認呈現正確的寬楔形。②啤酒大木杯第一版沿用手電筒光線的「負 <code>at</code> 外推」技巧把杯蓋畫在 <code>dist 0</code> 之前,結果杯蓋跑到本體下方、跑出地面線以下,倒插視覺上像是懸空多一截而非「蓋子在杯口上方」——根因是誤用了手電筒那個外推技巧,手電筒的光線本來就該長在尖端(<code>dist 0</code>)之外,但啤酒杯的蓋子該長在本體「另一端」(<code>totalLen</code> 端)之外,兩者方向相反;改成杯蓋往本體本身最大 <code>at</code> 值以外延伸(比照木劍握柄圓頭長在劍身末端以外的既有寫法),截圖確認蓋子正確落在杯口上方。③馬克杯/啤酒大木杯/茶壺三款握把最初都用單點偏軸 <code>ring</code>(比照剪刀指環的既有寫法),在配件自己的原始軸線(手持/倒插視角)上看起來正確,但這批多數配件走 <code>flat</code> 收納,<code>drawWeaponPartsFlat()</code> 會把整個局部座標轉 90 度——原本在「側邊」的偏軸裝飾轉完後跑到「上方/下方」,讀起來像是一個懸空的扣環而非貼合杯身的握把(截圖比對發現的,不是憑空假設)。改成比照水桶握把既有寫法,用跨一段 <code>at</code> 範圍的 3 點 <code>polyline</code> 弧線(而不是單點偏軸圓環)貼著杯身邊緣畫,不管有沒有經過 <code>flat</code> 旋轉,弧線都跟主體維持「附著」的視覺關係,不會變成一個孤立的圓圈——套用到三款握把,並移除保溫瓶/相機兩款原本次要、非辨識度必要的小背帶圓環裝飾(同一個偏軸單點鏤空問題,但這兩款的背帶本來就不是識別度所需的核心特徵,直接拿掉比重新設計更乾淨)。<br><br><b>驗證</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口(驗證完成後已移除,不進正式程式碼)把 31 款配件各自放大截圖比對辨識度,抓出上述菜刀/啤酒大木杯/遊戲手把三個真正的形狀或掛載問題並修正。接著跑一次完整 17 原型 × 21 姿勢回歸測試(31 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤;另外針對 <code>flat</code>/<code>stuck</code> 兩種倒插呈現,在 <code>longlimb</code>(標準長腿)、<code>boxChubbyBlur</code>(模糊型)兩種代表性原型上跑正面站定收納姿勢的截圖(31 款 × 2 原型,共 62 張),zero console 錯誤,目視抽查數款(含全目錄最高、最寬的薑餅人/遊戲手把)確認位置落在腳邊、沒有明顯懸空或陷入地面。<b>這輪跟 B/C/F/K 組一樣,僅完成形狀設計與辨識度確認,握持點全數採用共用預設值(未逐款微調),尚未針對這 31 款進行手持動畫角度自然度與頭部安全餘裕的驗證——待使用者確認形狀辨識度、並完成後續所有分類的一次性握持點檢視後,再統一進行下一輪動畫與握持點驗證。</b></p>
     <p class="sub"><b>沿用 A 組機制,無重新發明</b>:全部 17 款一樣透過 <code>drawWeaponParts()</code>/<code>WEAPON_HELD_TILT</code>/<code>WEAPON_HELD_MAX_ANGLE</code>/<code>gripRatio</code> 渲染,新增的是一個統一慣例、而不是新機制——每款配件的 <code>dist 0</code>(尖端/起點)固定放在該配件「最具辨識度的主體特徵」上(刀刃、鏡片、火焰、掃帚頭、酒杯口……),這個特徵因此同時滿足兩件事:倒插時它是接觸地面的那一端(符合真實斧頭/掃帚/火把插入地面時「工作端朝下」的直覺),手持時只要 <code>gripRatio</code> 設高(握把靠近尾端),它就自然落在「向外延伸、視覺最顯眼」的那一側——跟先前戰斧/流星錘等頭重武器的處理邏輯完全一樣,沒有另外發明新規則。<br><br><b>兩個新零件能力</b>(擴充 <code>drawWeaponParts()</code>,非新函式):①<code>polygon</code> 新增 <code>holes</code> 欄位——這個系統是純色剪影、沒有描邊顏色,同色裝飾線畫在實心形狀上等於隱形,唯一能在實心填色上放出「看得見的線條」的方法是真的挖一個洞(背景色透出來),用跟 <code>ring</code> 一樣的「反向繞線」技巧,擴充成任意多邊形的洞而不只是圓形——用在鳶形盾的十字裝飾(挖出一豎一橫兩個矩形洞)、扳手的開口卡榫(挖出一個延伸出邊界的矩形洞,做出「真正開口」而非封閉孔洞的效果)。②<code>circle</code>/<code>ring</code> 新增可選的 <code>dx</code>(偏軸位移)欄位,預設 0、不影響既有 15 款武器——十字架的左右臂端小圓點裝飾、剪刀的左右兩個指環握把、澆花壺噴嘴末端的水滴,都需要偏離主軸的圓形,原本兩個型別只能畫在軸線正中央。<br><br><b>新增 <code>drawWeaponPartsFlat()</code>:'平放' 呈現</b>——沿用 'stuck' orientation 完全不改的尖端頂地數學,只是把整個局部座標系轉 90 度(<code>footMount.angle</code> 恆為 0,所以這永遠是絕對的四分之一圈,不是相對值),原本朝上的軸線變成沿地面躺平,再用 <code>flatLift</code>(該配件自身最大寬度的一半,比照水壺 <code>bodyY</code> 位移的做法,截圖比對定案而非自動推算)把掛載點往上抬,讓形狀的最低點剛好落在地面線上而不是被地面線切一半。<br><br><b>逐款 stuck/flat 判斷</b>:鳶形盾、魔法書、十字架、聖杯(B 組全數)以及螺絲起子、扳手、鋸子、剪刀、水桶、澆花壺、手電筒、放大鏡、團扇(C/F/K 組多數)採 <code>flat</code>,均為使用者原始分類建議。木製掃帚、釣魚竿、拐杖採 <code>stuck</code>——三者都有夠強的「自己站得住」真實意象(掃帚立在自己的刷毛上、拐杖立在自己的直杖尖上、釣魚竿立在自己的握把/捲線器上)。火把也採 <code>stuck</code>,但刻意不用「主體特徵頂地」這個統一慣例——第一版把火焰放在 <code>dist 0</code>(跟其餘配件一致),結果倒插呈現變成火焰插進地面,截圖比對後判定這不是合理的風格化(不同於斧頭埋進地面、掃帚立在刷毛上這類仍然說得通的畫面,火焰接觸地面直接讀起來就是錯的),改成握柄在 <code>dist 0</code>(插地正確,常見於真實的火把座/庭院火把),<code>gripRatio</code> 也跟著改低(握點貼近握柄端),火焰落在通常會被裝飾用的「內側」區域而非外推的顯眼區——因為火焰本身是塊狀有面積的形狀而非細長線條,即使不在顯眼區也不會像細長桿身那樣被完全大埋掉,截圖確認可讀。<br><br><b>除錯過程</b>:①鳶形盾十字裝飾第一版直向的洞正確挖穿,橫向的洞卻完全沒有效果——追查後是兩個洞的頂點順序繞線方向不一致(直向洞跟外框相反繞線,是洞;橫向洞繞線方向剛好跟外框相同,等於疊加填色、視覺上沒有洞),扳手的開口卡榫第一版同樣的錯誤(洞的繞線方向剛好跟外框同向)。兩者都是把洞的頂點順序反過來後,截圖確認真正挖穿。②魔法書書籤緞帶第一版畫在書頁本體的 dx 範圍內,結果跟書頁同色完全隱形(跟鳶形盾十字裝飾一開始想直接畫同色線條會遇到的問題一樣)——改成緞帶往書本下緣以外延伸(用負值 <code>at</code>,超出書本自身尖端參考點的合法用法,手電筒的放射光線用了同樣的技巧),讓緞帶落在書本輪廓以外的背景區域,才顯示出來。③剪刀第一版兩片刀刃的尖端間距太小,整體讀起來像一把匕首而非一把打開的剪刀,加大尖端間距後才呈現出清楚的「X」交叉。<br><br><b>清單計數提醒(比照 v41 長劍缺漏、標註不猜測)</b>:使用者原始指令 C 組標註「9 項」但實際只列出 8 項(螺絲起子、扳手、鋸子、剪刀、木製掃帚、水桶、澆花壺、釣魚竿),K 組追加標註「2 項」但實際列出 3 項(放大鏡、團扇、拐杖)——這輪依實際列出的品項數量建置(C 組 8 款、K 組 3 款),未自行猜測缺漏的第 9 項是什麼,請確認數量標註是否為筆誤,或是否有遺漏未列出的品項需要補上。<br><br><b>驗證進度</b>:17 原型 × 21 姿勢回歸測試(17 款新配件輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟)zero console 錯誤;<code>flat</code>/<code>stuck</code> 兩種倒插呈現各自在 2 種代表性原型(含模糊型)下目視檢查,位置落在腳邊、沒有明顯懸空或陷入地面。<b>這輪僅完成形狀設計與辨識度確認,尚未針對這 17 款進行手持動畫角度自然度與頭部安全餘裕的驗證——待使用者確認形狀辨識度後再進行下一輪動畫驗證。</b></p>
     <p class="sub"><b>補完清單缺漏</b>:原始 A 組 16 項清單(短劍、長劍、彎刀、木棍、鐵鎚、手斧、長矛、武士刀、苦無、西洋刺劍、三叉戟、戰斧、流星錘、長杖、木柄鐵鎚、光劍)裡,「長劍」在 v39/v40/v41 三輪都沒有實際建置,v41 的紀錄裡也明確標註過這個疑似謄寫遺漏、待確認是否補上。這輪確認要補上,新增 <code>longsword</code>,套用跟其餘 15 款完全相同的機制與驗證流程,不重新發明。<br><br><b>形狀設計</b>:沿用短劍的直劍身、尖端 <code>polygon</code> 語彙,但拉長(<code>totalLen</code> 1.88 對短劍的 1.33,落在中段刀劍量級,跟彎刀 1.62、武士刀 1.78 同一梯次),並且加上短劍刻意省略的特徵——握柄與劍身交界處的直向 <code>crossbar</code> 十字護手。短劍的辨識重點是「完全沒有護手」,長劍則是「樸素的十字護手」,兩者刻意做出有無護手的對比,同時跟西洋刺劍的大圓弧護手、武士刀的方形鍔用不同零件型別(crossbar/circle/polygon)彼此區隔,不會混淆。握柄比短劍略細(0.15 對 0.17),對應長劍握柄通常較修長的比例。<code>gripRatio</code> 不覆寫,吃共用預設值 0.68(平衡型刀劍類,跟短劍/彎刀/武士刀/西洋刺劍/長杖同一類)。<code>holdStyle</code> 不標註,吃預設單手。<code>rarity: null</code>。<br><br><b>驗證</b>:放大截圖確認長劍側身呈現出清楚的尖端、十字護手、握柄、圓形柄頭四段式輪廓,跟短劍並排比對辨識度足夠(短劍矮小無護手,長劍修長有護手)。17 原型 × 21 姿勢回歸測試(16 款手部武器輪替)zero console 錯誤。針對長劍額外跑一輪坐下/躺下/趴下/跳躍 × 5 種極端原型的安全餘裕驗證(像素 bbox 跟無配件基準比對),最大超出幅度 4px(躺姿,方向背離頭部,跟其餘 15 款已驗證過的安全範圍一致),沒有新增穿模風險。角度公式(<code>WEAPON_HELD_TILT</code>/<code>WEAPON_HELD_MAX_ANGLE</code>/<code>gripRatio</code>)完全不受武器外形資料影響,跟其餘 15 款共用同一段程式碼,不需要重新驗證角度行為本身。</p>
     <p class="sub"><b>問題</b>:上一輪(v41)完成的 15 款長條武器雖然長度分級、角度限幅、握持位置都已確認正確,但使用者提供參考圖比對後指出,短劍/彎刀/武士刀/西洋刺劍/光劍這五款剪影彼此看不出差異,手斧/戰斧也彼此看不出差異——問題出在這些配件先前全部共用「直杆 + 可能一個圓形柄頭」的同一套形狀語彙,只靠 <code>totalLen</code> 長度或些微的斜向偏移角度分級,沒有真正的輪廓形狀差異,剪影本身不具備可辨識的武器特徵(例如彎刀不是真的彎、武士刀護手看不出跟劍身的分野、戰斧斧刃比手斧斧刃只是線條斜一點點)。<br><br><b>新增三種零件型別</b>(<code>drawWeaponParts()</code> 的 <code>parts</code> 清單新增支援):<code>polygon</code>(任意多邊形填色輪廓,<code>points: [{at, dx}, ...]</code> 沿武器軸線描出多邊形頂點再 <code>fill()</code>——取代原本 <code>diagonal</code> 型別畫出來只是一條細線、讀不出「有面積的刀刃」的問題,斧刃/鎚頭/矛頭/苦無/三叉戟的三個分岔尖端、還有帶尖端的劍身都改用這個型別)、<code>polyline</code>(依序串接的膠囊線段,<code>points</code> 陣列可以有 2-3 折,近似畫出真正的弧線——這個畫布尺度畫不出貝茲曲線,用 2-3 段折線逼近彎刀的明顯弧度、武士刀較淺的弧度、流星錘鏈條的鋸齒連接)、<code>ring</code>(用兩次方向相反的 <code>arc()</code>——外圈順時針、內圈逆時針——讓預設的 nonzero fill rule 把內圈判定為鏤空,畫出真正「中間穿透」的圓環,不是實心圓,苦無末端的吊環用這個型別,是這批唯一真的需要鏤空孔洞的特徵)。另外新增 <code>buildStarPoints()</code> 輔助函式,產生外/內半徑交替的頂點清單描出星芒輪廓,流星錘的球頭用這個函式生成一個 7 角星形 <code>polygon</code>。<br><br><b>逐款差異化設計</b>:短劍——直劍身、無護手裝飾,刀尖用 <code>polygon</code> 收窄成真正的尖點(不是膠囊圓頭)。彎刀——<code>polyline</code> 畫出明顯側向弧度的刀身，搭配簡單弧形護手。武士刀——<code>polyline</code> 弧度比彎刀淺很多，握柄用獨立 <code>shaft</code>（寬度跟刀身不同）明確跟刀身分野，方形 <code>crossbar</code> 當鍔（護手）。西洋刺劍——細直 <code>polygon</code> 劍身，搭配全劍最大的圓形護手（劍柄與刀身交界處一個明顯大圓，這是最容易辨識的細劍特徵）。光劍——直劍身，握柄段用比劍身粗、比劍身短的獨立 <code>shaft</code> 明確區隔（能量刃該有的「柄粗刃薄」觀感），柄部加兩條 <code>crossbar</code> 當控制環。手斧——小型單側 4 點凸起楔形斧刃、短握柄。戰斧——斧刃改成 5 點凹弧新月形（兩側各一片，中段刻意往握柄內凹再往外翻出，做出真正的鋸齒雙刃輪廓，不是平滑一片），握柄明顯比手斧長。木棍——維持純直圓柱、無任何裝飾，是這批裡最樸素的一款，用來跟長杖的分節裝飾對比。鐵鎚——鎚頭改成清楚的方形/箱型 <code>polygon</code>，跟斧刃/劍身的形狀語彙完全不同。長矛——矛頭是柳葉形 <code>polygon</code>，杆身維持細直。苦無——短刀身，末端用新增的 <code>ring</code> 型別畫出真正鏤空的吊環，整批裡最短小精幹的一款。三叉戟——頭部拆成三個各自獨立的尖端 <code>polygon</code>（中央一支、左右各一支往外撇），確保三叉清晰可辨、不會被簡化成單一尖點跟長矛混淆。流星錘——<code>buildStarPoints()</code> 生成的 7 角星 <code>polygon</code> 當球頭，球頭跟握柄之間用 <code>polyline</code> 畫一段鋸齒折線表示鎖鏈連接。長杖——杆身用交錯的 <code>shaft</code>/<code>crossbar</code> 分段做出竹節/纏繞裝飾紋理，跟木棍的純樸拉開差異。木柄鐵鎚——鎚頭比一般鐵鎚更大更方，握柄段拉長並保持木柄的圓柱觀感，整體比例更沉重。<br><br><b>除錯過程（兩個形狀反覆調整三次才成功）</b>:①短劍/西洋刺劍/光劍最初的劍身用既有的 <code>shaft</code>（膠囊，兩端預設圓頭）畫，刀尖端因此是圓鈍的，讀起來像一根直棍而非有尖端的劍——改用 <code>polygon</code> 在刀尖處收窄成真正的尖點解決。②戰斧/手斧最初用單一 6 點 <code>polygon</code> 涵蓋整個斧頭寬度，渲染出來是一整片平滑的曲線,像湯匙/鏟子而非斧頭；第二次嘗試拆成「連續握柄 <code>shaft</code> + 獨立凸起翼形 <code>polygon</code>」疊加,翼形內側頂點跟握柄邊緣距離太近,兩者視覺上仍融合成一片平滑形狀，沒有辨識得出的「凹槽」；第三次改成 5 點凹弧新月形（每側斧刃在中段刻意往內凹一個真正的凹頂點，再往外翻出),放大截圖確認終於呈現鋸齒狀的「M-W」雙刃輪廓，明確跟手斧的簡單單側鉤形區分開來。<br><br><b>驗證</b>:先用暫時性的 <code>window.__weaponDebug</code> 除錯出口（渲染完成後已移除,不進正式程式碼)搭配獨立 Playwright 腳本,把 15 款武器各自在乾淨背景上放大渲染(headR=34,遠大於遊戲內實際圖示尺寸),輸出並排標籤截圖供逐款比對,確認 15 款彼此剪影都有可辨識的獨立特徵後,再跑一次完整 17 原型 × 21 姿勢回歸測試(15 款手部武器輪替搭配寵物/頭部配件/貓尾巴/道具同時開啟),zero console 錯誤，確認新增的 <code>polygon</code>/<code>polyline</code>/<code>ring</code> 渲染邏輯沒有在任何原型或姿勢組合下產生執行期錯誤。<b>這輪僅重製形狀,尚未針對新形狀重新驗證手持/倒插的走路循環角度自然度與頭部安全餘裕——待使用者確認形狀辨識度後再進行下一輪動畫驗證。</b><br><br><b>待確認事項（沿用自 v41,尚未處理)</b>:原始 A 組清單裡的「長劍」仍未實作。</p>
@@ -4308,6 +4309,616 @@
         { type: 'shaft', from: 0, to: 1.35, width: 0.16 },
         { type: 'polyline', points: [ { at: 1.35, dx: 0 }, { at: 1.5, dx: 0.12 }, { at: 1.6, dx: 0.05 }, { at: 1.55, dx: -0.08 } ], width: 0.15 }
       ]
+    },
+
+    // ==================== D/E/F/G group addition (component XII) ====================
+    // Same drawWeaponParts()/drawWeaponPartsFlat()/itemEntry() mechanism as
+    // B/C/F/K, still no reinvention. All 31 items below default to 'flat'
+    // footStow (per the user's own point 2 -- most of this batch has no
+    // real "plants into the ground" pose) with 'stuck' reserved for items
+    // with a genuinely strong standing-on-its-own real-world image (a
+    // planted flower/mushroom/wheat sheaf, a propped branch/candy cane,
+    // a standing gingerbread figure) -- same selection logic as C/K group's
+    // broom/fishingRod/torch/cane exceptions.
+
+    // ---- D group: kitchenware (8) ----
+    // dist 0 = the pan's own cooking surface (a plain filled circle --
+    // top-down "disc + handle" is the standard flat-icon reading of a
+    // frying pan, same silhouette-carries-the-feature approach as every
+    // prior round). Distinguished from ladle below by a BIG disc + SHORT
+    // thick handle, the reverse of ladle's small cup + long thin handle.
+    fryingPan: {
+      totalLen: 1.5,
+      flatLift: 0.42,
+      gripRatio: 0.75,
+      parts: [
+        { type: 'circle', at: 0.32, r: 0.42 },
+        { type: 'shaft', from: 0.55, to: 1.5, width: 0.1 }
+      ]
+    },
+    // 湯勺 ladle: small oval cup + a LONG thin handle with a small curled
+    // hook at the butt (reusing cane's hook polyline technique at a
+    // smaller scale) -- the cup:handle size ratio is the deliberate
+    // inverse of fryingPan's, so the two can never be confused even
+    // though both are "round part + stick".
+    ladle: {
+      totalLen: 1.9,
+      flatLift: 0.22,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.05, dx: 0.2 }, { at: 0.25, dx: 0.22 }, { at: 0.4, dx: 0.15 }, { at: 0.4, dx: -0.15 }, { at: 0.25, dx: -0.22 }, { at: 0.05, dx: -0.2 } ] },
+        { type: 'shaft', from: 0.4, to: 1.75, width: 0.07 },
+        { type: 'polyline', points: [ { at: 1.75, dx: 0 }, { at: 1.85, dx: 0.1 }, { at: 1.9, dx: 0.02 } ], width: 0.09 }
+      ]
+    },
+    // 菜刀 kitchenKnife: a WIDE wedge blade (dx up to 0.24, roughly double
+    // any sword's blade width) is the whole differentiator against the
+    // existing bladed-weapon family -- a kitchen knife reads as "wide,
+    // short, blunt-backed" against a sword's "narrow, long, symmetric
+    // point", same as the C group's screwdriver/saw already avoided
+    // looking like weapon blades by going wide and flat instead.
+    kitchenKnife: {
+      totalLen: 1.05,
+      flatLift: 0.15,
+      gripRatio: 0.82,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0.02 }, { at: 0.5, dx: 0.28 }, { at: 0.6, dx: 0.15 }, { at: 0.6, dx: -0.06 }, { at: 0.05, dx: -0.04 } ] },
+        { type: 'shaft', from: 0.6, to: 1.05, width: 0.13 }
+      ]
+    },
+    // 叉子 fork: 4 parallel polyline tines (the new off-axis straight-
+    // segment use of 'polyline', not a curve) joined by a crossbar base,
+    // then a plain handle -- tine count/spacing is the sole identifying
+    // feature, same "silhouette carries the feature" logic as saw's teeth.
+    fork: {
+      totalLen: 1.2,
+      flatLift: 0.15,
+      gripRatio: 0.75,
+      parts: [
+        { type: 'polyline', points: [ { at: 0, dx: -0.15 }, { at: 0.35, dx: -0.15 } ], width: 0.045 },
+        { type: 'polyline', points: [ { at: 0, dx: -0.05 }, { at: 0.35, dx: -0.05 } ], width: 0.045 },
+        { type: 'polyline', points: [ { at: 0, dx: 0.05 }, { at: 0.35, dx: 0.05 } ], width: 0.045 },
+        { type: 'polyline', points: [ { at: 0, dx: 0.15 }, { at: 0.35, dx: 0.15 } ], width: 0.045 },
+        { type: 'crossbar', at: 0.35, halfLen: 0.17, width: 0.06 },
+        { type: 'shaft', from: 0.35, to: 1.2, width: 0.09 }
+      ]
+    },
+    // 馬克杯 mug: rectangular cup body (a slight top-wider taper, plain
+    // capsule-free straight walls so it never reads as 'bucket' -- bucket
+    // is a trapezoid that widens the OTHER direction, dist0 narrow ->
+    // rim wide) + a small off-axis 'ring' side handle (the new ring.dx
+    // offset already established by scissors' finger holes).
+    // handle: a 3-point 'polyline' arc attached along a SPAN of the body's
+    // own edge (like bucket's arc handle) rather than an isolated
+    // off-axis 'ring' -- found by screenshot review that a ring floating
+    // beside the body only reads as "handle" in the item's own natural
+    // axis (the held/raw view); once drawWeaponPartsFlat() rotates the
+    // local frame a quarter turn for the 'flat' footStow pose, an
+    // isolated off-axis ring ends up ABOVE/BELOW the body instead of
+    // beside it and reads as a detached loop (a bag clasp), not a handle.
+    // An arc that's already attached along a run of 'at' values stays
+    // visually attached to the body after that same rotation, exactly
+    // the way bucket's own arc handle already does -- same fix, applied
+    // retroactively here once the ring version's flat-pose weakness was
+    // found.
+    mug: {
+      totalLen: 0.9,
+      flatLift: 0.28,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.28 }, { at: 0, dx: 0.28 }, { at: 0.75, dx: 0.24 }, { at: 0.75, dx: -0.24 } ] },
+        { type: 'polyline', points: [ { at: 0.15, dx: 0.28 }, { at: 0.38, dx: 0.5 }, { at: 0.6, dx: 0.28 } ], width: 0.07 }
+      ]
+    },
+    // 啤酒大木杯 beerStein: mug's same body language but bigger, plus the
+    // two features mug deliberately omits -- a hinged LID (sitting just
+    // PAST the body's own rim, at a larger 'at' than the body's own max --
+    // same "continue past the shape's own far edge" placement bucket's
+    // rim/shortSword's pommel already use, NOT the negative-'at'
+    // extrapolation flashlight's rays use for the OTHER end; a first
+    // draft misapplied the negative-'at' trick here and put the lid below
+    // the body instead of above it, caught by the same screenshot review
+    // that found the ring-handle issue) and a much THICKER arc handle
+    // than mug's thinner one.
+    beerStein: {
+      totalLen: 0.88,
+      flatLift: 0.34,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.34 }, { at: 0, dx: 0.34 }, { at: 0.72, dx: 0.3 }, { at: 0.72, dx: -0.3 } ] },
+        { type: 'polygon', points: [ { at: 0.72, dx: -0.34 }, { at: 0.8, dx: -0.3 }, { at: 0.8, dx: 0.3 }, { at: 0.72, dx: 0.34 } ] },
+        { type: 'circle', at: 0.85, r: 0.05 },
+        { type: 'polyline', points: [ { at: 0.15, dx: 0.3 }, { at: 0.36, dx: 0.52 }, { at: 0.55, dx: 0.3 } ], width: 0.1 }
+      ]
+    },
+    // 茶壺 teapot: squat barrel body + a diagonal spout polygon (same
+    // technique as wateringCan's own spout) + a lid/knob (reusing
+    // beerStein's lid trick) + a 'polyline' arc handle (see mug's own
+    // comment on why an arc, not an off-axis ring) OPPOSITE the spout --
+    // deliberately NOT wateringCan's silhouette twin: wateringCan is
+    // tall/narrow with a top-arching handle and no lid, teapot is
+    // short/wide with a lid+knob and a side handle, so the two
+    // kettle-family items stay visually distinct despite the shared
+    // spout vocabulary.
+    teapot: {
+      totalLen: 0.85,
+      flatLift: 0.32,
+      gripRatio: 0.82,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.2 }, { at: 0.12, dx: -0.4 }, { at: 0.5, dx: -0.42 }, { at: 0.65, dx: -0.22 }, { at: 0.65, dx: 0.22 }, { at: 0.5, dx: 0.42 }, { at: 0.12, dx: 0.4 }, { at: 0, dx: 0.2 } ] },
+        { type: 'polygon', points: [ { at: 0.35, dx: 0.4 }, { at: 0.15, dx: 0.68 }, { at: 0.05, dx: 0.62 }, { at: 0.25, dx: 0.34 } ] },
+        { type: 'polygon', points: [ { at: 0.65, dx: -0.14 }, { at: 0.72, dx: -0.1 }, { at: 0.72, dx: 0.1 }, { at: 0.65, dx: 0.14 } ] },
+        { type: 'circle', at: 0.74, r: 0.06 },
+        { type: 'polyline', points: [ { at: 0.15, dx: -0.24 }, { at: 0.32, dx: -0.46 }, { at: 0.5, dx: -0.24 } ], width: 0.08 }
+      ]
+    },
+    // 保溫瓶 thermos: a straight-walled slim rectangle (no taper at all --
+    // the one body silhouette in this group with genuinely parallel
+    // sides) + a visibly NARROWER cap shaft at the butt end (the same
+    // "width jump = feature" language as screwdriver's shaft/handle
+    // split). No side decoration at all (an earlier draft had a small
+    // off-axis carry-strap ring, dropped per mug's own comment on why an
+    // isolated off-axis ring is fragile in the 'flat' footStow pose, and
+    // the strap wasn't load-bearing for this item's identity anyway --
+    // tall/slim/straight-sided is already the whole differentiator
+    // against mug/beerStein's shorter tapered bodies).
+    thermos: {
+      totalLen: 1.2,
+      flatLift: 0.19,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: -0.19 }, { at: 1.0, dx: -0.19 }, { at: 1.0, dx: 0.19 }, { at: 0, dx: 0.19 } ] },
+        { type: 'shaft', from: 1.0, to: 1.2, width: 0.13 }
+      ]
+    },
+
+    // ---- E group: food (7 -- the original brief's count of "8" included
+    // a separate 甜筒/cone entry, with a note that it may be merged into
+    // 冰淇淋/ice cream by judgment call; the reference image's own "冰淇淋"
+    // icon already draws a cone+swirl combo with no separate cone icon
+    // beside it, so this round merges them into one iceCream item rather
+    // than building a redundant near-duplicate cone shape -- flagging the
+    // count discrepancy explicitly rather than silently building 8, same
+    // handling as v41/v44's own listing-count flags) ----
+    // 胡蘿蔔 carrot: tapered polygon root (point at dist0) + 3 short
+    // polyline leaf sprigs poking PAST the root's wide end (negative-'at'-
+    // style extrapolation, same trick as flashlight's rays/carrot's own
+    // leaf fan) -- root taper + leaf fan is unambiguous against every
+    // other E-group item.
+    carrot: {
+      totalLen: 1.3,
+      flatLift: 0.22,
+      gripRatio: 0.35,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.3, dx: 0.08 }, { at: 0.7, dx: 0.15 }, { at: 1.0, dx: 0.22 }, { at: 1.0, dx: -0.22 }, { at: 0.7, dx: -0.15 }, { at: 0.3, dx: -0.08 } ] },
+        { type: 'polyline', points: [ { at: 1.0, dx: -0.1 }, { at: 1.25, dx: -0.18 } ], width: 0.06 },
+        { type: 'polyline', points: [ { at: 1.0, dx: 0 }, { at: 1.3, dx: 0 } ], width: 0.06 },
+        { type: 'polyline', points: [ { at: 1.0, dx: 0.1 }, { at: 1.25, dx: 0.18 } ], width: 0.06 }
+      ]
+    },
+    // 棒棒糖 lollipop: big round candy disc with a smaller 'ring' hole
+    // punched inside it for a swirl-pattern hint, on a thin stick.
+    // 'stuck': a lollipop stick planting upright (like a flag/cake topper)
+    // is a common, unforced real-world image, unlike most of this batch.
+    lollipop: {
+      totalLen: 1.0,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'circle', at: 0.28, r: 0.28 },
+        { type: 'ring', at: 0.28, rOuter: 0.16, rInner: 0.1 },
+        { type: 'shaft', from: 0.56, to: 1.0, width: 0.06 }
+      ]
+    },
+    // 冰淇淋 iceCream: triangular cone (dist0 = the point, matching a real
+    // cone's tip) + a jagged zigzag-polygon swirl scoop on top (same
+    // technique as saw's zigzag teeth, applied to a soft-serve twist
+    // instead of a straight edge). 'stuck': cone-tip-down is the standard
+    // "cone in a display stand" pose, matching mushroom/carrot's own
+    // planted-root reading rather than anything morbid.
+    iceCream: {
+      totalLen: 1.05,
+      gripRatio: 0.9,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.5, dx: 0.18 }, { at: 0.5, dx: -0.18 } ] },
+        { type: 'polygon', points: [
+            { at: 0.5, dx: -0.2 }, { at: 0.65, dx: -0.24 }, { at: 0.75, dx: -0.1 }, { at: 0.85, dx: -0.2 }, { at: 0.95, dx: -0.05 },
+            { at: 1.05, dx: 0 }, { at: 0.95, dx: 0.05 }, { at: 0.85, dx: 0.2 }, { at: 0.75, dx: 0.1 }, { at: 0.65, dx: 0.24 }, { at: 0.5, dx: 0.2 }
+          ] }
+      ]
+    },
+    // 披薩片 pizzaSlice: a wide wedge (crust end wide, tip narrow -- the
+    // OPPOSITE proportion from carrot's gentler root taper) with 3 small
+    // circle "toppings", gripped near the crust (wide end) so the point
+    // faces outward, matching how a slice is actually held.
+    pizzaSlice: {
+      totalLen: 1.0,
+      flatLift: 0.25,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.85, dx: 0.42 }, { at: 1.0, dx: 0.5 }, { at: 1.0, dx: -0.5 }, { at: 0.85, dx: -0.42 } ] },
+        { type: 'circle', at: 0.35, dx: -0.15, r: 0.07 },
+        { type: 'circle', at: 0.5, dx: 0.1, r: 0.07 },
+        { type: 'circle', at: 0.7, dx: -0.05, r: 0.07 }
+      ]
+    },
+    // 雞腿 chickenLeg: rounded meat polygon (dist0) + a thin bone shaft +
+    // a small round bone-knob at the butt -- the bone knob is the single
+    // feature that makes this read as "drumstick" instead of just "a
+    // rounded shape", same "the one distinguishing detail carries the
+    // whole read" approach as wrench's open notch.
+    chickenLeg: {
+      totalLen: 0.98,
+      flatLift: 0.16,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.1, dx: 0.22 }, { at: 0.35, dx: 0.32 }, { at: 0.55, dx: 0.24 }, { at: 0.6, dx: 0 }, { at: 0.55, dx: -0.24 }, { at: 0.35, dx: -0.32 }, { at: 0.1, dx: -0.22 } ] },
+        { type: 'shaft', from: 0.6, to: 0.95, width: 0.08 },
+        { type: 'circle', at: 0.98, r: 0.1 }
+      ]
+    },
+    // 拐杖糖 candyCane: a thin shaft (half the width of the K group's
+    // 拐杖/cane) with a TIGHTER curl hook and two 'diagonal' stripe marks
+    // crossing it -- thinness + stripes is what keeps this from being a
+    // miniature copy of the walking cane. 'stuck': same standing logic as
+    // cane itself.
+    candyCane: {
+      totalLen: 1.0,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'shaft', from: 0.25, to: 1.0, width: 0.08 },
+        { type: 'polyline', points: [ { at: 0, dx: 0.12 }, { at: 0.08, dx: 0.02 }, { at: 0.2, dx: 0 }, { at: 0.28, dx: 0.1 } ], width: 0.09 },
+        { type: 'diagonal', at: 0.4, to: 0.5, dx: 0.13, width: 0.05 },
+        { type: 'diagonal', at: 0.65, to: 0.75, dx: 0.13, width: 0.05 }
+      ]
+    },
+    // 薑餅人 gingerbreadMan: the one humanoid item in the whole catalog --
+    // built from the existing primitives rather than a new drawing
+    // function: two 'diagonal' legs from a hip point, a trapezoid
+    // 'polygon' torso, two 'diagonal' arms from the shoulders, a 'circle'
+    // head, and 3 small 'circle' icing buttons down the front. dist0 =
+    // feet (bottom), head at the far/totalLen end -- 'stuck' reads as
+    // "stands on its own two feet", the most literal standing pose in
+    // this entire batch, same reasoning as the companion pet's own
+    // upright silhouette.
+    gingerbreadMan: {
+      totalLen: 1.37,
+      gripRatio: 0.5,
+      parts: [
+        { type: 'diagonal', at: 0.35, to: 0, dx: -0.18, width: 0.13 },
+        { type: 'diagonal', at: 0.35, to: 0, dx: 0.18, width: 0.13 },
+        { type: 'polygon', points: [ { at: 0.35, dx: -0.22 }, { at: 0.35, dx: 0.22 }, { at: 0.85, dx: 0.3 }, { at: 0.85, dx: -0.3 } ] },
+        { type: 'diagonal', at: 0.85, to: 1.05, dx: -0.42, width: 0.12 },
+        { type: 'diagonal', at: 0.85, to: 1.05, dx: 0.42, width: 0.12 },
+        { type: 'circle', at: 1.15, r: 0.22 },
+        { type: 'circle', at: 0.45, r: 0.04 },
+        { type: 'circle', at: 0.6, r: 0.04 },
+        { type: 'circle', at: 0.75, r: 0.04 }
+      ]
+    },
+
+    // ---- F group: plants/nature (10) ----
+    // sunflower/rose/lily share one structural exception to this whole
+    // catalog's "dist0 = distinctive feature" convention: for a cut
+    // flower, dist0 is instead the STEM BASE (the plantable/root end),
+    // with the bloom sitting at the far/totalLen end and a correspondingly
+    // LOW gripRatio (grip near the base) -- this is the exact same
+    // exception torch already established (flame would plant wrong,
+    // handle plants correctly), applied here because a flower-head-first
+    // planting would read just as wrong as a flame-first torch did.
+    // 向日葵 sunflower: buildStarPoints() 12-spike jagged disc (dense,
+    // narrow-contrast petals) + a solid center circle drawn ON TOP of the
+    // star (layering order in the parts array matters here -- the circle
+    // must come after the star or it would be hidden under it) -- the
+    // dark center disc is sunflower's single most identifying feature
+    // against rose/lily below, neither of which has one.
+    sunflower: {
+      totalLen: 1.76,
+      gripRatio: 0.1,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.25, width: 0.07 },
+        { type: 'polygon', points: [ { at: 0.4, dx: 0.05 }, { at: 0.55, dx: 0.35 }, { at: 0.65, dx: 0.28 }, { at: 0.5, dx: 0.05 } ] },
+        { type: 'polygon', points: [ { at: 0.5, dx: -0.05 }, { at: 0.65, dx: -0.35 }, { at: 0.75, dx: -0.28 }, { at: 0.6, dx: -0.05 } ] },
+        { type: 'polygon', points: buildStarPoints(1.42, 12, 0.34, 0.18) },
+        { type: 'circle', at: 1.42, r: 0.15 }
+      ]
+    },
+    // 玫瑰花 rose: a thinner stem than sunflower's + two small thorn
+    // polygons + ONE leaf, topped with a buildStarPoints() bloom that
+    // uses a much GENTLER spike contrast (8 spikes, rOuter/rInner close
+    // together) than sunflower's -- reads as a scalloped, rounded bloom
+    // rather than sunflower's flat spiky disc, with a small center circle
+    // as the bud instead of sunflower's larger dark disc.
+    rose: {
+      totalLen: 1.61,
+      gripRatio: 0.15,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.15, width: 0.05 },
+        { type: 'polygon', points: [ { at: 0.25, dx: -0.03 }, { at: 0.19, dx: -0.12 }, { at: 0.23, dx: -0.03 } ] },
+        { type: 'polygon', points: [ { at: 0.4, dx: 0.03 }, { at: 0.46, dx: 0.12 }, { at: 0.42, dx: 0.03 } ] },
+        { type: 'polygon', points: [ { at: 0.65, dx: 0.04 }, { at: 0.8, dx: 0.32 }, { at: 0.9, dx: 0.24 }, { at: 0.75, dx: 0.04 } ] },
+        { type: 'polygon', points: buildStarPoints(1.35, 8, 0.26, 0.19) },
+        { type: 'circle', at: 1.35, r: 0.12 }
+      ]
+    },
+    // 百合花 lily: same stem+leaf language as rose, but the bloom uses
+    // buildStarPoints() with only 6 spikes and a LARGE outer/inner
+    // contrast (0.4 vs 0.1) -- few, long, sharply pointed petals reads as
+    // lily's open trumpet-star shape, unmistakable against sunflower's 12
+    // tight petals or rose's 8 subtle scallops. 3 tiny center dots stand
+    // in for the protruding stamens the reference image calls out.
+    lily: {
+      totalLen: 1.75,
+      gripRatio: 0.15,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.2, width: 0.06 },
+        { type: 'polygon', points: [ { at: 0.5, dx: -0.04 }, { at: 0.68, dx: -0.3 }, { at: 0.78, dx: -0.22 }, { at: 0.6, dx: -0.04 } ] },
+        { type: 'polygon', points: buildStarPoints(1.35, 6, 0.4, 0.1) },
+        { type: 'circle', at: 1.3, dx: -0.05, r: 0.03 },
+        { type: 'circle', at: 1.32, dx: 0.03, r: 0.03 },
+        { type: 'circle', at: 1.38, dx: 0, r: 0.03 }
+      ]
+    },
+    // 仙人掌盆栽 pottedCactus: a ridged barrel-cactus polygon (2 thin
+    // polyline ridge lines + a small side-arm polygon for the classic
+    // saguaro silhouette) sitting in a bucket-style trapezoid pot. 'flat'
+    // -- per the user's own instruction, a potted plant has no sensible
+    // "stuck into the ground" pose (you don't plant the POT stem-first),
+    // so this stays lying-down regardless of the cactus body's own
+    // plantable-looking shape.
+    pottedCactus: {
+      totalLen: 1.15,
+      flatLift: 0.36,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.08, dx: 0.16 }, { at: 0.3, dx: 0.24 }, { at: 0.55, dx: 0.24 }, { at: 0.6, dx: 0 }, { at: 0.55, dx: -0.24 }, { at: 0.3, dx: -0.24 }, { at: 0.08, dx: -0.16 } ] },
+        { type: 'polyline', points: [ { at: 0.05, dx: -0.1 }, { at: 0.58, dx: -0.1 } ], width: 0.025 },
+        { type: 'polyline', points: [ { at: 0.03, dx: 0.1 }, { at: 0.58, dx: 0.1 } ], width: 0.025 },
+        { type: 'polygon', points: [ { at: 0.25, dx: 0.24 }, { at: 0.2, dx: 0.42 }, { at: 0.32, dx: 0.44 }, { at: 0.35, dx: 0.26 } ] },
+        { type: 'polygon', points: [ { at: 0.6, dx: -0.32 }, { at: 0.6, dx: 0.32 }, { at: 1.15, dx: 0.22 }, { at: 1.15, dx: -0.22 } ] }
+      ]
+    },
+    // 四葉草盆栽 pottedClover: a buildStarPoints() 4-spike rosette (the
+    // spike count itself IS the "four-leaf" identity, same parametric
+    // trick as the flower family above) + a center vein dot, on a short
+    // stem, in the same pot language as pottedCactus but sized down.
+    // 'flat' for the identical potted-plant reason as pottedCactus.
+    pottedClover: {
+      totalLen: 1.1,
+      flatLift: 0.3,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: buildStarPoints(0.22, 4, 0.22, 0.09) },
+        { type: 'circle', at: 0.22, r: 0.04 },
+        { type: 'shaft', from: 0.4, to: 0.55, width: 0.04 },
+        { type: 'polygon', points: [ { at: 0.55, dx: -0.28 }, { at: 0.55, dx: 0.28 }, { at: 1.1, dx: 0.2 }, { at: 1.1, dx: -0.2 } ] }
+      ]
+    },
+    // 蘑菇 mushroom: same base-plants exception as the flower family (dist0
+    // = stem base, not the cap) -- a stout stem shaft + a wide dome-cap
+    // polygon + 4 small spot circles (fly-agaric pattern), the spots being
+    // the one feature that makes this read as "mushroom" rather than "a
+    // dome on a stick". 'stuck': a mushroom growing straight out of the
+    // ground is the most literally-correct planted pose in this batch.
+    mushroom: {
+      totalLen: 0.78,
+      gripRatio: 0.15,
+      parts: [
+        { type: 'shaft', from: 0, to: 0.4, width: 0.14 },
+        { type: 'polygon', points: [ { at: 0.35, dx: -0.1 }, { at: 0.4, dx: -0.42 }, { at: 0.55, dx: -0.48 }, { at: 0.68, dx: -0.3 }, { at: 0.75, dx: 0 }, { at: 0.68, dx: 0.3 }, { at: 0.55, dx: 0.48 }, { at: 0.4, dx: 0.42 }, { at: 0.35, dx: 0.1 } ] },
+        { type: 'circle', at: 0.5, dx: -0.2, r: 0.06 },
+        { type: 'circle', at: 0.6, dx: 0.15, r: 0.05 },
+        { type: 'circle', at: 0.55, dx: 0.05, r: 0.045 },
+        { type: 'circle', at: 0.65, dx: -0.05, r: 0.04 }
+      ]
+    },
+    // 樹枝 branch: a tapering-width 'polyline' with a gentle organic bend
+    // (unlike every straight 'shaft'-based handle elsewhere in the
+    // catalog) plus 3 short 'diagonal' twig offshoots poking off it at
+    // irregular points -- bend + offshoots read as "found branch" rather
+    // than "manufactured stick". 'stuck' per the user's own suggestion (a
+    // branch propped upright, twig-end down, is a common resting image).
+    branch: {
+      totalLen: 1.7,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polyline', points: [ { at: 0, dx: 0 }, { at: 0.5, dx: 0.08 }, { at: 1.0, dx: -0.05 }, { at: 1.5, dx: 0.1 }, { at: 1.7, dx: 0.02 } ], width: [ 0.16, 0.13, 0.09, 0.05 ] },
+        { type: 'diagonal', at: 0.6, to: 0.8, dx: 0.28, width: 0.04 },
+        { type: 'diagonal', at: 1.1, to: 1.3, dx: -0.24, width: 0.04 },
+        { type: 'diagonal', at: 1.35, to: 1.5, dx: 0.2, width: 0.035 }
+      ]
+    },
+    // 稻穗 riceEar: a single curving polyline stalk that droops to one
+    // side near the tip (matching a ripe rice ear's real bend) with a
+    // loose scatter of 8 small grain circles trailing along the droop.
+    // 'flat' -- kept deliberately different from wheatBundle's 'stuck'
+    // below so the two grain items are distinguishable by DISPLAY POSE as
+    // well as silhouette (one loose drooping ear lying down vs. one
+    // upright bundled sheaf standing), not just by shape alone.
+    riceEar: {
+      totalLen: 1.4,
+      flatLift: 0.1,
+      gripRatio: 0.1,
+      parts: [
+        { type: 'polyline', points: [ { at: 0, dx: 0 }, { at: 0.9, dx: 0.02 }, { at: 1.15, dx: 0.15 } ], width: 0.035 },
+        { type: 'circle', at: 1.0, dx: -0.06, r: 0.045 },
+        { type: 'circle', at: 1.05, dx: 0.09, r: 0.045 },
+        { type: 'circle', at: 1.12, dx: -0.02, r: 0.045 },
+        { type: 'circle', at: 1.18, dx: 0.13, r: 0.045 },
+        { type: 'circle', at: 1.22, dx: 0.02, r: 0.045 },
+        { type: 'circle', at: 1.28, dx: 0.16, r: 0.04 },
+        { type: 'circle', at: 1.32, dx: 0.06, r: 0.04 },
+        { type: 'circle', at: 1.36, dx: 0.2, r: 0.038 }
+      ]
+    },
+    // 小麥束 wheatBundle: 5 straight stalks ('shaft' center + 4 'diagonal'
+    // fanning outward) gathered by a 'crossbar' tie-band near the base,
+    // each topped with a CHUNKIER, FEWER (5 vs riceEar's 8) grain circle
+    // -- fanned/tied/upright is the structural opposite of riceEar's
+    // single drooping curve, so the two stay distinct even though both
+    // are "stalk + grain dots". 'stuck': a bundled sheaf standing on its
+    // tied base is the standard real-world way a wheat sheaf is displayed.
+    wheatBundle: {
+      totalLen: 1.41,
+      gripRatio: 0.15,
+      parts: [
+        { type: 'shaft', from: 0, to: 1.3, width: 0.03 },
+        { type: 'diagonal', at: 0.05, to: 1.25, dx: -0.18, width: 0.03 },
+        { type: 'diagonal', at: 0.05, to: 1.25, dx: 0.18, width: 0.03 },
+        { type: 'diagonal', at: 0.05, to: 1.15, dx: -0.32, width: 0.028 },
+        { type: 'diagonal', at: 0.05, to: 1.15, dx: 0.32, width: 0.028 },
+        { type: 'crossbar', at: 0.15, halfLen: 0.22, width: 0.08 },
+        { type: 'circle', at: 1.32, dx: 0, r: 0.09 },
+        { type: 'circle', at: 1.27, dx: -0.19, r: 0.08 },
+        { type: 'circle', at: 1.27, dx: 0.19, r: 0.08 },
+        { type: 'circle', at: 1.17, dx: -0.34, r: 0.07 },
+        { type: 'circle', at: 1.17, dx: 0.34, r: 0.07 }
+      ]
+    },
+    // 貝殼 shell: a single scalloped 'polygon' (a zigzag outer edge, same
+    // technique as saw's teeth / iceCream's swirl) fanning out from a
+    // hinge point at dist0 -- no separate same-color ridge lines drawn ON
+    // the fill (v44's kiteShield/book debugging already established that
+    // a same-color line on a solid fill is invisible; the scalloped
+    // OUTLINE alone carries the "shell" read here, deliberately not
+    // repeating that mistake). 'flat': shells rest on their side, no
+    // standing pose.
+    shell: {
+      totalLen: 0.62,
+      flatLift: 0.28,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [
+            { at: 0, dx: 0 }, { at: 0.2, dx: 0.22 }, { at: 0.35, dx: 0.15 }, { at: 0.45, dx: 0.38 }, { at: 0.55, dx: 0.28 }, { at: 0.62, dx: 0.1 },
+            { at: 0.62, dx: -0.1 }, { at: 0.55, dx: -0.28 }, { at: 0.45, dx: -0.38 }, { at: 0.35, dx: -0.15 }, { at: 0.2, dx: -0.22 }
+          ] }
+      ]
+    },
+
+    // ---- G group: 3C/tech (6) ----
+    // smartphone/tablet share one silhouette language (rounded-rect body
+    // + a small lens dot near dist0) distinguished ONLY by aspect ratio --
+    // phone is tall and narrow (dx +-0.19), tablet is shorter and much
+    // wider (dx +-0.34) with an added hollow home-button 'ring' tablet
+    // omits, same "vary one parameter deliberately" approach the weapon
+    // batch used for shortSword/longsword.
+    smartphone: {
+      totalLen: 1.0,
+      flatLift: 0.19,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0.03, dx: -0.19 }, { at: 0, dx: -0.15 }, { at: 0, dx: 0.15 }, { at: 0.03, dx: 0.19 }, { at: 0.97, dx: 0.19 }, { at: 1.0, dx: 0.15 }, { at: 1.0, dx: -0.15 }, { at: 0.97, dx: -0.19 } ] },
+        { type: 'circle', at: 0.1, r: 0.035 },
+        { type: 'circle', at: 0.92, r: 0.03 }
+      ]
+    },
+    tablet: {
+      totalLen: 1.15,
+      flatLift: 0.34,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: 0.05, dx: -0.34 }, { at: 0, dx: -0.28 }, { at: 0, dx: 0.28 }, { at: 0.05, dx: 0.34 }, { at: 1.1, dx: 0.34 }, { at: 1.15, dx: 0.28 }, { at: 1.15, dx: -0.28 }, { at: 1.1, dx: -0.34 } ] },
+        { type: 'circle', at: 0.08, r: 0.025 },
+        { type: 'ring', at: 1.05, rOuter: 0.06, rInner: 0.03 }
+      ]
+    },
+    // 遊戲手把 gamepad: the one item this round built SIDEWAYS -- dist0's
+    // usual "up the vertical mount axis" role is used here as the
+    // shape's shallow depth axis instead, with dx (always unclamped by
+    // totalLen, see drawWeaponParts' own y()/px split) carrying the wide
+    // left-right span a controller actually needs. A D-pad cross
+    // (2 short polylines) sits on the left lobe, a 4-button diamond
+    // cluster (4 circles) on the right. See this file's own note (in the
+    // header, component XII) on why holdStyle stays 'single' despite a
+    // gamepad realistically needing both hands -- the existing 'dual'
+    // mechanism draws two INDEPENDENT full copies (correct for a matched
+    // worn pair), which would render two controllers, not one spanning
+    // both hands; that single-object two-hand mount is still unbuilt.
+    // Registered with footStow placement 'stuck', NOT this batch's usual
+    // 'flat' default -- caught by screenshot review: drawWeaponPartsFlat()
+    // adds its OWN quarter-turn on top of a shape that's already built
+    // sideways, so 'flat' would double-rotate it into a thin curved sliver
+    // (looked like a comma, not a controller). 'stuck' draws the shape
+    // through its own unrotated at/dx axes, which is exactly the sideways
+    // reading this shape was designed for -- no plant-into-ground meaning
+    // implied, just reusing the orientation that doesn't re-rotate.
+    gamepad: {
+      totalLen: 0.5,
+      flatLift: 0.5,
+      gripRatio: 0.5,
+      parts: [
+        { type: 'polygon', points: [
+            { at: 0.1, dx: -0.5 }, { at: 0, dx: -0.4 }, { at: 0, dx: -0.15 }, { at: 0.3, dx: -0.05 }, { at: 0.3, dx: 0.05 },
+            { at: 0, dx: 0.15 }, { at: 0, dx: 0.4 }, { at: 0.1, dx: 0.5 }, { at: 0.35, dx: 0.42 }, { at: 0.4, dx: 0.15 },
+            { at: 0.4, dx: -0.15 }, { at: 0.35, dx: -0.42 }
+          ] },
+        { type: 'polyline', points: [ { at: 0.05, dx: -0.42 }, { at: 0.05, dx: -0.22 } ], width: 0.05 },
+        { type: 'polyline', points: [ { at: -0.05, dx: -0.32 }, { at: 0.15, dx: -0.32 } ], width: 0.05 },
+        { type: 'circle', at: 0.05, dx: 0.42, r: 0.04 },
+        { type: 'circle', at: 0.15, dx: 0.32, r: 0.04 },
+        { type: 'circle', at: -0.03, dx: 0.32, r: 0.04 },
+        { type: 'circle', at: 0.05, dx: 0.22, r: 0.04 }
+      ]
+    },
+    // 麥克風 microphone: a rounded capsule head with 5 small grille-mesh
+    // dots + a thick handle body that steps down to a narrower base cap
+    // (screwdriver's width-jump language again) -- the grille dots are
+    // the single identifying feature against every other rounded-top
+    // item in the catalog.
+    microphone: {
+      totalLen: 1.1,
+      flatLift: 0.22,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'polygon', points: [ { at: -0.02, dx: 0 }, { at: 0.02, dx: -0.2 }, { at: 0.35, dx: -0.22 }, { at: 0.35, dx: 0.22 }, { at: 0.02, dx: 0.2 } ] },
+        { type: 'circle', at: 0.12, dx: -0.1, r: 0.025 },
+        { type: 'circle', at: 0.12, dx: 0.1, r: 0.025 },
+        { type: 'circle', at: 0.22, dx: 0, r: 0.025 },
+        { type: 'circle', at: 0.22, dx: -0.13, r: 0.02 },
+        { type: 'circle', at: 0.22, dx: 0.13, r: 0.02 },
+        { type: 'shaft', from: 0.35, to: 0.95, width: 0.14 },
+        { type: 'shaft', from: 0.95, to: 1.1, width: 0.1 }
+      ]
+    },
+    // 相機 camera: rectangular body block + a hollow 'ring' lens (the same
+    // true-lens-frame idea magnifyingGlass already established, not a
+    // solid dot) with a small inner aperture circle, and a raised
+    // viewfinder bump on top. No off-axis strap decoration (see mug's own
+    // comment on why an isolated off-axis ring is fragile in the 'flat'
+    // footStow pose, and it wasn't load-bearing for camera's identity
+    // either -- lens + viewfinder bump already carries the read). Same
+    // single-vs-dual note as gamepad above -- a camera is realistically
+    // two-handed (one grip, one support/zoom hand) but the existing
+    // 'dual' mechanism would draw two full cameras, so this stays
+    // 'single' with the limitation flagged rather than silently misused.
+    camera: {
+      totalLen: 0.68,
+      flatLift: 0.32,
+      gripRatio: 0.6,
+      parts: [
+        { type: 'polygon', points: [ { at: 0.15, dx: -0.32 }, { at: 0.15, dx: 0.32 }, { at: 0.6, dx: 0.32 }, { at: 0.6, dx: -0.32 } ] },
+        { type: 'ring', at: 0.05, rOuter: 0.26, rInner: 0.14 },
+        { type: 'circle', at: 0.05, r: 0.08 },
+        { type: 'polygon', points: [ { at: 0.2, dx: -0.1 }, { at: 0.2, dx: 0.1 }, { at: 0.1, dx: 0.1 }, { at: 0.1, dx: -0.1 } ] }
+      ]
+    },
+    // 手槍 pistol: the one G-group item that fits the catalog's ORIGINAL
+    // axial convention perfectly (muzzle at dist0 like a blade tip, grip
+    // at the butt like a sword hilt) -- barrel shaft + a slide/frame
+    // polygon block + a raked grip polygon (angled back via a dx shift,
+    // not a straight capsule, for a recognizable pistol-grip silhouette)
+    // + a small trigger-guard 'ring'. 'flat': lying at the feet is the
+    // more natural display pose than a muzzle-down plant, and keeps this
+    // item consistent with the rest of the all-flat G group.
+    pistol: {
+      totalLen: 0.9,
+      flatLift: 0.13,
+      gripRatio: 0.75,
+      parts: [
+        { type: 'shaft', from: 0, to: 0.42, width: 0.09 },
+        { type: 'polygon', points: [ { at: 0.35, dx: -0.11 }, { at: 0.35, dx: 0.1 }, { at: 0.55, dx: 0.1 }, { at: 0.55, dx: -0.11 } ] },
+        { type: 'polygon', points: [ { at: 0.5, dx: -0.09 }, { at: 0.5, dx: 0.03 }, { at: 0.9, dx: 0.15 }, { at: 0.9, dx: 0.03 } ] },
+        { type: 'ring', at: 0.55, dx: 0.02, rOuter: 0.09, rInner: 0.055 }
+      ]
     }
   };
 
@@ -4541,7 +5152,53 @@
     // have no equivalent, stay 'flat'.
     magnifyingGlass: itemEntry('放大鏡', 'magnifyingGlass', 'flat'),
     fan: itemEntry('團扇', 'fan', 'flat'),
-    cane: itemEntry('拐杖', 'cane', 'stuck')
+    cane: itemEntry('拐杖', 'cane', 'stuck'),
+
+    // ---- D group: kitchenware (8) -- all 'flat', batch-consistent (see
+    // ITEM_SHAPES' own comment: several of these could arguably stand
+    // upright on their own base, same as bucket in C group, but stay
+    // 'flat' for the same reason bucket did) ----
+    fryingPan: itemEntry('平底鍋', 'fryingPan', 'flat'),
+    ladle: itemEntry('湯勺', 'ladle', 'flat'),
+    kitchenKnife: itemEntry('菜刀', 'kitchenKnife', 'flat'),
+    fork: itemEntry('叉子', 'fork', 'flat'),
+    mug: itemEntry('馬克杯', 'mug', 'flat'),
+    beerStein: itemEntry('啤酒大木杯', 'beerStein', 'flat'),
+    teapot: itemEntry('茶壺', 'teapot', 'flat'),
+    thermos: itemEntry('保溫瓶', 'thermos', 'flat'),
+
+    // ---- E group: food (7 -- merged 甜筒/cone into 冰淇淋/iceCream, see
+    // ITEM_SHAPES' own comment on why) ----
+    carrot: itemEntry('胡蘿蔔', 'carrot', 'flat'),
+    lollipop: itemEntry('棒棒糖', 'lollipop', 'stuck'),
+    iceCream: itemEntry('冰淇淋', 'iceCream', 'stuck'),
+    pizzaSlice: itemEntry('披薩片', 'pizzaSlice', 'flat'),
+    chickenLeg: itemEntry('雞腿', 'chickenLeg', 'flat'),
+    candyCane: itemEntry('拐杖糖', 'candyCane', 'stuck'),
+    gingerbreadMan: itemEntry('薑餅人', 'gingerbreadMan', 'stuck'),
+
+    // ---- F group: plants/nature (10) ----
+    sunflower: itemEntry('向日葵', 'sunflower', 'stuck'),
+    rose: itemEntry('玫瑰花', 'rose', 'stuck'),
+    lily: itemEntry('百合花', 'lily', 'stuck'),
+    pottedCactus: itemEntry('仙人掌盆栽', 'pottedCactus', 'flat'),
+    pottedClover: itemEntry('四葉草盆栽', 'pottedClover', 'flat'),
+    mushroom: itemEntry('蘑菇', 'mushroom', 'stuck'),
+    branch: itemEntry('樹枝', 'branch', 'stuck'),
+    riceEar: itemEntry('稻穗', 'riceEar', 'flat'),
+    wheatBundle: itemEntry('小麥束', 'wheatBundle', 'stuck'),
+    shell: itemEntry('貝殼', 'shell', 'flat'),
+
+    // ---- G group: 3C/tech (6) -- gamepad/camera flagged for two-handed
+    // use per user instruction, but NOT tagged holdStyle:'dual' -- see
+    // ITEM_SHAPES' own comment on gamepad/camera for why that mechanism
+    // doesn't fit a single spanning object ----
+    smartphone: itemEntry('智慧型手機', 'smartphone', 'flat'),
+    tablet: itemEntry('平板電腦', 'tablet', 'flat'),
+    gamepad: itemEntry('遊戲手把', 'gamepad', 'stuck'),
+    microphone: itemEntry('麥克風', 'microphone', 'flat'),
+    camera: itemEntry('相機', 'camera', 'flat'),
+    pistol: itemEntry('手槍', 'pistol', 'flat')
   };
   let currentHandAccessory = '';
 
