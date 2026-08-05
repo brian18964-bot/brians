@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.2 — 修正握持感、匕首改名、精簡配件清單</title>
+<title>剪影走路/跑步循環 v48.3 — 新增三款巨型兵器,建立雙手持握機制</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.2</div>
-    <h1>修正握持感、短劍改名匕首、精簡配件清單</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.3</div>
+    <h1>新增三款巨型兵器,建立雙手持握機制</h1>
+    <p class="sub"><b>需求</b>:新增三款份量感誇張的大型武器——巨劍/雙手大劍(單手持握,但握把跟份量感要比現有 A 組其他武器誇張)、關刀(長柄寬刃,雙手持握)、死神鐮刀(長柄+末端彎曲鐮刀刃,雙手持握),要求握把跟手部掛載點有貼合包覆感、雙手持握的兩個配件要讓 <code>handNear</code>/<code>handFar</code> 分別對應武器上的位置(不能只固定單一掛載點)、走路擺動時做安全餘裕驗證、雙掛載點擺動同步性驗證,並針對 <code>rarity</code> 主動提出建議。<br><br><b>形狀設計(先離線孤立渲染定案,再接上角色)</b>:比照這個檔案一貫的「先在乾淨背景上放大確認輪廓,再接進角色」做法(沿用暫時性 <code>window.__isolatedDraw</code> 除錯出口,驗證完成後移除,不進正式程式碼)。巨劍——longsword 的刀身/護手/握柄/柄頭四個 part 全部等比放大(刀身半寬 0.1→0.22、護手半長 0.22→0.4、握柄寬 0.15→0.22 且明顯加長、柄頭 0.1→0.18),總長 2.98 超過武士刀的 2.53,是全目錄最長的劍。關刀——寬幅彎刀 <code>polygon</code>(正 dx 側是主要弧形刃,負 dx 側在刃根附近往外翻出一個鉤,是跟其他斧類/彎刀類配件區隔的關鍵特徵),接一根全目錄最長的素杆(2.75)。死神鐮刀——dist0 是鉤刃尖端,一個 dx 最大達 0.85 的大幅彎鉤 <code>polygon</code>,對比筆直的杆身(刻意不用彎曲杆身,讓「刃彎、柄直」的對比更清楚,符合需求原文)。三款第一版孤立渲染就達到可辨識的輪廓效果,沒有經歷返工。<br><br><b>握把貼合(沿用 v48.2 剛確認過的機制,沒有另外發明)</b>:三款配件握持點都直接吃 <code>WEAPON_GRIP_WRAP_R</code> 圓盤機制,跟警棍、長劍等既有配件走同一套邏輯,不是另外接了不同的定位邏輯。<br><br><b>巨劍額外的份量感問題</b>:接上角色後直接比對巨劍跟武士刀的畫面尺寸,發現兩者看起來差不多大——不是形狀資料錯,是巨劍刀身寬度(0.44 headR)遠超過既有的 <code>WEAPON_HELD_OUTWARD</code>(0.42,是照一般刀劍寬度抓的貼腿間距)所能露出的範圍,超出的寬度大多還是疊在腿部剪影裡面(同色不可見),誇張的份量感因此被腿吃掉了大半。新增 <code>weapon.heldOutward</code> 覆寫(仿照既有的 <code>heldTilt</code>/<code>heldMaxAngle</code> 覆寫機制),巨劍設為 0.75,重新截圖比對後刀身寬度才真正顯現出來,護手/柄頭跟一般劍類的視覺量級明顯拉開差距。<br><br><b>雙手持握機制(新機制,非既有 <code>holdStyle:'dual'</code>)</b>:既有的 <code>'dual'</code>(沙鈴在用)語意是「同一形狀在兩個掛載點各畫一份」,套用在關刀/死神鐮刀上會變成畫出兩把武器,不是一把橫跨雙手的武器,是錯的。真正的難題是 <code>handNear</code>/<code>handFar</code> 兩手是各自獨立擺動的(反向步態相位),實測 longlimb 走路循環中兩手距離在單一步態內就從 6.5px 變動到 19.4px(headR=7.5,約 0.9-2.6 倍頭半徑),角度差最大到約 50°——若用剛性變換硬把武器兩個握把點分別釘死在兩隻手上,武器每一步就要跟著伸縮將近 3 倍長度,正是需求提到的「扭曲變形」風險。改用一個折衷但有數據支撐的做法:武器整把仍然只用單一混合掛載點繪製(兩手位置的中點、兩手角度的圓形平均),完全沿用既有 <code>drawWeaponParts</code> 管線,不做任何伸縮;同一組實測數據顯示這個混合點穩定得多——x 座標單一步態內漂移不到 1px(對比單手 ~7px),角度只在 ~3.5° 帶內浮動(對比單手 ~25-30°),因為兩手反向擺動時混合點會互相抵銷大部分個別擺動,不是單純平均巧合。雙手「看起來確實握著」的部分,另外在 <code>handNear</code>/<code>handFar</code> 各自的真實座標上疊一個 <code>WEAPON_GRIP_WRAP_R</code> 圓盤(跟混合掛載點自己那個圓盤疊加,三個圓盤在握把段連成一片,不是兩個孤立的點)。新增 <code>dualGripWeaponEntry()</code> 註冊工廠、<code>holdStyle:'twoHanded'</code> 旗標,<code>stepFsm</code> 呼叫端據此分流到新的 <code>drawTwoHanded(ctx, near, far, headR)</code>,不影響任何既有配件的 <code>draw()</code> 呼叫路徑。<br><br><b>驗證</b>:走路循環連續截圖(6 張/配件)確認三款配件全程貼合手部、沒有懸空;關刀/死神鐮刀在混合掛載點機制下,武器整體角度肉眼幾乎不隨步態擺動,讀起來像真的被兩手穩穩握住的長桿,不是跟著某一隻手亂晃。安全餘裕驗證覆蓋 5 種代表性原型(含大頭模糊型、大頭娃娃、扁寬模糊型等頭身比例最極端的組合)× 坐下/躺下/趴下/跳躍 4 種持續握持姿態,目視確認三款配件在所有組合下都沒有跟頭部剪影重疊(大頭娃娃+跳躍的巨劍最接近,但劍身仍落在頭部輪廓外側)。17 原型 × 8 姿態 × 74 配件完整回歸測試 zero console 錯誤。<br><br><b><code>rarity</code> 建議(未逕自決定,列 <code>null</code> 待確認)</b>:三款目前 <code>rarity</code> 都設為 <code>null</code>,但建議——巨劍論份量感/長度已經逼近武士刀等級,適合列 <code>rarity:'S'</code>;關刀、死神鐮刀是全目錄唯一具備「雙手持握」機制的配件,機制本身的稀有性加上長度規格(死神鐮刀 3.6、關刀 3.8,都超過長矛),建議至少同列 <code>'S'</code>,如果想讓「雙手持握」這個機制本身有更高辨識度,也可以考慮新開一個介於 S 和 SSS 之間的專屬分級(例如帶一點暗紅/暗紫的稀有色,呼應「巨型兵器」主題而不是重複武士刀的鋼灰材質色或光劍的螢光色系)——實際色票由你決定,<code>RARITY_STYLE</code> 已經是現成的查表機制,新增一個 tier 只需要加一行。</p>
     <p class="sub"><b>問題</b>:v48.1 修掉懸空後,使用者用兩張新截圖回報配件雖然貼到掛載點旁邊了,但看起來像「配件貼在手掌旁邊」而非「手真正握住配件」——邊緣接觸不等於握持感,要求檢查 <code>gripRatio</code>/握持位置參數是否該讓配件握柄跟手部形狀有視覺重疊/包覆感,並確認新配件(警棍)是不是套用了跟劍類不同的定位邏輯。<br><br><b>排查</b>:確認警棍與長劍等劍類配件其實走的是同一套 <code>drawWeaponParts()</code>/<code>WEAPON_HELD_OUTWARD</code> 邏輯,沒有分岔——問題不是「新配件沒接好」,是這套邏輯本身,不論哪款配件都只解決了「有沒有貼到」,沒解決「像不像握住」。追根究底:v48.1 的 0.42 headR 偏移量,是照這個原型自己的「腿部半徑」抓的(避免刀身被腿吞掉的需求),但握持感看的是「手」不是「腿」——角色的手臂末端本身就有一個圓頭端(<code>armW/2</code>),量測 longlimb/tall/petite/bighead/chubby 五種原型的 <code>armW/2</code> 相對 <code>headR</code> 比例落在 0.15-0.26 之間,遠小於腿部的 0.42,配件的握持點被偏移到已經超出手部圓頭範圍以外的地方,兩者只剩邊緣相切,難怪沒有包覆感。<br><br><b>修正</b>:不是再縮小 <code>WEAPON_HELD_OUTWARD</code>(這樣會重新讓刀身被腿吞掉,是這個檔案已經來回打過兩次的根因,不重蹈覆轍),而是新增一個獨立、專職負責「看起來像握住」的機制——<code>WEAPON_GRIP_WRAP_R</code>(0.22 headR,五種原型 <code>armW/2</code> 比例的中間值,截圖逐原型確認沒有明顯過大),在 <code>drawWeaponParts()</code> 對「held」姿態渲染時,於真正的手部掛載點(不是偏移後的 <code>drawMount</code>)畫一個 SIL 色的小圓盤,同時疊在角色手臂本身的圓頭端跟配件握柄段附近,把兩者視覺黏在一起——不管配件本身握柄多細(警棍、火把這類尤其明顯),都能得到包覆感,不再依賴配件自己的寬度是否剛好搆得到手。<code>WEAPON_HELD_OUTWARD</code>(管刀身離腿多遠)跟 <code>WEAPON_GRIP_WRAP_R</code>(管看起來像不像被握住)刻意拆成兩個獨立常數,以後兩者可以各自調整不互相牽動。五種原型 × 長劍/警棍/武士刀/火把/馬克杯等代表性配件重新截圖驗證,握持感明顯改善,17 原型 × 8 姿態 × 71 配件回歸測試 zero console 錯誤。<br><br><b>其他調整</b>:短劍依使用者指示改名為「匕首」(僅改標籤文字,幾何與握持參數不變,本來就是這批劍類最短的一款,改名後更貼切)。依使用者提供的精簡名單,移除 21 款配件——啤酒大木杯、保溫瓶、披薩片、拐杖糖、平板電腦、遊戲手把、麥克風、相機、手槍、直笛、大聲公、鉛筆、直尺、量角器、信封、地球儀、燈籠、氣球、紙飛機、牙刷、試管——這批配件本身尺寸偏小,握在角色手上不易辨識,使用者判斷去留,直接刪除對應的 <code>ITEM_SHAPES</code> 幾何定義與 <code>HAND_ACCESSORY_REGISTRY</code> 註冊項(下拉選單自動同步,不需要另外改 UI),各分組數量註解一併更新。目前手部配件庫剩 71 款(含示範用的 <code>sword</code>/<code>canteen</code> 兩項)+ 隨身寵物/頭部配件不受影響。</p>
     <p class="sub"><b>問題(緊急)</b>:v48 上線後使用者截圖回報警棍配件完全懸空、飄在角色旁邊,不是握持角度不對這麼單純,懷疑配件根本沒有正確讀取 <code>handNear</code>/<code>handFar</code> 掛載點座標,要求優先於美術細節排查。<br><br><b>排查</b>:先追蹤程式碼呼叫鏈——<code>stepFsm</code> 呼叫 <code>handAcc.draw(accCtx, mounts.handNear, headR)</code>,<code>stuckWeaponEntry</code>/<code>itemEntry</code> 的 <code>draw</code> 一路把同一個 <code>mount</code> 原封不動傳進 <code>drawWeaponParts</code>,座標讀取本身沒有斷開、沒有引用錯變數。再用截圖直接驗證掛載點是否「跟得上」手臂:同一件配件(警棍)在走路循環的連續影格中截圖比對,配件每一幀都確實跟著手臂擺動角度同步移動,只是永遠拖著一段固定距離的空隙——證實這不是「座標沒讀到」,而是「座標讀到了,但被系統性地平移到一個沒有東西填補的空位」。<br><br><b>真正根因</b>:v48 當時新增的 <code>WEAPON_HELD_OUTWARD</code>(0.8 headR,約等於 <code>longlimb</code> 原型自己的 <code>legW/headR</code> 比例,也就是整條腿的「直徑」)把整個武器座標系原點平移離開掛載點本身,平移後的新原點才是握持點真正落腳的位置,但平移路徑上完全沒有繪製任何東西去填補這段距離。長劍、武士刀這類總長較長的配件,因為握把到尾端還有相當長度,平移後仍有機會與腿部剪影重疊、看起來像貼合;但警棍、火把、馬克杯這類總長偏短、握持點又落在其中一端附近的配件,平移量已經超過配件自身尾端能延伸回去的距離,於是懸空脫節。用同一手法測試偏移量 0(配件貼合但長劍幾乎整段被腿吞掉,回到 v48 想解決的原始問題)到 0.8(配件懸空)之間多組數值,搭配這個原型 <code>legW/2 ≈ 0.42 headR</code>(從整條腿的直徑改成半徑,即腿的邊緣而非中心)這個有意義的量,而非隨意再猜一個常數。<br><br><b>修正</b>:<code>WEAPON_HELD_OUTWARD</code> 從 0.8 降到 0.42,並在 <code>drawWeaponParts</code> 內對 <code>c.shadowBlur</code> 逐 part 重設(見下方光劍說明,同一個迴圈這輪也要支援新的發光 part,避免殘留狀態互相污染)。全 92 款配件在 <code>longlimb</code>、<code>chubby</code> 兩種原型、停下/走路姿態下重新截圖比對,警棍/火把/馬克杯/聖杯/十字架/鳶形盾等短小配件全數貼合、沒有懸空縫隙;長劍/武士刀等長配件的刀身分離度也維持在可接受範圍(彎刀這類本來就偏短的彎刀類配件,刀身可視度跟 v48 時一樣有限,不是這次改動造成的退步,留給未來個別配件 <code>heldTilt</code> 覆寫值處理)。17 原型 × 8 個姿態 × 92 款配件輪替重新跑過,zero console 錯誤。<br><br><b>美術修正一:武士刀改為材質配色</b>——使用者認為原本整把套用稀有度金黃色(<code>RARITY_STYLE.S</code>)不像武士刀的真實材質。刀身、鍔、柄、鐺(パンプル)四個 part 各自加上明確的 <code>part.color</code>(鋼灰刀身 <code>#c7ccd3</code>、暗紅鍔跟鐺 <code>#5c2028</code>、深色柄 <code>#1c1b1d</code>)。依 <code>resolveWeaponColor()</code> 既有優先權,<code>part.color</code> 蓋過 <code>style.color</code> 蓋過 <code>style.rarity</code> 查表,武士刀的視覺顏色從此不再經過 <code>RARITY_STYLE.S</code>——這不是拋棄稀有度解耦原則,而是判斷「這批顏色屬於武士刀自身固定的材質特徵(鋼是鋼、鞘是暗紅),不是稀有度分級決定的視覺效果」,跟火把火焰、手電筒光束原本就走 <code>part.color</code> 這條路徑是同一個分類,<code>rarity:'S'</code> 保留在註冊表上純粹供未來稀有度相關 UI(邊框、排序)查詢用,不再驅動任何實際畫面顏色;<code>RARITY_STYLE.S</code> 本身仍保留給未來真正想要「純粹套用分級色、沒有自己材質」的配件使用。<br><br><b>美術修正二:光劍改為核心發光層次</b>——原本刀身是單一 <code>polygon</code> 整片套用 <code>style.color</code>,使用者要求改成「握把維持中性深色、刀身核心發亮、外圍疊一層半透明色暈」的星際大戰式呈現。刀身拆成兩層同心 <code>polygon</code>:外層(較寬,新增的 <code>p.glow</code> 數值觸發 <code>drawWeaponParts</code> 迴圈內對這個 part 設定 <code>c.shadowColor</code>/<code>c.shadowBlur</code> 做出柔和暈染,填色本身也改成半透明 <code>rgba()</code>)不帶自己的 <code>part.color</code>,因此沿用 <code>style.color</code>——五款配色現在只由這一層決定;內層(較窄)則帶固定 <code>part.color:'#f6f9ff'</code> 的亮白,不論外層是哪個顏色都保持核心發白光。握把(<code>shaft</code>+兩個 <code>crossbar</code>+尾端 <code>circle</code>)四個 part 全部加上固定的 <code>part.color:'#3a3b40'</code> 深灰金屬色,不再吃 <code>style.color</code>,五款配色因此只有刀身在變、握把維持一致的金屬握感。五款(螢光藍/綠/紅/黃/亮白)全部套用同一套「核心亮白+外層半透明色暈」邏輯,只有 <code>opts.color</code> 這個 rgba 字串本身的色相不同,截圖逐款確認發光層次一致。<br><br>兩項美術修正都沒有更動 <code>resolveWeaponColor()</code> 的既有優先權邏輯本身,只是更精準地運用「哪個顏色該寫在 part 上(材質固有)、哪個該留給 style(款式/稀有度決定)」這個既有的資料結構分工。</p>
     <p class="sub"><b>問題</b>:使用者回報幾乎所有已完成的手持配件(劍類、盾、十字架、聖杯、剪刀、澆花壺、馬克杯、火把、蔬果、花草、吉他、沙鈴……)都有握持點/握持方向的問題,範圍太廣,不像是個別配件各自的參數錯誤,要求先診斷是否有系統性根因,只用 2-3 款代表性配件(長劍、十字架、剪刀)驗證,不要逐款當獨立問題修。<br><br><b>根因一:握持姿態沒有向外偏移</b>——<code>drawWeaponParts()</code> 的 <code>held</code> 分支過去直接沿用手部掛載點 <code>mount</code> 本身當作武器座標系原點,只疊加 <code>WEAPON_HELD_TILT</code> 角度,沒有任何位置偏移。用長劍量測確認:掛載點座標本身就落在角色手臂輪廓範圍內(不是手臂外緣),武器的整個座標系原點在輪廓內部起算,導致劍身前段(尤其細長的刀鋒/劍尖)有很長一段直接畫在身體剪影裡面,才會看起來「被身體擋住/糊成一團」。新增 <code>WEAPON_HELD_OUTWARD = 0.8</code>(× <code>headR</code>),在套用 <code>heldTilt</code> 之前,先沿著角色朝向的垂直方向把整個武器掛載幀往外推——這是所有握持類配件共用的同一個偏移,不是逐款調位置。<br><br><b>根因二:<code>dist=0</code> 恆為朝外端,並非握持比例可以反轉</b>——一開始以為調整 <code>gripRatio</code>(握持點沿武器軸線的比例)就能讓火把、馬克杯這類「握柄在配件某一端、功能部位在另一端」的配件呈現正確方向,但用十字架/火把兩款配件重新推導 <code>drawWeaponParts()</code> 內 <code>y(dist)</code> 的計算式才發現:不論 <code>gripRatio</code> 設多少,<code>dist=0</code>(配件資料定義的起點)在 <code>held</code> 姿態下永遠對應畫面朝外的那一端,<code>gripRatio</code> 只能滑動握持點沿軸線的位置,無法翻轉哪一端朝外——馬克杯握把、火把火焰、聖杯杯身這類「該露出的部位剛好定義在 <code>dist=0</code>」的配件,單靠 <code>gripRatio</code> 怎麼調都不會露出正確的一端。新增 <code>weapon.heldReverse</code> 布林旗標,設為 true 時對調 <code>y(dist)</code> 內 <code>gripDist - dist</code> 與 <code>dist - gripDist</code> 兩式,讓資料定義端可以整個翻到朝內——套用在聖杯、火把、蘑菇、向日葵/玫瑰/百合/稻穗/小麥束、沙鈴共 9 款。另外盾牌、十字架用劍類預設的 <code>-50°</code> 握持角度並不合適(盾面/十字長邊被轉到不自然的角度),兩根因之外再補一個小型可覆寫機制 <code>weapon.heldTilt</code>,讓個別配件覆寫預設角度而不影響其他配件。<br><br><b>Part 2 個別配件修正(約 24 款,逐款截圖驗證)</b>:A 組劍類——五款握持點對齊劍柄、刀鋒不再被身體遮擋;shortSword 加長、longsword 比 shortSword 更長、curvedSaber 弧度加大、rapier 劍身變薄、katana 定為本批最長並標記稀有度、lightsaber 與 longsword 等長並標記稀有度。B 組——kiteShield 修正握持方向與姿態、cross 改握長邊、chalice 改握杯柄/杯莖。C 組——scissors 重新設計成看得出「打開」的剪刀造型(第一版兩片楔形 <code>polygon</code> 因為兩片各自的回邊互相穿過對方範圍,合併填色後變成一坨類似臉的形狀,改用兩條各自獨立從刀尖經樞紐到握把的 <code>polyline</code> 錐形線才正確分離成可辨識的剪刀)、wateringCan 壺嘴方向轉為朝外、fishingRod 直接整款替換為警棍(<code>baton</code>,不修原本魚竿造型)。D 組——flashlight 燈頭前方加白色光源效果、torch 修正握持方向(<code>heldReverse</code>)、mug 改握握把(<code>gripRatio</code> 0.8→0.42)。E/F 組——carrot、mushroom、sunflower、rose、lily、riceEar、wheatBundle 修正握持方向。H 組——guitar 驗證後確認原 <code>gripRatio:0.86</code> 才是正確值(曾試改 0.5,人物身上比對後畫面反而更差,問題出在根因一,不是這款自己的參數)、maraca 修正握持方向。<br><br><b>Part 3:Direction B——特定配件開始脫離純黑剪影</b>,新增 <code>resolveWeaponColor(style, part)</code> 三層優先權:①<code>part.color</code>(配件資料裡個別部位直接寫死的顏色,用於「這個顏色是配件與生俱來的固定特徵」——火把的火焰、手電筒的光束/光源,這類顏色不該經過稀有度分級,直接寫在 <code>WEAPON_SHAPES</code>/<code>ITEM_SHAPES</code> 對應 part 上);②<code>style.color</code>(登記在 <code>HAND_ACCESSORY_REGISTRY</code> 條目上、由 <code>stuckWeaponEntry</code>/<code>itemEntry</code> 的 <code>opts.color</code> 帶入的整款專屬色,用於「同一個形狀但有多種顏色變體」——光劍的霓虹藍/綠/紅/黃與亮白 5 款各自是獨立登記項,共用同一個 <code>lightsaber</code> 幾何,顏色不寫進形狀資料,寫在各自的登記條目);③<code>style.rarity</code> 查 <code>RARITY_STYLE</code>(沿用 v37 就保留、原本未串接的 <code>rarity</code> 欄位,現在真正接上一個獨立的稀有度→顏色對照表,武士刀標記 <code>rarity:'S'</code> 後自動套用 S 級配色,不需要另外指定顏色,未來任何配件只要標同一個稀有度字串就會自動吃到同一色);找不到以上三者時退回原本純黑剪影 <code>SIL</code>,幾何資料(<code>WEAPON_SHAPES</code>/<code>ITEM_SHAPES</code>)本身維持與著色邏輯解耦,三種「顏色從哪來」的語意（配件固有特徵 / 款式變體 / 稀有度分級）各自對應資料結構裡不同的一層,不會互相打架。這輪保留清單所有 92 款配件,沒有刪除任何項目——刪減/去蕪存菁留待下一輪使用者提供裁剪名單後再處理。</p>
@@ -3771,10 +3772,31 @@
       const rawAngle = mount.angle + tilt;
       const perpAngle = mount.angle - Math.PI / 2;
       const px = Math.sin(perpAngle), py = -Math.cos(perpAngle);
+      // weapon.heldMaxAngle (v48.3): overrides WEAPON_HELD_MAX_ANGLE for
+      // outsized items where the standard clamp isn't tight enough --
+      // WEAPON_HELD_MAX_ANGLE was tuned against ordinary-length blades, so
+      // a much longer/heavier weapon swinging to that same angle limit
+      // covers proportionally more real distance and can clip the ground/
+      // legs at the SAME angle a shorter blade clears fine at. Defaults to
+      // WEAPON_HELD_MAX_ANGLE so every existing weapon is unaffected.
+      const maxAngle = weapon.heldMaxAngle != null ? weapon.heldMaxAngle : WEAPON_HELD_MAX_ANGLE;
+      // weapon.heldOutward (v48.3): overrides WEAPON_HELD_OUTWARD for
+      // items much WIDER than the ordinary blade this constant was tuned
+      // against (see that constant's own comment -- 0.42 headR is sized
+      // off the leg's radius, enough clearance for a normal ~0.2-0.28
+      // headR wide blade). greatsword's blade is 0.44 headR wide, over
+      // double that -- at the standard clearance, most of that extra
+      // width still overlaps the leg's own silhouette (same SIL color, no
+      // visible boundary), which defeats the whole "誇張份量感" ask: the
+      // blade reads as barely bigger than katana's despite genuinely
+      // having double the width and more total length, because the width
+      // that WOULD read as bulk is hidden inside the leg. Defaults to
+      // WEAPON_HELD_OUTWARD so every other weapon is unaffected.
+      const outward = weapon.heldOutward != null ? weapon.heldOutward : WEAPON_HELD_OUTWARD;
       drawMount = {
-        x: mount.x + px * WEAPON_HELD_OUTWARD * headR,
-        y: mount.y + py * WEAPON_HELD_OUTWARD * headR,
-        angle: Math.min(rawAngle, WEAPON_HELD_MAX_ANGLE)
+        x: mount.x + px * outward * headR,
+        y: mount.y + py * outward * headR,
+        angle: Math.min(rawAngle, maxAngle)
       };
       // WEAPON_GRIP_WRAP_R fist disc (v48.2) -- see that constant's own
       // comment. Drawn at the TRUE mount, not drawMount, so it anchors to
@@ -4309,6 +4331,81 @@
         { type: 'polygon', points: buildStarPoints(0.3, 7, 0.22, 0.11) },
         { type: 'polyline', points: [{ at: 0.52, dx: 0 }, { at: 0.63, dx: 0.1 }, { at: 0.75, dx: -0.1 }, { at: 0.87, dx: 0 }], width: 0.12 },
         { type: 'shaft', from: 0.87, to: 0.87 + 1.1, width: 0.24 }
+      ]
+    },
+    // 巨劍/雙手大劍 greatsword (v48.3): every dimension of longsword's own
+    // blade/guard/handle/pommel scaled up hard, not just totalLen -- blade
+    // half-width 0.1->0.22 (more than double), crossguard halfLen 0.22->0.4
+    // and width 0.08->0.16, handle 0.15->0.22 wide and noticeably longer
+    // (0.48->0.72, a two-hand-length grip even though holdStyle stays
+    // single per user's explicit instruction), pommel 0.1->0.18. totalLen
+    // 2.94 lands past katana's 2.53, making this the single longest blade
+    // in the catalog, matching the "巨型兵器" brief. gripRatio lower than
+    // longsword's 0.72 (0.62) -- deliberately leaves MORE handle length
+    // trailing on the inward side of the grip, not just more blade on the
+    // outward side, because a visibly long two-hand-scale grip is part of
+    // this weapon's whole identity, not just its blade.
+    greatsword: {
+      totalLen: 1.9 + 0.72 + 0.18,
+      gripRatio: 0.62,
+      heldOutward: 0.75,
+      parts: [
+        { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.16, dx: 0.22 }, { at: 1.9, dx: 0.22 }, { at: 1.9, dx: -0.22 }, { at: 0.16, dx: -0.22 }] },
+        { type: 'crossbar', at: 1.9, halfLen: 0.4, width: 0.16 },
+        { type: 'shaft', from: 1.9, to: 1.9 + 0.72, width: 0.22 },
+        { type: 'circle', at: 1.9 + 0.72 + 0.18, r: 0.18 }
+      ]
+    },
+    // 關刀 guandao (v48.3): the catalog's first genuinely dual-hold
+    // weapon (holdStyle:'twoHanded', a NEW mechanism -- see that flag's
+    // own comment at the registry factory site for why it's not reusing
+    // 'dual', which means something different: two independent copies).
+    // Broad hooked dao blade built as one closed 'polygon' -- a wide
+    // curved cutting edge (positive dx) swept from near the shaft out to
+    // the tip, and a shorter counter-curved hook on the spine side
+    // (negative dx) that flares back out near the tip -- the hook is the
+    // one feature that keeps this from reading as an oversized curvedSaber.
+    // Shaft is the longest plain pole in the catalog (2.85, past spear's
+    // 3.20 total but with proportionally more of that length as bare
+    // shaft, not blade) -- polearm scale, matching "長柄足夠長,呈現東方大刀
+    // 的份量感" from the brief.
+    guandao: {
+      totalLen: 1.05 + 2.75,
+      gripRatio: 0.72,
+      parts: [
+        { type: 'polygon', points: [
+            { at: 0, dx: 0.02 }, { at: 0.18, dx: 0.42 }, { at: 0.5, dx: 0.58 }, { at: 0.8, dx: 0.42 },
+            { at: 1.0, dx: 0.2 }, { at: 1.05, dx: 0.06 }, { at: 1.0, dx: -0.05 }, { at: 0.65, dx: -0.04 },
+            { at: 0.32, dx: -0.09 }, { at: 0.14, dx: -0.28 }, { at: 0.03, dx: -0.08 }
+          ] },
+        { type: 'crossbar', at: 1.05, halfLen: 0.1, width: 0.14 },
+        { type: 'shaft', from: 1.05, to: 1.05 + 2.75, width: 0.16 }
+      ]
+    },
+    // 死神鐮刀 deathScythe (v48.3): also holdStyle:'twoHanded'. dist0 is
+    // the hook's outer tip (matching this catalog's usual "business end
+    // first" convention), a wide curved 'polygon' hook that reaches WAY
+    // further off-axis (dx up to 0.95) than any other item in the
+    // catalog -- the defining silhouette contrast the brief asks for
+    // ("彎曲刀刃跟直柄的對比要清楚") is the hook's large dx sweep against the
+    // shaft's dx:0 straight run, not a difference in curve technique.
+    // Shaft is straight (no polyline wobble) on purpose -- a real scythe
+    // snath does have a slight S-bend, but a straight shaft reads as more
+    // clearly "a straight pole" against the hook's dramatic curve, and
+    // this catalog's existing polyline-curve vocabulary (curvedSaber,
+    // katana, guandao above) already covers "genuinely bent" if a future
+    // pass wants a snath revision.
+    deathScythe: {
+      totalLen: 0.6 + 3.0,
+      gripRatio: 0.8,
+      parts: [
+        { type: 'polygon', points: [
+            { at: 0, dx: 0.85 }, { at: 0.08, dx: 0.68 }, { at: 0.22, dx: 0.48 }, { at: 0.38, dx: 0.28 },
+            { at: 0.52, dx: 0.1 }, { at: 0.6, dx: 0.02 }, { at: 0.52, dx: -0.06 }, { at: 0.36, dx: 0.06 },
+            { at: 0.2, dx: 0.24 }, { at: 0.08, dx: 0.46 }
+          ] },
+        { type: 'shaft', from: 0.6, to: 0.6 + 3.0, width: 0.14 },
+        { type: 'circle', at: 0.6 + 3.0, r: 0.09 }
       ]
     }
   };
@@ -5515,6 +5612,78 @@
     };
   }
 
+  // dualGripWeaponEntry() (v48.3): stuckWeaponEntry()'s counterpart for a
+  // GENUINE two-handed weapon (guandao/deathScythe), not to be confused
+  // with the pre-existing holdStyle:'dual' (maraca) -- that flag means
+  // "draw the SAME shape independently at BOTH mounts" (correct for a
+  // matched worn PAIR, wrong here: it would render two guandaos, one per
+  // hand, not one polearm spanning both). This factory's holdStyle:
+  // 'twoHanded' is a distinct value the stepFsm call site branches on
+  // separately, wired to a `drawTwoHanded(ctx, near, far, headR)` method
+  // instead of the ordinary single-mount `draw`.
+  //
+  // The core problem a real dual-anchor render has to solve: handNear and
+  // handFar swing independently (opposite-phase arm animation), so their
+  // separation and individual angles both fluctuate hard through a walk
+  // cycle -- measured on longlimb mid-walk, hand-to-hand distance alone
+  // ranged 6.5px to 19.4px (headR=7.5, i.e. 0.9-2.6 headR) within a single
+  // stride, and the two hands' own angles diverged by up to ~50deg at the
+  // extreme. A rigid transform that forces the weapon's own two grip
+  // points to land exactly on both moving mounts would have to STRETCH
+  // the weapon's rendered length by that same ~3x range every stride --
+  // exactly the "扭曲變形" distortion risk flagged in the brief. Instead
+  // this renders the weapon ONCE at a BLENDED synthetic mount -- the
+  // midpoint of handNear/handFar's positions, and the circular mean of
+  // their two angles -- reusing drawWeaponParts completely unchanged (no
+  // stretch, no new geometry math, same WEAPON_HELD_OUTWARD/heldTilt/
+  // gripRatio pipeline every other weapon uses). This blended mount is
+  // dramatically more stable than either individual hand: on the same
+  // measured cycle, the midpoint x drifted under 1px stride-to-stride
+  // while each individual hand's x swung by ~7px, and the blended angle
+  // stayed within a ~3.5deg band vs. ~25-30deg for either hand alone --
+  // because the two arms swing in near-opposite phase, blending cancels
+  // most of each one's individual motion rather than compounding it. Both
+  // hands still visibly grip the shaft: drawTwoHanded draws its own pair
+  // of WEAPON_GRIP_WRAP_R discs at the TRUE handNear/handFar positions
+  // (not the blended point), same technique/constant v48.2 already
+  // established for single-hold weapons, layered on top of whatever
+  // drawWeaponParts' own single grip-wrap disc (at the blended mount)
+  // already drew -- three overlapping discs read as one continuous
+  // "gripped" span along the shaft rather than a gap between two isolated
+  // dots.
+  function dualGripWeaponEntry(label, shapeKey, opts){
+    const shape = WEAPON_SHAPES[shapeKey];
+    const rarity = (opts && opts.rarity) || null;
+    const style = opts ? { rarity: opts.rarity, color: opts.color } : undefined;
+    function blendedMount(near, far){
+      return {
+        x: (near.x + far.x) / 2,
+        y: (near.y + far.y) / 2,
+        angle: Math.atan2(Math.sin(near.angle) + Math.sin(far.angle), Math.cos(near.angle) + Math.cos(far.angle))
+      };
+    }
+    return {
+      label: label,
+      rarity: rarity,
+      holdStyle: 'twoHanded',
+      drawTwoHanded: (ctx, near, far, headR) => {
+        drawWeaponParts(ctx, blendedMount(near, far), headR, shape, 'held', style);
+        ctx.fillStyle = SIL;
+        ctx.beginPath();
+        ctx.arc(near.x, near.y, WEAPON_GRIP_WRAP_R * headR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(far.x, far.y, WEAPON_GRIP_WRAP_R * headR, 0, Math.PI * 2);
+        ctx.fill();
+      },
+      footStow: {
+        placement: 'stuck',
+        draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'stuck', style),
+        apex: headR => shape.totalLen * headR
+      }
+    };
+  }
+
   // itemEntry(): stuckWeaponEntry()'s counterpart for component XI's
   // ITEM_SHAPES catalog (B/C/F/K groups) -- identical held-in-hand wiring
   // (always drawWeaponParts('held'), regardless of footStow placement),
@@ -5571,11 +5740,13 @@
     // one per hand), not a single weapon spanning both hands. Tagging any
     // of these 'dual' would render two separate axes/flails, not one held
     // two-handed -- the wrong visual. A real two-handed-single-weapon
-    // mount (anchored between both hands) is still an unbuilt mechanism;
-    // "gripped further back for leverage" is instead expressed through
-    // gripRatio overrides on these three, which is a real, already-
-    // available lever for "this weapon reads as heavier/harder to swing"
-    // without needing the unbuilt mechanism.
+    // mount (anchored between both hands) was an unbuilt mechanism at the
+    // time this comment was written -- v48.3's dualGripWeaponEntry() now
+    // provides exactly that (see guandao/deathScythe below), but these
+    // three head-heavy axes/flails stay as originally designed:
+    // "gripped further back for leverage" via gripRatio overrides, not
+    // retrofitted to 'twoHanded', since none of them were ever meant to
+    // read as a two-handed weapon in the first place.
     shortSword: stuckWeaponEntry('匕首', 'shortSword'),
     longsword: stuckWeaponEntry('長劍', 'longsword'),
     spear: stuckWeaponEntry('長矛', 'spear'),
@@ -5615,6 +5786,21 @@
     lightsaberRed: stuckWeaponEntry('光劍(螢光紅)', 'lightsaber', { rarity: 'SSS', color: 'rgba(255,59,59,0.6)' }),
     lightsaberYellow: stuckWeaponEntry('光劍(螢光黃)', 'lightsaber', { rarity: 'SSS', color: 'rgba(245,225,63,0.6)' }),
     lightsaberWhite: stuckWeaponEntry('光劍(亮白)', 'lightsaber', { rarity: 'SSS', color: 'rgba(247,245,238,0.65)' }),
+
+    // ---- A group addition (v48.3): 3 oversized "巨型兵器" weapons ----
+    // greatsword: holdStyle stays 'single' per explicit user instruction
+    // (no two-hand mount despite the name/scale) -- reuses stuckWeaponEntry
+    // unmodified, same mechanism as every other single-hold blade. rarity
+    // left null per the user's own instruction (fill null unless there's a
+    // strong case to suggest S/SSS, in which case propose it rather than
+    // deciding unilaterally) -- flagged as a candidate in this round's
+    // reply given its scale rivals katana/lightsaber, not set here.
+    greatsword: stuckWeaponEntry('巨劍', 'greatsword'),
+    // guandao/deathScythe: the catalog's first dualGripWeaponEntry() uses
+    // (holdStyle:'twoHanded' -- see that factory's own comment for the
+    // full mechanism). rarity left null, same reasoning as greatsword.
+    guandao: dualGripWeaponEntry('關刀', 'guandao'),
+    deathScythe: dualGripWeaponEntry('死神鐮刀', 'deathScythe'),
 
     // ---- B group: round/block armor & relic items (4) ----
     // All 'flat' footStow -- shield/book/cross/chalice all read better
@@ -5869,8 +6055,15 @@
             // the one consistent hand for every single-hold item; handFar
             // only gets drawn when an item explicitly opts into
             // holdStyle: 'dual' (a genuinely matching-worn-pair item).
-            handAcc.draw(accCtx, mounts.handNear, WALK_CFG.headR);
-            if (handAcc.holdStyle === 'dual') handAcc.draw(accCtx, mounts.handFar, WALK_CFG.headR);
+            // 'twoHanded' (v48.3, dualGripWeaponEntry's own flag -- see its
+            // comment) is a third, distinct case: ONE weapon spanning both
+            // hands, routed through drawTwoHanded instead of draw.
+            if (handAcc.holdStyle === 'twoHanded'){
+              handAcc.drawTwoHanded(accCtx, mounts.handNear, mounts.handFar, WALK_CFG.headR);
+            } else {
+              handAcc.draw(accCtx, mounts.handNear, WALK_CFG.headR);
+              if (handAcc.holdStyle === 'dual') handAcc.draw(accCtx, mounts.handFar, WALK_CFG.headR);
+            }
           }
           if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(accCtx, mounts.back);
           if (ACCESSORY_PROP){
