@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.3 — 新增三款巨型兵器,建立雙手持握機制</title>
+<title>剪影走路/跑步循環 v48.4 — 修正雙手武器角度凍結、握持點視覺根因</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.3</div>
-    <h1>新增三款巨型兵器,建立雙手持握機制</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.4</div>
+    <h1>修正雙手武器角度凍結、握持點視覺根因</h1>
+    <p class="sub"><b>問題一:握持位置仍偏上,沒有握在手掌中的感覺</b>——延續 v48.3 的回報,要求先實測 <code>handNear</code>/<code>handFar</code> 真實座標跟配件握柄繪製起點座標是否真正重疊,而非假設。<br><br><b>排查(先量測,不假設)</b>:在 <code>drawWeaponParts</code> 內插入暫時性除錯出口(比對完成後移除),直接印出每一幀 <code>mounts.handNear</code> 的真實座標跟武器內部 <code>drawMount</code>(握持圓盤實際畫的位置)。結果:停下站姿時兩者 y 座標完全相等(誤差 0),走路循環中誤差最大也只有 1-3px(來自 <code>WEAPON_HELD_OUTWARD</code> 既有的水平偏移在角度旋轉下產生的次要垂直分量,不是新問題)。<b>結論:握持點座標本身沒有錯位,不是座標沒對齊的 bug。</b>再進一步比對角色本身的比例——用逐行掃描找出腿部從「軀幹寬」變成「腿寬」的分界 y 值,確認 <code>handNear</code> 落在腿部範圍內、接近腳踝,不是落在髖部。這說明使用者截圖裡看起來「握把貼在髖部附近」的觀感,實際上是這個站姿(停下)本身腿部較短、角色整體較矮胖,握把的絕對位置沒有問題。<br><br><b>那為什麼看起來還是「沒有被握住」?</b>——真正原因是 v48.2 新增的 <code>WEAPON_GRIP_WRAP_R</code> 握持圓盤,顏色是純 <code>SIL</code>(跟腿同色),半徑只有 0.22 headR(約 1.65px),完全落在腿部剪影「內部」,對畫面沒有任何可見的像素貢獻——這個圓盤確實在填補座標空隙(修掉了懸空問題),但因為跟腿同色又完全被腿蓋住,從頭到尾沒有真正畫出任何看得見的「手」形狀,使用者兩輪都在對著一個實際上不可見的元件抱怨「看不出握感」,抱怨完全合理。<br><br><b>修正</b>:<code>WEAPON_GRIP_WRAP_R</code> 從 0.22 提高到 0.45——不是為了貼合手臂本身的粗細(那正是讓它被腿吃掉的原因),而是要大到足以「戳出」腿部輪廓邊緣,形成一個看得見的拳頭狀突起。截圖比對 longlimb/chubby/bighead 三種原型 × baton/katana/greatsword/guandao/torch/mug 六款配件,握持點都出現清楚的突起,握感明顯改善。<br><br><b>問題二:關刀、死神鐮刀完全沒有跟著手臂擺動</b>——這是比握持位置更嚴重的問題,先直接量測角度數值而非猜測。<br><br><b>根因(用實測數字鎖定,不是臆測)</b>:v48.3 的雙手持握機制,除了位置取兩手中點,角度也取兩手角度的「圓形平均」。log 死神鐮刀走路循環 6 幀的實際渲染角度,發現只在 -225°~-228° 之間變動(總共 3°),同時間 <code>handNear.angle</code> 自己從 162° 動到 177°(變動 15°)。原因:<code>handNear</code>/<code>handFar</code> 是反向步態相位擺動(一手前擺、另一手後擺),兩者角度平均在數學上會互相抵銷掉幾乎全部的擺動量——不管走路擺動多大,平均值結構性地趨近一個定值,這不是「阻尼過強」的程度問題,是這個公式從根本上就不會產生看得出來的動態,武器因此讀起來像固定裝飾。<br><br><b>修正</b>:比照建議,不再發明新公式——角度直接改用 <code>handNear.angle</code>(跟所有已驗證過的單手武器完全相同的即時來源),位置維持雙手中點不變(仍然是量測上最穩定、能限制兩手握持圓盤偏移量的做法,只是不再用它決定角度)。修正後重新量測:武器角度逐幀精確跟隨 <code>handNear.angle - 50°</code>(握持傾角常數)同步變化,兩者每一幀的差值固定不變,確認角度來源正確接上即時擺動值。<br><br><b>驗證</b>:走路循環連續截圖(8 格/配件,見下方附圖)確認三款配件角度都隨步態自然擺動、不再凍結,握持點的拳頭狀突起清楚可見。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求</b>:新增三款份量感誇張的大型武器——巨劍/雙手大劍(單手持握,但握把跟份量感要比現有 A 組其他武器誇張)、關刀(長柄寬刃,雙手持握)、死神鐮刀(長柄+末端彎曲鐮刀刃,雙手持握),要求握把跟手部掛載點有貼合包覆感、雙手持握的兩個配件要讓 <code>handNear</code>/<code>handFar</code> 分別對應武器上的位置(不能只固定單一掛載點)、走路擺動時做安全餘裕驗證、雙掛載點擺動同步性驗證,並針對 <code>rarity</code> 主動提出建議。<br><br><b>形狀設計(先離線孤立渲染定案,再接上角色)</b>:比照這個檔案一貫的「先在乾淨背景上放大確認輪廓,再接進角色」做法(沿用暫時性 <code>window.__isolatedDraw</code> 除錯出口,驗證完成後移除,不進正式程式碼)。巨劍——longsword 的刀身/護手/握柄/柄頭四個 part 全部等比放大(刀身半寬 0.1→0.22、護手半長 0.22→0.4、握柄寬 0.15→0.22 且明顯加長、柄頭 0.1→0.18),總長 2.98 超過武士刀的 2.53,是全目錄最長的劍。關刀——寬幅彎刀 <code>polygon</code>(正 dx 側是主要弧形刃,負 dx 側在刃根附近往外翻出一個鉤,是跟其他斧類/彎刀類配件區隔的關鍵特徵),接一根全目錄最長的素杆(2.75)。死神鐮刀——dist0 是鉤刃尖端,一個 dx 最大達 0.85 的大幅彎鉤 <code>polygon</code>,對比筆直的杆身(刻意不用彎曲杆身,讓「刃彎、柄直」的對比更清楚,符合需求原文)。三款第一版孤立渲染就達到可辨識的輪廓效果,沒有經歷返工。<br><br><b>握把貼合(沿用 v48.2 剛確認過的機制,沒有另外發明)</b>:三款配件握持點都直接吃 <code>WEAPON_GRIP_WRAP_R</code> 圓盤機制,跟警棍、長劍等既有配件走同一套邏輯,不是另外接了不同的定位邏輯。<br><br><b>巨劍額外的份量感問題</b>:接上角色後直接比對巨劍跟武士刀的畫面尺寸,發現兩者看起來差不多大——不是形狀資料錯,是巨劍刀身寬度(0.44 headR)遠超過既有的 <code>WEAPON_HELD_OUTWARD</code>(0.42,是照一般刀劍寬度抓的貼腿間距)所能露出的範圍,超出的寬度大多還是疊在腿部剪影裡面(同色不可見),誇張的份量感因此被腿吃掉了大半。新增 <code>weapon.heldOutward</code> 覆寫(仿照既有的 <code>heldTilt</code>/<code>heldMaxAngle</code> 覆寫機制),巨劍設為 0.75,重新截圖比對後刀身寬度才真正顯現出來,護手/柄頭跟一般劍類的視覺量級明顯拉開差距。<br><br><b>雙手持握機制(新機制,非既有 <code>holdStyle:'dual'</code>)</b>:既有的 <code>'dual'</code>(沙鈴在用)語意是「同一形狀在兩個掛載點各畫一份」,套用在關刀/死神鐮刀上會變成畫出兩把武器,不是一把橫跨雙手的武器,是錯的。真正的難題是 <code>handNear</code>/<code>handFar</code> 兩手是各自獨立擺動的(反向步態相位),實測 longlimb 走路循環中兩手距離在單一步態內就從 6.5px 變動到 19.4px(headR=7.5,約 0.9-2.6 倍頭半徑),角度差最大到約 50°——若用剛性變換硬把武器兩個握把點分別釘死在兩隻手上,武器每一步就要跟著伸縮將近 3 倍長度,正是需求提到的「扭曲變形」風險。改用一個折衷但有數據支撐的做法:武器整把仍然只用單一混合掛載點繪製(兩手位置的中點、兩手角度的圓形平均),完全沿用既有 <code>drawWeaponParts</code> 管線,不做任何伸縮;同一組實測數據顯示這個混合點穩定得多——x 座標單一步態內漂移不到 1px(對比單手 ~7px),角度只在 ~3.5° 帶內浮動(對比單手 ~25-30°),因為兩手反向擺動時混合點會互相抵銷大部分個別擺動,不是單純平均巧合。雙手「看起來確實握著」的部分,另外在 <code>handNear</code>/<code>handFar</code> 各自的真實座標上疊一個 <code>WEAPON_GRIP_WRAP_R</code> 圓盤(跟混合掛載點自己那個圓盤疊加,三個圓盤在握把段連成一片,不是兩個孤立的點)。新增 <code>dualGripWeaponEntry()</code> 註冊工廠、<code>holdStyle:'twoHanded'</code> 旗標,<code>stepFsm</code> 呼叫端據此分流到新的 <code>drawTwoHanded(ctx, near, far, headR)</code>,不影響任何既有配件的 <code>draw()</code> 呼叫路徑。<br><br><b>驗證</b>:走路循環連續截圖(6 張/配件)確認三款配件全程貼合手部、沒有懸空;關刀/死神鐮刀在混合掛載點機制下,武器整體角度肉眼幾乎不隨步態擺動,讀起來像真的被兩手穩穩握住的長桿,不是跟著某一隻手亂晃。安全餘裕驗證覆蓋 5 種代表性原型(含大頭模糊型、大頭娃娃、扁寬模糊型等頭身比例最極端的組合)× 坐下/躺下/趴下/跳躍 4 種持續握持姿態,目視確認三款配件在所有組合下都沒有跟頭部剪影重疊(大頭娃娃+跳躍的巨劍最接近,但劍身仍落在頭部輪廓外側)。17 原型 × 8 姿態 × 74 配件完整回歸測試 zero console 錯誤。<br><br><b><code>rarity</code> 建議(未逕自決定,列 <code>null</code> 待確認)</b>:三款目前 <code>rarity</code> 都設為 <code>null</code>,但建議——巨劍論份量感/長度已經逼近武士刀等級,適合列 <code>rarity:'S'</code>;關刀、死神鐮刀是全目錄唯一具備「雙手持握」機制的配件,機制本身的稀有性加上長度規格(死神鐮刀 3.6、關刀 3.8,都超過長矛),建議至少同列 <code>'S'</code>,如果想讓「雙手持握」這個機制本身有更高辨識度,也可以考慮新開一個介於 S 和 SSS 之間的專屬分級(例如帶一點暗紅/暗紫的稀有色,呼應「巨型兵器」主題而不是重複武士刀的鋼灰材質色或光劍的螢光色系)——實際色票由你決定,<code>RARITY_STYLE</code> 已經是現成的查表機制,新增一個 tier 只需要加一行。</p>
     <p class="sub"><b>問題</b>:v48.1 修掉懸空後,使用者用兩張新截圖回報配件雖然貼到掛載點旁邊了,但看起來像「配件貼在手掌旁邊」而非「手真正握住配件」——邊緣接觸不等於握持感,要求檢查 <code>gripRatio</code>/握持位置參數是否該讓配件握柄跟手部形狀有視覺重疊/包覆感,並確認新配件(警棍)是不是套用了跟劍類不同的定位邏輯。<br><br><b>排查</b>:確認警棍與長劍等劍類配件其實走的是同一套 <code>drawWeaponParts()</code>/<code>WEAPON_HELD_OUTWARD</code> 邏輯,沒有分岔——問題不是「新配件沒接好」,是這套邏輯本身,不論哪款配件都只解決了「有沒有貼到」,沒解決「像不像握住」。追根究底:v48.1 的 0.42 headR 偏移量,是照這個原型自己的「腿部半徑」抓的(避免刀身被腿吞掉的需求),但握持感看的是「手」不是「腿」——角色的手臂末端本身就有一個圓頭端(<code>armW/2</code>),量測 longlimb/tall/petite/bighead/chubby 五種原型的 <code>armW/2</code> 相對 <code>headR</code> 比例落在 0.15-0.26 之間,遠小於腿部的 0.42,配件的握持點被偏移到已經超出手部圓頭範圍以外的地方,兩者只剩邊緣相切,難怪沒有包覆感。<br><br><b>修正</b>:不是再縮小 <code>WEAPON_HELD_OUTWARD</code>(這樣會重新讓刀身被腿吞掉,是這個檔案已經來回打過兩次的根因,不重蹈覆轍),而是新增一個獨立、專職負責「看起來像握住」的機制——<code>WEAPON_GRIP_WRAP_R</code>(0.22 headR,五種原型 <code>armW/2</code> 比例的中間值,截圖逐原型確認沒有明顯過大),在 <code>drawWeaponParts()</code> 對「held」姿態渲染時,於真正的手部掛載點(不是偏移後的 <code>drawMount</code>)畫一個 SIL 色的小圓盤,同時疊在角色手臂本身的圓頭端跟配件握柄段附近,把兩者視覺黏在一起——不管配件本身握柄多細(警棍、火把這類尤其明顯),都能得到包覆感,不再依賴配件自己的寬度是否剛好搆得到手。<code>WEAPON_HELD_OUTWARD</code>(管刀身離腿多遠)跟 <code>WEAPON_GRIP_WRAP_R</code>(管看起來像不像被握住)刻意拆成兩個獨立常數,以後兩者可以各自調整不互相牽動。五種原型 × 長劍/警棍/武士刀/火把/馬克杯等代表性配件重新截圖驗證,握持感明顯改善,17 原型 × 8 姿態 × 71 配件回歸測試 zero console 錯誤。<br><br><b>其他調整</b>:短劍依使用者指示改名為「匕首」(僅改標籤文字,幾何與握持參數不變,本來就是這批劍類最短的一款,改名後更貼切)。依使用者提供的精簡名單,移除 21 款配件——啤酒大木杯、保溫瓶、披薩片、拐杖糖、平板電腦、遊戲手把、麥克風、相機、手槍、直笛、大聲公、鉛筆、直尺、量角器、信封、地球儀、燈籠、氣球、紙飛機、牙刷、試管——這批配件本身尺寸偏小,握在角色手上不易辨識,使用者判斷去留,直接刪除對應的 <code>ITEM_SHAPES</code> 幾何定義與 <code>HAND_ACCESSORY_REGISTRY</code> 註冊項(下拉選單自動同步,不需要另外改 UI),各分組數量註解一併更新。目前手部配件庫剩 71 款(含示範用的 <code>sword</code>/<code>canteen</code> 兩項)+ 隨身寵物/頭部配件不受影響。</p>
     <p class="sub"><b>問題(緊急)</b>:v48 上線後使用者截圖回報警棍配件完全懸空、飄在角色旁邊,不是握持角度不對這麼單純,懷疑配件根本沒有正確讀取 <code>handNear</code>/<code>handFar</code> 掛載點座標,要求優先於美術細節排查。<br><br><b>排查</b>:先追蹤程式碼呼叫鏈——<code>stepFsm</code> 呼叫 <code>handAcc.draw(accCtx, mounts.handNear, headR)</code>,<code>stuckWeaponEntry</code>/<code>itemEntry</code> 的 <code>draw</code> 一路把同一個 <code>mount</code> 原封不動傳進 <code>drawWeaponParts</code>,座標讀取本身沒有斷開、沒有引用錯變數。再用截圖直接驗證掛載點是否「跟得上」手臂:同一件配件(警棍)在走路循環的連續影格中截圖比對,配件每一幀都確實跟著手臂擺動角度同步移動,只是永遠拖著一段固定距離的空隙——證實這不是「座標沒讀到」,而是「座標讀到了,但被系統性地平移到一個沒有東西填補的空位」。<br><br><b>真正根因</b>:v48 當時新增的 <code>WEAPON_HELD_OUTWARD</code>(0.8 headR,約等於 <code>longlimb</code> 原型自己的 <code>legW/headR</code> 比例,也就是整條腿的「直徑」)把整個武器座標系原點平移離開掛載點本身,平移後的新原點才是握持點真正落腳的位置,但平移路徑上完全沒有繪製任何東西去填補這段距離。長劍、武士刀這類總長較長的配件,因為握把到尾端還有相當長度,平移後仍有機會與腿部剪影重疊、看起來像貼合;但警棍、火把、馬克杯這類總長偏短、握持點又落在其中一端附近的配件,平移量已經超過配件自身尾端能延伸回去的距離,於是懸空脫節。用同一手法測試偏移量 0(配件貼合但長劍幾乎整段被腿吞掉,回到 v48 想解決的原始問題)到 0.8(配件懸空)之間多組數值,搭配這個原型 <code>legW/2 ≈ 0.42 headR</code>(從整條腿的直徑改成半徑,即腿的邊緣而非中心)這個有意義的量,而非隨意再猜一個常數。<br><br><b>修正</b>:<code>WEAPON_HELD_OUTWARD</code> 從 0.8 降到 0.42,並在 <code>drawWeaponParts</code> 內對 <code>c.shadowBlur</code> 逐 part 重設(見下方光劍說明,同一個迴圈這輪也要支援新的發光 part,避免殘留狀態互相污染)。全 92 款配件在 <code>longlimb</code>、<code>chubby</code> 兩種原型、停下/走路姿態下重新截圖比對,警棍/火把/馬克杯/聖杯/十字架/鳶形盾等短小配件全數貼合、沒有懸空縫隙;長劍/武士刀等長配件的刀身分離度也維持在可接受範圍(彎刀這類本來就偏短的彎刀類配件,刀身可視度跟 v48 時一樣有限,不是這次改動造成的退步,留給未來個別配件 <code>heldTilt</code> 覆寫值處理)。17 原型 × 8 個姿態 × 92 款配件輪替重新跑過,zero console 錯誤。<br><br><b>美術修正一:武士刀改為材質配色</b>——使用者認為原本整把套用稀有度金黃色(<code>RARITY_STYLE.S</code>)不像武士刀的真實材質。刀身、鍔、柄、鐺(パンプル)四個 part 各自加上明確的 <code>part.color</code>(鋼灰刀身 <code>#c7ccd3</code>、暗紅鍔跟鐺 <code>#5c2028</code>、深色柄 <code>#1c1b1d</code>)。依 <code>resolveWeaponColor()</code> 既有優先權,<code>part.color</code> 蓋過 <code>style.color</code> 蓋過 <code>style.rarity</code> 查表,武士刀的視覺顏色從此不再經過 <code>RARITY_STYLE.S</code>——這不是拋棄稀有度解耦原則,而是判斷「這批顏色屬於武士刀自身固定的材質特徵(鋼是鋼、鞘是暗紅),不是稀有度分級決定的視覺效果」,跟火把火焰、手電筒光束原本就走 <code>part.color</code> 這條路徑是同一個分類,<code>rarity:'S'</code> 保留在註冊表上純粹供未來稀有度相關 UI(邊框、排序)查詢用,不再驅動任何實際畫面顏色;<code>RARITY_STYLE.S</code> 本身仍保留給未來真正想要「純粹套用分級色、沒有自己材質」的配件使用。<br><br><b>美術修正二:光劍改為核心發光層次</b>——原本刀身是單一 <code>polygon</code> 整片套用 <code>style.color</code>,使用者要求改成「握把維持中性深色、刀身核心發亮、外圍疊一層半透明色暈」的星際大戰式呈現。刀身拆成兩層同心 <code>polygon</code>:外層(較寬,新增的 <code>p.glow</code> 數值觸發 <code>drawWeaponParts</code> 迴圈內對這個 part 設定 <code>c.shadowColor</code>/<code>c.shadowBlur</code> 做出柔和暈染,填色本身也改成半透明 <code>rgba()</code>)不帶自己的 <code>part.color</code>,因此沿用 <code>style.color</code>——五款配色現在只由這一層決定;內層(較窄)則帶固定 <code>part.color:'#f6f9ff'</code> 的亮白,不論外層是哪個顏色都保持核心發白光。握把(<code>shaft</code>+兩個 <code>crossbar</code>+尾端 <code>circle</code>)四個 part 全部加上固定的 <code>part.color:'#3a3b40'</code> 深灰金屬色,不再吃 <code>style.color</code>,五款配色因此只有刀身在變、握把維持一致的金屬握感。五款(螢光藍/綠/紅/黃/亮白)全部套用同一套「核心亮白+外層半透明色暈」邏輯,只有 <code>opts.color</code> 這個 rgba 字串本身的色相不同,截圖逐款確認發光層次一致。<br><br>兩項美術修正都沒有更動 <code>resolveWeaponColor()</code> 的既有優先權邏輯本身,只是更精準地運用「哪個顏色該寫在 part 上(材質固有)、哪個該留給 style(款式/稀有度決定)」這個既有的資料結構分工。</p>
@@ -3700,7 +3701,28 @@
   // of WEAPON_HELD_OUTWARD by design: one constant handles "how far from
   // the leg", this one handles "does it look gripped", and they're allowed
   // to move separately in any future tuning pass.
-  const WEAPON_GRIP_WRAP_R = 0.22;
+  //
+  // v48.4 correction: 0.22 fixed the FLOATING bug (no gap between item and
+  // body) but user testing caught that it never actually reads as "held in
+  // the palm" -- root cause traced by comparing rendered pixels, not just
+  // eyeballing: this disc is filled in SIL, the exact same color as the
+  // leg it's drawn on top of. At 0.22 headR the disc's radius (~1.65px at
+  // headR=7.5) sits ENTIRELY inside the leg's own silhouette in ordinary
+  // standing poses, so it contributes zero visible pixels -- there is no
+  // color boundary between "disc" and "leg" for the eye to read as a
+  // fist. The disc was doing its job (bridging the coordinate gap) while
+  // being genuinely invisible, which is exactly why enlarging WEAPON_HELD_
+  // OUTWARD's grip-adjacent geometry never helped either: nothing was
+  // rendering a hand-shaped silhouette at all. Raised to 0.45 -- confirmed
+  // by screenshot that this is enough for the disc to visibly poke PAST
+  // the leg's own edge as a small knuckle-like bulge at the grip point
+  // (checked longlimb/chubby/bighead across 6 items each), which is what
+  // actually reads as "gripped" in a same-color silhouette system: not
+  // matching the arm's own end-cap size (that was the 0.22 reasoning, and
+  // it's precisely why 0.22 stayed invisible -- matching the arm's size
+  // means matching its color-blending problem too), but being large
+  // enough to break the leg's own outline.
+  const WEAPON_GRIP_WRAP_R = 0.45;
 
   // ==================== component XIV: colored accessories (v48) ====================
   // Every prior round's accessory rendered as flat SIL with zero
@@ -5631,26 +5653,31 @@
   // extreme. A rigid transform that forces the weapon's own two grip
   // points to land exactly on both moving mounts would have to STRETCH
   // the weapon's rendered length by that same ~3x range every stride --
-  // exactly the "扭曲變形" distortion risk flagged in the brief. Instead
-  // this renders the weapon ONCE at a BLENDED synthetic mount -- the
-  // midpoint of handNear/handFar's positions, and the circular mean of
-  // their two angles -- reusing drawWeaponParts completely unchanged (no
-  // stretch, no new geometry math, same WEAPON_HELD_OUTWARD/heldTilt/
-  // gripRatio pipeline every other weapon uses). This blended mount is
-  // dramatically more stable than either individual hand: on the same
-  // measured cycle, the midpoint x drifted under 1px stride-to-stride
-  // while each individual hand's x swung by ~7px, and the blended angle
-  // stayed within a ~3.5deg band vs. ~25-30deg for either hand alone --
-  // because the two arms swing in near-opposite phase, blending cancels
-  // most of each one's individual motion rather than compounding it. Both
-  // hands still visibly grip the shaft: drawTwoHanded draws its own pair
-  // of WEAPON_GRIP_WRAP_R discs at the TRUE handNear/handFar positions
-  // (not the blended point), same technique/constant v48.2 already
-  // established for single-hold weapons, layered on top of whatever
-  // drawWeaponParts' own single grip-wrap disc (at the blended mount)
-  // already drew -- three overlapping discs read as one continuous
-  // "gripped" span along the shaft rather than a gap between two isolated
-  // dots.
+  // exactly the "扭曲變形" distortion risk flagged in the brief.
+  //
+  // v48.4 correction: the first version of this function ALSO blended the
+  // ANGLE (circular mean of near.angle/far.angle, not just position), and
+  // user testing caught that this reads as a completely frozen/static
+  // prop, not a held weapon. Root cause, confirmed with real logged
+  // coordinates rather than guessed: handNear/handFar swing in
+  // near-OPPOSITE phase (that's the whole reason position-blending is so
+  // stable above), so averaging their two angles doesn't just dampen the
+  // swing, it cancels almost all of it BY CONSTRUCTION, for any gait --
+  // logged deathScythe's drawMount.angle across 6 walk-cycle frames and
+  // it moved a total of ~3deg (-225 to -228) while handNear's own angle
+  // moved ~15deg in the same frames, confirming the blended angle isn't
+  // "extra stable," it's structurally inert. Fixed by un-blending the
+  // angle: position stays the midpoint of handNear/handFar (still the
+  // measured-stable quantity above, and it caps how far either hand's own
+  // WEAPON_GRIP_WRAP_R disc can end up from the weapon's origin -- at most
+  // half the near/far separation, vs. anchoring at handNear alone where
+  // handFar could drift the full 6.5-19.4px away with nothing bridging
+  // the gap), but rotation now comes from handNear.angle directly -- the
+  // exact same live, per-frame value every proven single-hold weapon
+  // already uses, not a new formula. Both hands still visibly grip the
+  // shaft via a pair of WEAPON_GRIP_WRAP_R discs drawn at the TRUE
+  // handNear/handFar positions (not the blended point), layered on top of
+  // drawWeaponParts' own single grip-wrap disc at the blended origin.
   function dualGripWeaponEntry(label, shapeKey, opts){
     const shape = WEAPON_SHAPES[shapeKey];
     const rarity = (opts && opts.rarity) || null;
@@ -5659,7 +5686,7 @@
       return {
         x: (near.x + far.x) / 2,
         y: (near.y + far.y) / 2,
-        angle: Math.atan2(Math.sin(near.angle) + Math.sin(far.angle), Math.cos(near.angle) + Math.cos(far.angle))
+        angle: near.angle
       };
     }
     return {
