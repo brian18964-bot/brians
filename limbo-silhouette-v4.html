@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.4 — 修正雙手武器角度凍結、握持點視覺根因</title>
+<title>剪影走路/跑步循環 v48.5 — 修正握持點黑色實心圓 bug</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.4</div>
-    <h1>修正雙手武器角度凍結、握持點視覺根因</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.5</div>
+    <h1>修正握持點黑色實心圓 bug</h1>
+    <p class="sub"><b>問題</b>:v48.4 上線後,所有配件握持點旁邊多出一顆突兀的黑色實心圓,不屬於配件形狀、原本角色手部也沒有這個東西,要求先確認是「除錯標記忘記關閉」還是「配件設計本身的問題」再修正。<br><br><b>根因診斷</b>:確認不是除錯標記——這顆圓就是 v48.2 引入、v48.4 才調大的 <code>WEAPON_GRIP_WRAP_R</code> 握持圓盤本身,是正式渲染邏輯的一部分,只在裝配件時才會畫(沒裝配件時 <code>drawWeaponParts</code> 的 <code>held</code> 分支根本不會執行,原本角色手部確實沒有這個元件),符合使用者列出的第三個排查方向。真正問題出在第二個方向——「尺寸/顏色沒有調整好,呈現成突兀的實心黑圓」:v48.4 為了讓這個圓盤在跟腿同色的情況下還能被看見,把半徑從 0.22 大幅提高到 0.45,讓它確實「戳出」腿部輪廓,但這個圓盤本身只畫在單一點(真實手部座標),跟配件實際開始繪製的位置(偏移後的 <code>drawMount</code>,兩者相距 <code>WEAPON_HELD_OUTWARD</code> 這段距離)沒有任何幾何關聯——半徑一旦大到能被看見,就會被看成一顆單獨浮在配件旁邊的黑球,而不是握把的一部分。<br><br><b>修正</b>:不是再調整半徑數字,而是換掉整個繪製方式——改用這個檔案本來就有的 <code>capsule()</code>(跟四肢、武器杆身同一個繪製原語),畫一條從「真實手部座標」連到「配件實際起筆的 <code>drawMount</code>」的膠囊形,而不是畫一個孤立的圓。這條膠囊天生跟配件共用一個端點(<code>drawMount</code>),不管寬度多少都會自然銜接,不會變成一顆脫節的球——寬度也跟著降回 0.28,不再需要刻意加大到「戳出腿部輪廓」才能被看見,因為現在讓它可見的是膠囊本身連接兩點的形狀,不是半徑大小。雙手持握的關刀、死神鐮刀比照辦理,兩隻手的握持標記分別改成從各自真實座標連到武器共用的混合掛載點的膠囊,不再是兩個孤立圓點。<br><br><b>驗證</b>:<code>longlimb</code>/<code>chubby</code>/<code>bighead</code> 三種原型 × 警棍/火把/馬克杯/巨劍/武士刀/死神鐮刀/關刀七款配件重新截圖比對,黑色實心圓全數消失,握持點呈現平滑連續的剪影,巨劍/武士刀的份量感/材質配色不受影響。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題一:握持位置仍偏上,沒有握在手掌中的感覺</b>——延續 v48.3 的回報,要求先實測 <code>handNear</code>/<code>handFar</code> 真實座標跟配件握柄繪製起點座標是否真正重疊,而非假設。<br><br><b>排查(先量測,不假設)</b>:在 <code>drawWeaponParts</code> 內插入暫時性除錯出口(比對完成後移除),直接印出每一幀 <code>mounts.handNear</code> 的真實座標跟武器內部 <code>drawMount</code>(握持圓盤實際畫的位置)。結果:停下站姿時兩者 y 座標完全相等(誤差 0),走路循環中誤差最大也只有 1-3px(來自 <code>WEAPON_HELD_OUTWARD</code> 既有的水平偏移在角度旋轉下產生的次要垂直分量,不是新問題)。<b>結論:握持點座標本身沒有錯位,不是座標沒對齊的 bug。</b>再進一步比對角色本身的比例——用逐行掃描找出腿部從「軀幹寬」變成「腿寬」的分界 y 值,確認 <code>handNear</code> 落在腿部範圍內、接近腳踝,不是落在髖部。這說明使用者截圖裡看起來「握把貼在髖部附近」的觀感,實際上是這個站姿(停下)本身腿部較短、角色整體較矮胖,握把的絕對位置沒有問題。<br><br><b>那為什麼看起來還是「沒有被握住」?</b>——真正原因是 v48.2 新增的 <code>WEAPON_GRIP_WRAP_R</code> 握持圓盤,顏色是純 <code>SIL</code>(跟腿同色),半徑只有 0.22 headR(約 1.65px),完全落在腿部剪影「內部」,對畫面沒有任何可見的像素貢獻——這個圓盤確實在填補座標空隙(修掉了懸空問題),但因為跟腿同色又完全被腿蓋住,從頭到尾沒有真正畫出任何看得見的「手」形狀,使用者兩輪都在對著一個實際上不可見的元件抱怨「看不出握感」,抱怨完全合理。<br><br><b>修正</b>:<code>WEAPON_GRIP_WRAP_R</code> 從 0.22 提高到 0.45——不是為了貼合手臂本身的粗細(那正是讓它被腿吃掉的原因),而是要大到足以「戳出」腿部輪廓邊緣,形成一個看得見的拳頭狀突起。截圖比對 longlimb/chubby/bighead 三種原型 × baton/katana/greatsword/guandao/torch/mug 六款配件,握持點都出現清楚的突起,握感明顯改善。<br><br><b>問題二:關刀、死神鐮刀完全沒有跟著手臂擺動</b>——這是比握持位置更嚴重的問題,先直接量測角度數值而非猜測。<br><br><b>根因(用實測數字鎖定,不是臆測)</b>:v48.3 的雙手持握機制,除了位置取兩手中點,角度也取兩手角度的「圓形平均」。log 死神鐮刀走路循環 6 幀的實際渲染角度,發現只在 -225°~-228° 之間變動(總共 3°),同時間 <code>handNear.angle</code> 自己從 162° 動到 177°(變動 15°)。原因:<code>handNear</code>/<code>handFar</code> 是反向步態相位擺動(一手前擺、另一手後擺),兩者角度平均在數學上會互相抵銷掉幾乎全部的擺動量——不管走路擺動多大,平均值結構性地趨近一個定值,這不是「阻尼過強」的程度問題,是這個公式從根本上就不會產生看得出來的動態,武器因此讀起來像固定裝飾。<br><br><b>修正</b>:比照建議,不再發明新公式——角度直接改用 <code>handNear.angle</code>(跟所有已驗證過的單手武器完全相同的即時來源),位置維持雙手中點不變(仍然是量測上最穩定、能限制兩手握持圓盤偏移量的做法,只是不再用它決定角度)。修正後重新量測:武器角度逐幀精確跟隨 <code>handNear.angle - 50°</code>(握持傾角常數)同步變化,兩者每一幀的差值固定不變,確認角度來源正確接上即時擺動值。<br><br><b>驗證</b>:走路循環連續截圖(8 格/配件,見下方附圖)確認三款配件角度都隨步態自然擺動、不再凍結,握持點的拳頭狀突起清楚可見。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求</b>:新增三款份量感誇張的大型武器——巨劍/雙手大劍(單手持握,但握把跟份量感要比現有 A 組其他武器誇張)、關刀(長柄寬刃,雙手持握)、死神鐮刀(長柄+末端彎曲鐮刀刃,雙手持握),要求握把跟手部掛載點有貼合包覆感、雙手持握的兩個配件要讓 <code>handNear</code>/<code>handFar</code> 分別對應武器上的位置(不能只固定單一掛載點)、走路擺動時做安全餘裕驗證、雙掛載點擺動同步性驗證,並針對 <code>rarity</code> 主動提出建議。<br><br><b>形狀設計(先離線孤立渲染定案,再接上角色)</b>:比照這個檔案一貫的「先在乾淨背景上放大確認輪廓,再接進角色」做法(沿用暫時性 <code>window.__isolatedDraw</code> 除錯出口,驗證完成後移除,不進正式程式碼)。巨劍——longsword 的刀身/護手/握柄/柄頭四個 part 全部等比放大(刀身半寬 0.1→0.22、護手半長 0.22→0.4、握柄寬 0.15→0.22 且明顯加長、柄頭 0.1→0.18),總長 2.98 超過武士刀的 2.53,是全目錄最長的劍。關刀——寬幅彎刀 <code>polygon</code>(正 dx 側是主要弧形刃,負 dx 側在刃根附近往外翻出一個鉤,是跟其他斧類/彎刀類配件區隔的關鍵特徵),接一根全目錄最長的素杆(2.75)。死神鐮刀——dist0 是鉤刃尖端,一個 dx 最大達 0.85 的大幅彎鉤 <code>polygon</code>,對比筆直的杆身(刻意不用彎曲杆身,讓「刃彎、柄直」的對比更清楚,符合需求原文)。三款第一版孤立渲染就達到可辨識的輪廓效果,沒有經歷返工。<br><br><b>握把貼合(沿用 v48.2 剛確認過的機制,沒有另外發明)</b>:三款配件握持點都直接吃 <code>WEAPON_GRIP_WRAP_R</code> 圓盤機制,跟警棍、長劍等既有配件走同一套邏輯,不是另外接了不同的定位邏輯。<br><br><b>巨劍額外的份量感問題</b>:接上角色後直接比對巨劍跟武士刀的畫面尺寸,發現兩者看起來差不多大——不是形狀資料錯,是巨劍刀身寬度(0.44 headR)遠超過既有的 <code>WEAPON_HELD_OUTWARD</code>(0.42,是照一般刀劍寬度抓的貼腿間距)所能露出的範圍,超出的寬度大多還是疊在腿部剪影裡面(同色不可見),誇張的份量感因此被腿吃掉了大半。新增 <code>weapon.heldOutward</code> 覆寫(仿照既有的 <code>heldTilt</code>/<code>heldMaxAngle</code> 覆寫機制),巨劍設為 0.75,重新截圖比對後刀身寬度才真正顯現出來,護手/柄頭跟一般劍類的視覺量級明顯拉開差距。<br><br><b>雙手持握機制(新機制,非既有 <code>holdStyle:'dual'</code>)</b>:既有的 <code>'dual'</code>(沙鈴在用)語意是「同一形狀在兩個掛載點各畫一份」,套用在關刀/死神鐮刀上會變成畫出兩把武器,不是一把橫跨雙手的武器,是錯的。真正的難題是 <code>handNear</code>/<code>handFar</code> 兩手是各自獨立擺動的(反向步態相位),實測 longlimb 走路循環中兩手距離在單一步態內就從 6.5px 變動到 19.4px(headR=7.5,約 0.9-2.6 倍頭半徑),角度差最大到約 50°——若用剛性變換硬把武器兩個握把點分別釘死在兩隻手上,武器每一步就要跟著伸縮將近 3 倍長度,正是需求提到的「扭曲變形」風險。改用一個折衷但有數據支撐的做法:武器整把仍然只用單一混合掛載點繪製(兩手位置的中點、兩手角度的圓形平均),完全沿用既有 <code>drawWeaponParts</code> 管線,不做任何伸縮;同一組實測數據顯示這個混合點穩定得多——x 座標單一步態內漂移不到 1px(對比單手 ~7px),角度只在 ~3.5° 帶內浮動(對比單手 ~25-30°),因為兩手反向擺動時混合點會互相抵銷大部分個別擺動,不是單純平均巧合。雙手「看起來確實握著」的部分,另外在 <code>handNear</code>/<code>handFar</code> 各自的真實座標上疊一個 <code>WEAPON_GRIP_WRAP_R</code> 圓盤(跟混合掛載點自己那個圓盤疊加,三個圓盤在握把段連成一片,不是兩個孤立的點)。新增 <code>dualGripWeaponEntry()</code> 註冊工廠、<code>holdStyle:'twoHanded'</code> 旗標,<code>stepFsm</code> 呼叫端據此分流到新的 <code>drawTwoHanded(ctx, near, far, headR)</code>,不影響任何既有配件的 <code>draw()</code> 呼叫路徑。<br><br><b>驗證</b>:走路循環連續截圖(6 張/配件)確認三款配件全程貼合手部、沒有懸空;關刀/死神鐮刀在混合掛載點機制下,武器整體角度肉眼幾乎不隨步態擺動,讀起來像真的被兩手穩穩握住的長桿,不是跟著某一隻手亂晃。安全餘裕驗證覆蓋 5 種代表性原型(含大頭模糊型、大頭娃娃、扁寬模糊型等頭身比例最極端的組合)× 坐下/躺下/趴下/跳躍 4 種持續握持姿態,目視確認三款配件在所有組合下都沒有跟頭部剪影重疊(大頭娃娃+跳躍的巨劍最接近,但劍身仍落在頭部輪廓外側)。17 原型 × 8 姿態 × 74 配件完整回歸測試 zero console 錯誤。<br><br><b><code>rarity</code> 建議(未逕自決定,列 <code>null</code> 待確認)</b>:三款目前 <code>rarity</code> 都設為 <code>null</code>,但建議——巨劍論份量感/長度已經逼近武士刀等級,適合列 <code>rarity:'S'</code>;關刀、死神鐮刀是全目錄唯一具備「雙手持握」機制的配件,機制本身的稀有性加上長度規格(死神鐮刀 3.6、關刀 3.8,都超過長矛),建議至少同列 <code>'S'</code>,如果想讓「雙手持握」這個機制本身有更高辨識度,也可以考慮新開一個介於 S 和 SSS 之間的專屬分級(例如帶一點暗紅/暗紫的稀有色,呼應「巨型兵器」主題而不是重複武士刀的鋼灰材質色或光劍的螢光色系)——實際色票由你決定,<code>RARITY_STYLE</code> 已經是現成的查表機制,新增一個 tier 只需要加一行。</p>
     <p class="sub"><b>問題</b>:v48.1 修掉懸空後,使用者用兩張新截圖回報配件雖然貼到掛載點旁邊了,但看起來像「配件貼在手掌旁邊」而非「手真正握住配件」——邊緣接觸不等於握持感,要求檢查 <code>gripRatio</code>/握持位置參數是否該讓配件握柄跟手部形狀有視覺重疊/包覆感,並確認新配件(警棍)是不是套用了跟劍類不同的定位邏輯。<br><br><b>排查</b>:確認警棍與長劍等劍類配件其實走的是同一套 <code>drawWeaponParts()</code>/<code>WEAPON_HELD_OUTWARD</code> 邏輯,沒有分岔——問題不是「新配件沒接好」,是這套邏輯本身,不論哪款配件都只解決了「有沒有貼到」,沒解決「像不像握住」。追根究底:v48.1 的 0.42 headR 偏移量,是照這個原型自己的「腿部半徑」抓的(避免刀身被腿吞掉的需求),但握持感看的是「手」不是「腿」——角色的手臂末端本身就有一個圓頭端(<code>armW/2</code>),量測 longlimb/tall/petite/bighead/chubby 五種原型的 <code>armW/2</code> 相對 <code>headR</code> 比例落在 0.15-0.26 之間,遠小於腿部的 0.42,配件的握持點被偏移到已經超出手部圓頭範圍以外的地方,兩者只剩邊緣相切,難怪沒有包覆感。<br><br><b>修正</b>:不是再縮小 <code>WEAPON_HELD_OUTWARD</code>(這樣會重新讓刀身被腿吞掉,是這個檔案已經來回打過兩次的根因,不重蹈覆轍),而是新增一個獨立、專職負責「看起來像握住」的機制——<code>WEAPON_GRIP_WRAP_R</code>(0.22 headR,五種原型 <code>armW/2</code> 比例的中間值,截圖逐原型確認沒有明顯過大),在 <code>drawWeaponParts()</code> 對「held」姿態渲染時,於真正的手部掛載點(不是偏移後的 <code>drawMount</code>)畫一個 SIL 色的小圓盤,同時疊在角色手臂本身的圓頭端跟配件握柄段附近,把兩者視覺黏在一起——不管配件本身握柄多細(警棍、火把這類尤其明顯),都能得到包覆感,不再依賴配件自己的寬度是否剛好搆得到手。<code>WEAPON_HELD_OUTWARD</code>(管刀身離腿多遠)跟 <code>WEAPON_GRIP_WRAP_R</code>(管看起來像不像被握住)刻意拆成兩個獨立常數,以後兩者可以各自調整不互相牽動。五種原型 × 長劍/警棍/武士刀/火把/馬克杯等代表性配件重新截圖驗證,握持感明顯改善,17 原型 × 8 姿態 × 71 配件回歸測試 zero console 錯誤。<br><br><b>其他調整</b>:短劍依使用者指示改名為「匕首」(僅改標籤文字,幾何與握持參數不變,本來就是這批劍類最短的一款,改名後更貼切)。依使用者提供的精簡名單,移除 21 款配件——啤酒大木杯、保溫瓶、披薩片、拐杖糖、平板電腦、遊戲手把、麥克風、相機、手槍、直笛、大聲公、鉛筆、直尺、量角器、信封、地球儀、燈籠、氣球、紙飛機、牙刷、試管——這批配件本身尺寸偏小,握在角色手上不易辨識,使用者判斷去留,直接刪除對應的 <code>ITEM_SHAPES</code> 幾何定義與 <code>HAND_ACCESSORY_REGISTRY</code> 註冊項(下拉選單自動同步,不需要另外改 UI),各分組數量註解一併更新。目前手部配件庫剩 71 款(含示範用的 <code>sword</code>/<code>canteen</code> 兩項)+ 隨身寵物/頭部配件不受影響。</p>
@@ -3710,19 +3711,34 @@
   // headR=7.5) sits ENTIRELY inside the leg's own silhouette in ordinary
   // standing poses, so it contributes zero visible pixels -- there is no
   // color boundary between "disc" and "leg" for the eye to read as a
-  // fist. The disc was doing its job (bridging the coordinate gap) while
-  // being genuinely invisible, which is exactly why enlarging WEAPON_HELD_
-  // OUTWARD's grip-adjacent geometry never helped either: nothing was
-  // rendering a hand-shaped silhouette at all. Raised to 0.45 -- confirmed
-  // by screenshot that this is enough for the disc to visibly poke PAST
-  // the leg's own edge as a small knuckle-like bulge at the grip point
-  // (checked longlimb/chubby/bighead across 6 items each), which is what
-  // actually reads as "gripped" in a same-color silhouette system: not
-  // matching the arm's own end-cap size (that was the 0.22 reasoning, and
-  // it's precisely why 0.22 stayed invisible -- matching the arm's size
-  // means matching its color-blending problem too), but being large
-  // enough to break the leg's own outline.
-  const WEAPON_GRIP_WRAP_R = 0.45;
+  // fist. Raised to 0.45 to force it past the leg's own edge.
+  //
+  // v48.5 correction: 0.45 fixed invisibility but overshot into a NEW
+  // problem user screenshots caught immediately -- a stark, perfectly
+  // round black ball sitting beside the hand, connected to the weapon by
+  // only a thin line. Root cause: a lone disc drawn at `mount` has no
+  // relationship to the weapon's own geometry, which starts at `drawMount`
+  // -- WEAPON_HELD_OUTWARD away. Growing the disc's radius just grows a
+  // circle around a point that isn't where the weapon visually begins, so
+  // past a certain size it stops reading as "part of the grip" and starts
+  // reading as an unrelated foreign shape floating next to it -- exactly
+  // what a same-color silhouette makes obvious as soon as the shape
+  // doesn't follow the weapon's own contour. Fixed by changing what gets
+  // drawn, not just its size: a `capsule()` spanning mount -> drawMount
+  // (reusing the same primitive every limb/weapon shaft already uses)
+  // instead of a disc at a single point. This is structurally motivated,
+  // not another guessed constant -- WEAPON_HELD_OUTWARD is precisely the
+  // gap between "true hand" and "weapon's own origin," so a shape that
+  // explicitly CONNECTS those two points (rather than sitting at just one
+  // of them) can't help but look attached regardless of size, because it
+  // shares an endpoint with the weapon's own rendering by construction.
+  // Confirmed by screenshot (longlimb/chubby/bighead x baton/torch/mug/
+  // greatsword/katana/deathScythe/guandao) that this reads as a smooth
+  // continuation from leg into hilt/crossguard with no isolated blob, and
+  // re-tuned the width down to 0.28 -- no longer needs to be oversized to
+  // "poke out," since the capsule's own length (not a wide radius) is what
+  // now carries the visible connection.
+  const WEAPON_GRIP_WRAP_R = 0.28;
 
   // ==================== component XIV: colored accessories (v48) ====================
   // Every prior round's accessory rendered as flat SIL with zero
@@ -3820,14 +3836,12 @@
         y: mount.y + py * outward * headR,
         angle: Math.min(rawAngle, maxAngle)
       };
-      // WEAPON_GRIP_WRAP_R fist disc (v48.2) -- see that constant's own
-      // comment. Drawn at the TRUE mount, not drawMount, so it anchors to
-      // where the hand actually is regardless of how far WEAPON_HELD_OUTWARD
-      // pushes the item's own origin out.
-      ctx.fillStyle = SIL;
-      ctx.beginPath();
-      ctx.arc(mount.x, mount.y, WEAPON_GRIP_WRAP_R * headR, 0, Math.PI * 2);
-      ctx.fill();
+      // WEAPON_GRIP_WRAP_R grip-bridge capsule (v48.2, capsule shape since
+      // v48.5) -- see that constant's own comment. Spans the TRUE mount to
+      // drawMount, i.e. exactly the gap WEAPON_HELD_OUTWARD just opened up,
+      // so it shares an endpoint with the weapon's own rendering below by
+      // construction rather than being a same-color shape floating nearby.
+      capsule(ctx, mount.x, mount.y, drawMount.x, drawMount.y, WEAPON_GRIP_WRAP_R * headR, SIL);
     }
     const gripRatio = weapon.gripRatio != null ? weapon.gripRatio : DEFAULT_WEAPON_GRIP_RATIO;
     const gripDist = flip ? gripRatio * weapon.totalLen : 0;
@@ -5674,10 +5688,17 @@
   // handFar could drift the full 6.5-19.4px away with nothing bridging
   // the gap), but rotation now comes from handNear.angle directly -- the
   // exact same live, per-frame value every proven single-hold weapon
-  // already uses, not a new formula. Both hands still visibly grip the
-  // shaft via a pair of WEAPON_GRIP_WRAP_R discs drawn at the TRUE
-  // handNear/handFar positions (not the blended point), layered on top of
-  // drawWeaponParts' own single grip-wrap disc at the blended origin.
+  // already uses, not a new formula.
+  //
+  // v48.5 correction: both hands' grip markers were plain discs at the
+  // TRUE handNear/handFar positions, and user screenshots caught the same
+  // "stark floating ball" problem single-hold weapons had -- a disc with
+  // no geometric relationship to the blended origin the weapon actually
+  // renders from. Same fix as drawWeaponParts' own single-hold capsule:
+  // each hand gets a capsule(near/far -> blendedMount) instead of a disc
+  // at a single point, so both hands visibly connect to the SAME shared
+  // point the weapon itself is drawn from, by construction, rather than
+  // three separately-sized coincidentally-nearby shapes.
   function dualGripWeaponEntry(label, shapeKey, opts){
     const shape = WEAPON_SHAPES[shapeKey];
     const rarity = (opts && opts.rarity) || null;
@@ -5694,14 +5715,10 @@
       rarity: rarity,
       holdStyle: 'twoHanded',
       drawTwoHanded: (ctx, near, far, headR) => {
-        drawWeaponParts(ctx, blendedMount(near, far), headR, shape, 'held', style);
-        ctx.fillStyle = SIL;
-        ctx.beginPath();
-        ctx.arc(near.x, near.y, WEAPON_GRIP_WRAP_R * headR, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(far.x, far.y, WEAPON_GRIP_WRAP_R * headR, 0, Math.PI * 2);
-        ctx.fill();
+        const bm = blendedMount(near, far);
+        capsule(ctx, near.x, near.y, bm.x, bm.y, WEAPON_GRIP_WRAP_R * headR, SIL);
+        capsule(ctx, far.x, far.y, bm.x, bm.y, WEAPON_GRIP_WRAP_R * headR, SIL);
+        drawWeaponParts(ctx, bm, headR, shape, 'held', style);
       },
       footStow: {
         placement: 'stuck',
