@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.6 — 移除握持標記,修正連接線與黑點</title>
+<title>剪影走路/跑步循環 v48.7 — 新增掛載點除錯功能;實測否決兩項提案</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.6</div>
-    <h1>移除握持標記機制,修正連接線與黑點</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.7</div>
+    <h1>新增掛載點除錯功能;實測後否決兩項提案變更</h1>
+    <p class="sub"><b>背景</b>:收到一份交接文件,提議三項變更——① 新增「顯示掛載點」除錯按鈕(把 <code>handNear</code>/<code>handFar</code> 真實座標畫成洋紅色小圓點)② 修正雙手武器(關刀/死神鐮刀)的軸線角度算法,從「借用近手自己的擺動角度」改成「直接用兩手真實座標算出的向量方向」③ 修正握持推移(<code>WEAPON_HELD_OUTWARD</code>)的座標系,從「世界座標系偏移」改成「配件自身旋轉後的局部座標系偏移」,理由是文件推論「推移方向跟配件實際畫出來的角度對不上,會造成懸空縫隙」。文件本身也註明②③兩項只完成程式碼推導,沒有實際在瀏覽器測試過。<br><br><b>處理方式</b>:沿用這個檔案一貫的原則——不相信推導,只相信截圖。三項變更都不是直接套用,而是先各自在獨立副本上實作,用①做出來的除錯標記親眼比對修改前後,再決定要不要真的併入正式檔案。<br><br><b>① 掛載點除錯功能——採用</b>:純視覺化工具,不影響任何既有繪製邏輯,新增一顆「顯示掛載點:關/開」按鈕(手機也能點,不需要開發者工具),切換後直接在最終合成畫布上(不經過模糊原型的柔化後製,標記本身永遠銳利)畫出 <code>handNear</code>/<code>handFar</code> 的真實座標,對之後任何握持精確度的討論都很有幫助,先併入正式檔案。<br><br><b>② 雙手武器軸線角度——實測後否決</b>:用①的除錯標記實際渲染關刀/死神鐮刀走路循環比對,發現套用後武器整個轉向指向肩膀/軀幹上方,跟兩個洋紅色掛載點(還停留在腿部附近)完全脫節,讀起來像是一截斷掉的尾巴而不是武器,比修改前明顯更差。<br><br>原因:兩手在這個角色的側身簡化模型裡,x 座標差異其實是模擬「景深」(一手較靠近鏡頭、一手較遠),不是武器實際的握持軸線方向;強行把武器方向對齊這條「近遠手連線」,算出來的角度跟兩手本身的擺動角度(<code>near.angle</code>,原本的做法)可以相差 60-90 度以上,方向徹底不合理。原本用 <code>near.angle</code>(單手擺動角度)雖然只借用了一隻手的資訊,但這隻手的角度至少是這個角色動畫系統裡有意義、經過設計的量,兩手 x 座標差算出的向量則不是。<b>不採用</b>,維持 v48.6 的 <code>angle: near.angle</code>。<br><br><b>③ 握持推移改局部座標系——實測後否決</b>:一樣先用①的除錯標記檢查「文件推論的懸空縫隙」是否真的存在——結果在停下、走路循環多個影格、西洋刺劍、巨劍等配件上,洋紅色掛載點都精確落在配件握把/護手緊鄰的位置,沒有看到縫隙。這點本身就先反駁了這項提案的修改動機。<br><br>再實際套用這項改動測試,發現造成明確倒退:巨劍原本為了避免份量感被腿吃掉,特別把 <code>heldOutward</code> 加大到 0.75(見 v48.3 紀錄),這個放大效果是建立在「往外推移」的方向,是跟角色軀幹垂直、不受配件自己傾角影響的世界座標方向;改成局部座標系後,推移方向變成跟著配件自己的持握傾角(<code>WEAPON_HELD_TILT</code>,多數配件是 -50 度)一起轉,對巨劍來說這個方向不再確實指向遠離腿的一側,實測截圖巨劍護手明顯重新被腿吃掉一部分,份量感倒退回 v48.3 修正前的狀態(兩張截圖並排比對已附在下方回報)。<code>WEAPON_HELD_OUTWARD</code> 當初選擇世界座標系,就是為了讓「離腿多遠」這件事不受個別配件傾角影響、對每一款配件都可預期一致(見該常數本身的既有註解)，改成局部座標系會讓每款配件的實際淨空距離變成跟著自己的傾角亂跑，巨劍只是第一個被抓到的案例。<b>不採用</b>,維持 v48.6 的世界座標系推移。<br><br><b>結論</b>:這輪只有①實際併入正式檔案,②③經實測證實會造成明顯倒退,予以否決並記錄理由。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤(僅新增了除錯按鈕與其事件綁定,沒有動到任何既有繪製邏輯)。</p>
     <p class="sub"><b>問題</b>:v48.5 上線後,使用者回報兩個新問題——① 關刀、死神鐮刀的雙手之間出現一條不該有的連接線;② 黑點問題並未真正解決,幾乎所有配件握持位置仍有黑點,而且已經連續三輪(v48.2 → v48.4 → v48.5)修正同一個握持視覺問題卻沒有徹底解決,要求這次做完整、系統性的排查,不要再假設是單一原因,並回頭檢視整個握持點計算架構是否有根本性設計問題。<br><br><b>排查方式</b>:沒有先猜測就動手改,而是先截圖直接重現兩個問題,確認問題真實存在且理解成因,再動手。<br><br><b>問題①根因(連接線)</b>:重現後直接看到一條明顯的斜線貫穿角色軀幹到武器。追蹤 v48.5 的 <code>dualGripWeaponEntry.drawTwoHanded</code>:兩手的握持標記分別畫成「從 <code>near</code>/<code>far</code> 連到 <code>blendedMount</code>(兩手中點)」的膠囊形。問題在於 <code>blendedMount</code> 本身就定義成 <code>near</code>/<code>far</code> 的中點,三點幾乎共線——兩條膠囊共用同一個端點又幾乎排成一直線,渲染出來自然變成「一條從 <code>handNear</code> 直通 <code>handFar</code> 的連續直線」,不是武器形狀的一部分,是兩個握持標記疊加的副作用,截圖(關刀走路中格)直接證實。<br><br><b>問題②根因(黑點仍在)</b>:先搜尋程式碼裡是否有共用的「握持點視覺化」邏輯——確認全部配件的手持繪製都走同一個 <code>drawWeaponParts()</code> 函式,裡面只有一處畫握持標記的程式碼(這次是 <code>capsule(mount, drawMount, ...)</code>),不是各配件各自獨立的邏輯,問題出在這一處共用邏輯本身,不是個別配件的參數。直接截圖重現(西洋刺劍走路中格)確認黑點確實還在。量測發現:握持標記是一條從真實手部座標連到配件內部 <code>drawMount</code>(偏移後起筆點)的膠囊,長度固定等於 <code>WEAPON_HELD_OUTWARD</code> 產生的偏移量(約 3px),寬度是 <code>WEAPON_GRIP_WRAP_R × headR</code>(約 2px)——這個畫布尺度下(角色整體只有 45px 高),3px 長、2px 寬的膠囊,長寬比不到 1.5:1,兩端的圓角幾乎佔滿整個形狀,視覺上就是會被看成一顆圓點,不是一條「連接兩點」看得出方向的線段,寬扁的物件本來就容易在極小尺度下退化成一個團塊——這不是尺寸沒調好,是「用小尺寸圖形當連接標記」這個技法在這個渲染尺度下的結構性極限。<br><br><b>根本架構檢討(不再逐一調參數)</b>:這是連續第三次為了同一個握持視覺標記引入新的視覺缺陷(v48.2 完全隱形 → v48.4 變成孤立黑球 → v48.5 單手變回黑點、雙手變成連接線)。每一次修正都是「換一種畫法試試看」,但問題的共同點很清楚:在這個純黑剪影、極小渲染尺度的系統裡,任何額外畫在關節處、跟角色/配件本身輪廓沒有直接融合的獨立形狀,最終都會在某種情境下被看成異物,不管是圓點、放大的圓點、或膠囊。<br><br><b>決定:移除握持標記機制,不再嘗試第四種畫法</b>。回到 v48.1 就已經驗證過的核心事實——<code>WEAPON_HELD_OUTWARD</code> 造成的手部與配件起筆點之間的偏移,配件本身單靠這個偏移就已經不會懸空(這是 v48.1 修正、v48.2 之後每一輪都持續成立的事實,這次移除標記後重新截圖確認警棍/火把等原本最容易懸空的配件依然貼合),握持標記從頭到尾解決的是「看起來更像被握住」這個美術加分項,不是懸空這個機能性問題。移除後單手武器不再有黑點,雙手武器不再有連接線,回到乾淨的剪影。「握在手掌中」的精緻視覺效果,在目前這個純色剪影、角色僅 10px 量級的渲染尺度下,已經三次證明任何獨立標記形狀都會在某些情境下變成明顯瑕疵——如果之後還要追求這個效果,可能需要角色本身有獨立的手部造型資產(不同於手臂本身的圓頭端),而不是配件系統這邊再疊加標記圖形,這會是角色本體的調整,超出配件系統本身的範圍。<br><br><b>驗證</b>:全部 74 款配件在 <code>longlimb</code> 原型停下姿態下重新截圖(見下方三張總覽圖),逐款確認沒有黑點或連接線殘留;額外針對關刀、死神鐮刀、西洋刺劍、警棍、火把、武士刀、巨劍跑一次走路循環截圖,確認乾淨且原有的握持角度追隨、巨劍/武士刀材質配色都不受影響。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題</b>:v48.4 上線後,所有配件握持點旁邊多出一顆突兀的黑色實心圓,不屬於配件形狀、原本角色手部也沒有這個東西,要求先確認是「除錯標記忘記關閉」還是「配件設計本身的問題」再修正。<br><br><b>根因診斷</b>:確認不是除錯標記——這顆圓就是 v48.2 引入、v48.4 才調大的 <code>WEAPON_GRIP_WRAP_R</code> 握持圓盤本身,是正式渲染邏輯的一部分,只在裝配件時才會畫(沒裝配件時 <code>drawWeaponParts</code> 的 <code>held</code> 分支根本不會執行,原本角色手部確實沒有這個元件),符合使用者列出的第三個排查方向。真正問題出在第二個方向——「尺寸/顏色沒有調整好,呈現成突兀的實心黑圓」:v48.4 為了讓這個圓盤在跟腿同色的情況下還能被看見,把半徑從 0.22 大幅提高到 0.45,讓它確實「戳出」腿部輪廓,但這個圓盤本身只畫在單一點(真實手部座標),跟配件實際開始繪製的位置(偏移後的 <code>drawMount</code>,兩者相距 <code>WEAPON_HELD_OUTWARD</code> 這段距離)沒有任何幾何關聯——半徑一旦大到能被看見,就會被看成一顆單獨浮在配件旁邊的黑球,而不是握把的一部分。<br><br><b>修正</b>:不是再調整半徑數字,而是換掉整個繪製方式——改用這個檔案本來就有的 <code>capsule()</code>(跟四肢、武器杆身同一個繪製原語),畫一條從「真實手部座標」連到「配件實際起筆的 <code>drawMount</code>」的膠囊形,而不是畫一個孤立的圓。這條膠囊天生跟配件共用一個端點(<code>drawMount</code>),不管寬度多少都會自然銜接,不會變成一顆脫節的球——寬度也跟著降回 0.28,不再需要刻意加大到「戳出腿部輪廓」才能被看見,因為現在讓它可見的是膠囊本身連接兩點的形狀,不是半徑大小。雙手持握的關刀、死神鐮刀比照辦理,兩隻手的握持標記分別改成從各自真實座標連到武器共用的混合掛載點的膠囊,不再是兩個孤立圓點。<br><br><b>驗證</b>:<code>longlimb</code>/<code>chubby</code>/<code>bighead</code> 三種原型 × 警棍/火把/馬克杯/巨劍/武士刀/死神鐮刀/關刀七款配件重新截圖比對,黑色實心圓全數消失,握持點呈現平滑連續的剪影,巨劍/武士刀的份量感/材質配色不受影響。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題一:握持位置仍偏上,沒有握在手掌中的感覺</b>——延續 v48.3 的回報,要求先實測 <code>handNear</code>/<code>handFar</code> 真實座標跟配件握柄繪製起點座標是否真正重疊,而非假設。<br><br><b>排查(先量測,不假設)</b>:在 <code>drawWeaponParts</code> 內插入暫時性除錯出口(比對完成後移除),直接印出每一幀 <code>mounts.handNear</code> 的真實座標跟武器內部 <code>drawMount</code>(握持圓盤實際畫的位置)。結果:停下站姿時兩者 y 座標完全相等(誤差 0),走路循環中誤差最大也只有 1-3px(來自 <code>WEAPON_HELD_OUTWARD</code> 既有的水平偏移在角度旋轉下產生的次要垂直分量,不是新問題)。<b>結論:握持點座標本身沒有錯位,不是座標沒對齊的 bug。</b>再進一步比對角色本身的比例——用逐行掃描找出腿部從「軀幹寬」變成「腿寬」的分界 y 值,確認 <code>handNear</code> 落在腿部範圍內、接近腳踝,不是落在髖部。這說明使用者截圖裡看起來「握把貼在髖部附近」的觀感,實際上是這個站姿(停下)本身腿部較短、角色整體較矮胖,握把的絕對位置沒有問題。<br><br><b>那為什麼看起來還是「沒有被握住」?</b>——真正原因是 v48.2 新增的 <code>WEAPON_GRIP_WRAP_R</code> 握持圓盤,顏色是純 <code>SIL</code>(跟腿同色),半徑只有 0.22 headR(約 1.65px),完全落在腿部剪影「內部」,對畫面沒有任何可見的像素貢獻——這個圓盤確實在填補座標空隙(修掉了懸空問題),但因為跟腿同色又完全被腿蓋住,從頭到尾沒有真正畫出任何看得見的「手」形狀,使用者兩輪都在對著一個實際上不可見的元件抱怨「看不出握感」,抱怨完全合理。<br><br><b>修正</b>:<code>WEAPON_GRIP_WRAP_R</code> 從 0.22 提高到 0.45——不是為了貼合手臂本身的粗細(那正是讓它被腿吃掉的原因),而是要大到足以「戳出」腿部輪廓邊緣,形成一個看得見的拳頭狀突起。截圖比對 longlimb/chubby/bighead 三種原型 × baton/katana/greatsword/guandao/torch/mug 六款配件,握持點都出現清楚的突起,握感明顯改善。<br><br><b>問題二:關刀、死神鐮刀完全沒有跟著手臂擺動</b>——這是比握持位置更嚴重的問題,先直接量測角度數值而非猜測。<br><br><b>根因(用實測數字鎖定,不是臆測)</b>:v48.3 的雙手持握機制,除了位置取兩手中點,角度也取兩手角度的「圓形平均」。log 死神鐮刀走路循環 6 幀的實際渲染角度,發現只在 -225°~-228° 之間變動(總共 3°),同時間 <code>handNear.angle</code> 自己從 162° 動到 177°(變動 15°)。原因:<code>handNear</code>/<code>handFar</code> 是反向步態相位擺動(一手前擺、另一手後擺),兩者角度平均在數學上會互相抵銷掉幾乎全部的擺動量——不管走路擺動多大,平均值結構性地趨近一個定值,這不是「阻尼過強」的程度問題,是這個公式從根本上就不會產生看得出來的動態,武器因此讀起來像固定裝飾。<br><br><b>修正</b>:比照建議,不再發明新公式——角度直接改用 <code>handNear.angle</code>(跟所有已驗證過的單手武器完全相同的即時來源),位置維持雙手中點不變(仍然是量測上最穩定、能限制兩手握持圓盤偏移量的做法,只是不再用它決定角度)。修正後重新量測:武器角度逐幀精確跟隨 <code>handNear.angle - 50°</code>(握持傾角常數)同步變化,兩者每一幀的差值固定不變,確認角度來源正確接上即時擺動值。<br><br><b>驗證</b>:走路循環連續截圖(8 格/配件,見下方附圖)確認三款配件角度都隨步態自然擺動、不再凍結,握持點的拳頭狀突起清楚可見。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
@@ -159,6 +160,7 @@
       <button id="fsmProneBtn" type="button" data-target="prone">趴下</button>
       <button id="fsmJumpBtn" type="button" data-target="jump">跳躍</button>
       <button id="fsmFrontBtn" type="button" data-target="front">正面站姿</button>
+      <button id="debugMountsBtn" type="button" style="margin-left:auto;">顯示掛載點:關</button>
     </div>
     <p class="note mono" id="fsmStatus" style="font-size:12px;">目前狀態:待機</p>
     <p class="note">點任一顆按鈕呼叫 <code>requestState(target)</code>,狀態機用 BFS 在狀態圖上找出從目前狀態到目標的路徑,自動依序播放中間必經的過渡,每一段過渡一定完整播完才會接下一段,連續點擊會排隊而不是互相打斷。</p>
@@ -6090,6 +6092,25 @@
           }
         });
       }
+      // v48.7 debug aid: window.__DEBUG_MOUNTS, toggled via #debugMountsBtn
+      // (mobile-friendly -- a real button, not a console command), draws
+      // the true handNear/handFar coordinates as small magenta dots
+      // directly on ctx (the final composited canvas, not accCtx/
+      // accessoryBuf) so blur-archetype softening never touches this
+      // marker -- it stays crisp regardless of archetype, and can't be
+      // mistaken for a rendering artifact since magenta never appears
+      // anywhere else in this file's palette.
+      if (typeof window !== 'undefined' && window.__DEBUG_MOUNTS){
+        ctx.save();
+        ctx.fillStyle = '#ff00ff';
+        [mounts.handNear, mounts.handFar].forEach(function(m){
+          if (!m) return;
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.restore();
+      }
       drawMountSymbol(ctx, mounts, mounts.symbol);
     }
   }
@@ -6235,6 +6256,21 @@
   document.querySelectorAll('[data-target]').forEach(function(btn){
     btn.addEventListener('click', function(){ requestState(btn.dataset.target); });
   });
+  // debugMountsBtn (v48.7): mobile-usable toggle for window.__DEBUG_MOUNTS
+  // -- see stepFsm's own comment on the marker itself. Guarded with
+  // `if (debugMountsBtn)` deliberately: if this element were ever missing
+  // from the DOM, an unguarded .addEventListener would throw and abort
+  // every initializer that runs AFTER this line (archetype/accessory
+  // dropdown wiring included), which would be a far worse failure than
+  // one debug button silently not working.
+  const debugMountsBtn = document.getElementById('debugMountsBtn');
+  window.__DEBUG_MOUNTS = false;
+  if (debugMountsBtn){
+    debugMountsBtn.addEventListener('click', function(){
+      window.__DEBUG_MOUNTS = !window.__DEBUG_MOUNTS;
+      debugMountsBtn.textContent = '顯示掛載點:' + (window.__DEBUG_MOUNTS ? '開' : '關');
+    });
+  }
   // side-overlay toggle buttons: independent of requestState/BFS entirely --
   // just flips fsm.overlay on/off and resets its own little clock, never
   // touches fsm.currentState/pendingTarget
