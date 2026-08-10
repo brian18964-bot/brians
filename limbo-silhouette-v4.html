@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.8 — 關刀/死神鐮刀改水平持握角度</title>
+<title>剪影走路/跑步循環 v48.9 — 巨劍縮小推移距離;關刀/死神鐮刀維持雙手掛載機制</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.8</div>
-    <h1>關刀/死神鐮刀改水平持握角度,解決「擱在身邊」的觀感問題</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.9</div>
+    <h1>巨劍縮小推移距離修正握把懸空;實測否決關刀/死神鐮刀改用單手掛載的提案</h1>
+    <p class="sub"><b>背景</b>:針對 v48.8 的修正結果,使用者提出兩個具體問題:① 關刀、死神鐮刀的配件精準度問題「先擺一邊」,但想確認這兩款是否跟長杖、三叉戟用同一套掛載方式,如果不是,建議直接套用長杖/三叉戟的方式;② 巨劍的握拿點沒有對齊掛載點錨點。兩者都用掛載點除錯標記實際渲染驗證,而非直接套用建議。<br><br><b>① 關刀/死神鐮刀掛載機制——查證後維持原狀,不採用單手掛載</b>:查證後確認長杖、三叉戟(以及幾乎所有其他配件)用的是 <code>stuckWeaponEntry</code>(單手掛載,只認 <code>handNear</code> 一個真實座標),跟關刀/死神鐮刀用的 <code>dualGripWeaponEntry</code>(雙手掛載,取 <code>handNear</code>/<code>handFar</code> 的中點)不是同一套機制——這點確認了使用者的觀察沒錯,中點座標的確不對應任何一隻真實的手,是這兩款配件「你看不到的問題」的真正來源。<br><br>但實際把這兩款配件改成跟長杖/三叉戟一樣的單手掛載後渲染測試,發現雖然掛握點確實精準貼齊 <code>handNear</code>(跟長杖/三叉戟一樣零縫隙),卻在跑步循環的多個影格中出現更嚴重的新問題:又細又長的柄身,因為只固定在單一隻手(單條腿)的座標上,在跑步交叉腿的某些影格整段被同色的腿吃掉,只剩刀刃末端浮在半空,完全看不出跟身體的連接,比雙手中點掛載時的效果明顯更差。嘗試放大 <code>heldOutward</code> 到 0.6 做補償,多個跑步影格仍然被吃掉。也就是說,雙手中點掛載雖然座標本身不對應任何一隻真實的手,但實測顯示它在避免被腿吃掉這件事上,平均比單手掛載更穩定,不是單純為了處理雙手座標而做的妥協,而是有實際功能的必要設計。<b>不採用</b>,維持雙手中點掛載機制。<br><br><b>② 巨劍握拿點懸空——確認為真實問題,已修正</b>:用除錯標記渲染巨劍走路循環,確認握拿點(護手/握把)跟掛載點錨點之間有明顯可見的縫隙,長杖同一張截圖比對下幾乎貼齊掛載點,巨劍卻有清楚落差。根因是 <code>heldOutward: 0.75</code>——這個值是 v48.3 特別加大的(預設 0.42 不夠,寬版刀身會被同色的腿吃掉一部分),但加大到 0.75 又同時把握把跟真實掛載點的距離拉開到肉眼可見的程度,這是兩個互相拉扯的目標(貼近錨點 vs 避免被腿吃掉),v48.3 只顧到了後者。<br><br>掃描 0.5/0.55/0.6 三個中間值,渲染走路+跑步連續截圖比對:0.5 能把握把跟掛載點的縫隙縮小到跟其他單手配件(用預設 0.42)幾乎一樣的程度,同時刀身在所有取樣影格中仍然清楚跟腿分開、沒有被吃掉——兩個目標同時達成,不是取捨。已將 <code>WEAPON_SHAPES.greatsword.heldOutward</code> 從 0.75 調整為 0.5。<br><br><b>結論</b>:①維持現狀但把理由記錄清楚(避免下一輪又被同樣的建議推翻已驗證過的設計);②實際修正並驗證。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>背景</b>:v48.7 用掛載點除錯標記做了嚴謹的自動化量測(<code>gap_measure.js</code>,對 18 款配件、待機+4 個走路影格全部量測),關刀/死神鐮刀的握把到掛載點像素距離落在 1.4-2.8px,跟西洋刺劍、武士刀等單手武器的 1-3px 完全同一個範圍,數字上看不出異常。但使用者接著提供 5 張手機實拍截圖,直接指出「關刀跟鐮刀很明顯沒有拿在手上的錨點,整體動作像是配件被擱置在身邊而已」,並要求誠實判斷這個瑕疵是否可以接受——而不是繼續拿數字安慰。<br><br><b>重新診斷</b>:先複現使用者的觀察——用①的除錯標記渲染關刀走路循環比對,確認洋紅色掛載點(真實手部座標)跟武器握把起點的像素距離的確很小,問題不在「握把有沒有貼齊手」。真正的問題出在<b>持握角度</b>:關刀/死神鐮刀沿用全配件共用的 <code>WEAPON_HELD_TILT = -50°</code>,但這兩款武器的掛載點角度(<code>mount.angle</code>)在走路/跑步循環中大約落在 150-170°(等同「手臂垂在身側,接近垂直向下」),疊加 -50° 之後幾乎沒有轉開,導致總長 3.6-3.8 單位的長柄幾乎整段貼著腿垂下、末端拖到腳邊——這是「拖在地上」的視覺,不是握把偏移的問題,而是<b>整把武器的持握姿勢</b>本身就讀不出「拿著」的感覺,加大或縮小 <code>heldOutward</code>(前一輪測過縮到 0.15)對這個姿勢問題幾乎沒有影響,兩組走路循環截圖並排比對後肉眼幾乎看不出差異,因此沒有採用。<br><br><b>修正方式</b>:改用實測掃描找出更好的持握角度,而非直接套用單一「應該對」的公式。分別對 <code>heldTilt</code> = -20°/-90°/-130° 渲染關刀/死神鐮刀的走路+跑步 8 格連續截圖比對:-20° 讓長柄更貼近地面拖行,明顯更差;-130° 讓刀身舉高到肩膀/頭部附近,部分影格穿過軀幹,有遮擋風險;<b>-90°</b> 讓武器穩定轉成接近水平,拿在髖部高度,清楚讀出「握在手邊平舉/夾持」的姿勢,在 longlimb 與預設兩種原型的走路、跑步循環中都一致成立,另外用除錯標記量測整個跑步循環的即時角度(181-183 個影格樣本),確認角度掃動範圍 48.9°-129.2°,從未觸及 <code>WEAPON_HELD_MAX_ANGLE</code>(148°)的上限,不會有卡角度上限造成的突兀感。已對 <code>WEAPON_SHAPES.guandao</code>、<code>WEAPON_SHAPES.deathScythe</code> 個別加上 <code>heldTilt: -90°</code> 覆寫,其餘配件沿用全域 -50° 不受影響。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。<br><br><b>誠實結論(回應使用者的提問)</b>:v48.7 之前「握把跟掛載點對不齊」的問題已經修好,量測數據也支持這點;但這不代表整體「握持感」就已經足夠——這兩款超長雙手武器的持握<b>姿勢角度</b>是另一個獨立的問題,前幾輪一直在調整握把位置/推移量,方向就沒對準真正的根因,這是一個確實存在、應該承認的落差,而不是可以用像素數字含糊帶過的瑕疵。這輪修正後主觀判斷:已經是明顯可以接受的水準。</p>
     <p class="sub"><b>背景</b>:收到一份交接文件,提議三項變更——① 新增「顯示掛載點」除錯按鈕(把 <code>handNear</code>/<code>handFar</code> 真實座標畫成洋紅色小圓點)② 修正雙手武器(關刀/死神鐮刀)的軸線角度算法,從「借用近手自己的擺動角度」改成「直接用兩手真實座標算出的向量方向」③ 修正握持推移(<code>WEAPON_HELD_OUTWARD</code>)的座標系,從「世界座標系偏移」改成「配件自身旋轉後的局部座標系偏移」,理由是文件推論「推移方向跟配件實際畫出來的角度對不上,會造成懸空縫隙」。文件本身也註明②③兩項只完成程式碼推導,沒有實際在瀏覽器測試過。<br><br><b>處理方式</b>:沿用這個檔案一貫的原則——不相信推導,只相信截圖。三項變更都不是直接套用,而是先各自在獨立副本上實作,用①做出來的除錯標記親眼比對修改前後,再決定要不要真的併入正式檔案。<br><br><b>① 掛載點除錯功能——採用</b>:純視覺化工具,不影響任何既有繪製邏輯,新增一顆「顯示掛載點:關/開」按鈕(手機也能點,不需要開發者工具),切換後直接在最終合成畫布上(不經過模糊原型的柔化後製,標記本身永遠銳利)畫出 <code>handNear</code>/<code>handFar</code> 的真實座標,對之後任何握持精確度的討論都很有幫助,先併入正式檔案。<br><br><b>② 雙手武器軸線角度——實測後否決</b>:用①的除錯標記實際渲染關刀/死神鐮刀走路循環比對,發現套用後武器整個轉向指向肩膀/軀幹上方,跟兩個洋紅色掛載點(還停留在腿部附近)完全脫節,讀起來像是一截斷掉的尾巴而不是武器,比修改前明顯更差。<br><br>原因:兩手在這個角色的側身簡化模型裡,x 座標差異其實是模擬「景深」(一手較靠近鏡頭、一手較遠),不是武器實際的握持軸線方向;強行把武器方向對齊這條「近遠手連線」,算出來的角度跟兩手本身的擺動角度(<code>near.angle</code>,原本的做法)可以相差 60-90 度以上,方向徹底不合理。原本用 <code>near.angle</code>(單手擺動角度)雖然只借用了一隻手的資訊,但這隻手的角度至少是這個角色動畫系統裡有意義、經過設計的量,兩手 x 座標差算出的向量則不是。<b>不採用</b>,維持 v48.6 的 <code>angle: near.angle</code>。<br><br><b>③ 握持推移改局部座標系——實測後否決</b>:一樣先用①的除錯標記檢查「文件推論的懸空縫隙」是否真的存在——結果在停下、走路循環多個影格、西洋刺劍、巨劍等配件上,洋紅色掛載點都精確落在配件握把/護手緊鄰的位置,沒有看到縫隙。這點本身就先反駁了這項提案的修改動機。<br><br>再實際套用這項改動測試,發現造成明確倒退:巨劍原本為了避免份量感被腿吃掉,特別把 <code>heldOutward</code> 加大到 0.75(見 v48.3 紀錄),這個放大效果是建立在「往外推移」的方向,是跟角色軀幹垂直、不受配件自己傾角影響的世界座標方向;改成局部座標系後,推移方向變成跟著配件自己的持握傾角(<code>WEAPON_HELD_TILT</code>,多數配件是 -50 度)一起轉,對巨劍來說這個方向不再確實指向遠離腿的一側,實測截圖巨劍護手明顯重新被腿吃掉一部分,份量感倒退回 v48.3 修正前的狀態(兩張截圖並排比對已附在下方回報)。<code>WEAPON_HELD_OUTWARD</code> 當初選擇世界座標系,就是為了讓「離腿多遠」這件事不受個別配件傾角影響、對每一款配件都可預期一致(見該常數本身的既有註解)，改成局部座標系會讓每款配件的實際淨空距離變成跟著自己的傾角亂跑，巨劍只是第一個被抓到的案例。<b>不採用</b>,維持 v48.6 的世界座標系推移。<br><br><b>結論</b>:這輪只有①實際併入正式檔案,②③經實測證實會造成明顯倒退,予以否決並記錄理由。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤(僅新增了除錯按鈕與其事件綁定,沒有動到任何既有繪製邏輯)。</p>
     <p class="sub"><b>問題</b>:v48.5 上線後,使用者回報兩個新問題——① 關刀、死神鐮刀的雙手之間出現一條不該有的連接線;② 黑點問題並未真正解決,幾乎所有配件握持位置仍有黑點,而且已經連續三輪(v48.2 → v48.4 → v48.5)修正同一個握持視覺問題卻沒有徹底解決,要求這次做完整、系統性的排查,不要再假設是單一原因,並回頭檢視整個握持點計算架構是否有根本性設計問題。<br><br><b>排查方式</b>:沒有先猜測就動手改,而是先截圖直接重現兩個問題,確認問題真實存在且理解成因,再動手。<br><br><b>問題①根因(連接線)</b>:重現後直接看到一條明顯的斜線貫穿角色軀幹到武器。追蹤 v48.5 的 <code>dualGripWeaponEntry.drawTwoHanded</code>:兩手的握持標記分別畫成「從 <code>near</code>/<code>far</code> 連到 <code>blendedMount</code>(兩手中點)」的膠囊形。問題在於 <code>blendedMount</code> 本身就定義成 <code>near</code>/<code>far</code> 的中點,三點幾乎共線——兩條膠囊共用同一個端點又幾乎排成一直線,渲染出來自然變成「一條從 <code>handNear</code> 直通 <code>handFar</code> 的連續直線」,不是武器形狀的一部分,是兩個握持標記疊加的副作用,截圖(關刀走路中格)直接證實。<br><br><b>問題②根因(黑點仍在)</b>:先搜尋程式碼裡是否有共用的「握持點視覺化」邏輯——確認全部配件的手持繪製都走同一個 <code>drawWeaponParts()</code> 函式,裡面只有一處畫握持標記的程式碼(這次是 <code>capsule(mount, drawMount, ...)</code>),不是各配件各自獨立的邏輯,問題出在這一處共用邏輯本身,不是個別配件的參數。直接截圖重現(西洋刺劍走路中格)確認黑點確實還在。量測發現:握持標記是一條從真實手部座標連到配件內部 <code>drawMount</code>(偏移後起筆點)的膠囊,長度固定等於 <code>WEAPON_HELD_OUTWARD</code> 產生的偏移量(約 3px),寬度是 <code>WEAPON_GRIP_WRAP_R × headR</code>(約 2px)——這個畫布尺度下(角色整體只有 45px 高),3px 長、2px 寬的膠囊,長寬比不到 1.5:1,兩端的圓角幾乎佔滿整個形狀,視覺上就是會被看成一顆圓點,不是一條「連接兩點」看得出方向的線段,寬扁的物件本來就容易在極小尺度下退化成一個團塊——這不是尺寸沒調好,是「用小尺寸圖形當連接標記」這個技法在這個渲染尺度下的結構性極限。<br><br><b>根本架構檢討(不再逐一調參數)</b>:這是連續第三次為了同一個握持視覺標記引入新的視覺缺陷(v48.2 完全隱形 → v48.4 變成孤立黑球 → v48.5 單手變回黑點、雙手變成連接線)。每一次修正都是「換一種畫法試試看」,但問題的共同點很清楚:在這個純黑剪影、極小渲染尺度的系統裡,任何額外畫在關節處、跟角色/配件本身輪廓沒有直接融合的獨立形狀,最終都會在某種情境下被看成異物,不管是圓點、放大的圓點、或膠囊。<br><br><b>決定:移除握持標記機制,不再嘗試第四種畫法</b>。回到 v48.1 就已經驗證過的核心事實——<code>WEAPON_HELD_OUTWARD</code> 造成的手部與配件起筆點之間的偏移,配件本身單靠這個偏移就已經不會懸空(這是 v48.1 修正、v48.2 之後每一輪都持續成立的事實,這次移除標記後重新截圖確認警棍/火把等原本最容易懸空的配件依然貼合),握持標記從頭到尾解決的是「看起來更像被握住」這個美術加分項,不是懸空這個機能性問題。移除後單手武器不再有黑點,雙手武器不再有連接線,回到乾淨的剪影。「握在手掌中」的精緻視覺效果,在目前這個純色剪影、角色僅 10px 量級的渲染尺度下,已經三次證明任何獨立標記形狀都會在某些情境下變成明顯瑕疵——如果之後還要追求這個效果,可能需要角色本身有獨立的手部造型資產(不同於手臂本身的圓頭端),而不是配件系統這邊再疊加標記圖形,這會是角色本體的調整,超出配件系統本身的範圍。<br><br><b>驗證</b>:全部 74 款配件在 <code>longlimb</code> 原型停下姿態下重新截圖(見下方三張總覽圖),逐款確認沒有黑點或連接線殘留;額外針對關刀、死神鐮刀、西洋刺劍、警棍、火把、武士刀、巨劍跑一次走路循環截圖,確認乾淨且原有的握持角度追隨、巨劍/武士刀材質配色都不受影響。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
@@ -4363,7 +4364,19 @@
     greatsword: {
       totalLen: 1.9 + 0.72 + 0.18,
       gripRatio: 0.62,
-      heldOutward: 0.75,
+      // heldOutward (v48.8, revised down from v48.3's 0.75): 0.75 fully
+      // solved the original v48.3 problem (wide 0.44-headR blade getting
+      // swallowed into the same-color leg silhouette), but user feedback
+      // + rendered debug-mount comparison showed it overshot into a NEW,
+      // clearly visible problem -- a consistent gap between the true
+      // handNear dot and the crossguard/grip, reading as "not actually
+      // held". Swept 0.5/0.55/0.6 against walk+run cycles with debug
+      // markers: 0.5 closes the anchor gap down to the same barely-there
+      // amount every other single-hold weapon shows at the 0.42 default,
+      // while the blade still clears the leg silhouette in every sampled
+      // frame, same as 0.75 did -- both problems solved at once, not
+      // traded off against each other.
+      heldOutward: 0.5,
       parts: [
         { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.16, dx: 0.22 }, { at: 1.9, dx: 0.22 }, { at: 1.9, dx: -0.22 }, { at: 0.16, dx: -0.22 }] },
         { type: 'crossbar', at: 1.9, halfLen: 0.4, width: 0.16 },
@@ -5838,6 +5851,25 @@
     // guandao/deathScythe: the catalog's first dualGripWeaponEntry() uses
     // (holdStyle:'twoHanded' -- see that factory's own comment for the
     // full mechanism). rarity left null, same reasoning as greatsword.
+    //
+    // v48.8: tested switching these two to stuckWeaponEntry (single-hold,
+    // handNear only -- the same mechanism staff/trident use), on the
+    // theory that a real hand anchor beats the blended near/far midpoint
+    // this factory uses. Rendered comparison confirmed the anchor itself
+    // gets tighter (identical to staff/trident's near-zero gap), but it
+    // introduced a WORSE regression: in several run-cycle frames the
+    // long thin shaft, rooted at a single leg's hand point instead of
+    // the near/far midpoint, ran almost entirely behind that same-color
+    // leg -- only the blade tip stayed visible, floating with no visible
+    // connection to the body at all. Tried compensating with a larger
+    // heldOutward (0.6, same idea as greatsword's fix below); the shaft
+    // was still swallowed in multiple sampled frames. The blended
+    // midpoint mount, despite not being either individual real hand,
+    // empirically sits further from both individual legs on average than
+    // either hand alone does, so it's not just a compromise for handling
+    // two mount points -- it's actively load-bearing for keeping these
+    // two long weapons visible against the leg during a run cycle.
+    // Keeping dualGripWeaponEntry; not switching to single-hold.
     guandao: dualGripWeaponEntry('關刀', 'guandao'),
     deathScythe: dualGripWeaponEntry('死神鐮刀', 'deathScythe'),
 
