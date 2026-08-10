@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.9 — 巨劍縮小推移距離;關刀/死神鐮刀維持雙手掛載機制</title>
+<title>剪影走路/跑步循環 v48.10 — 關刀/死神鐮刀改回單手掛載,移除雙手掛載機制</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,10 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.9</div>
-    <h1>巨劍縮小推移距離修正握把懸空;實測否決關刀/死神鐮刀改用單手掛載的提案</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.10</div>
+    <h1>關刀/死神鐮刀改回單手掛載(比照長杖/三叉戟),移除雙手掛載機制</h1>
+    <p class="sub"><b>背景</b>:v48.9 否決了關刀/死神鐮刀改單手掛載的提案,維持雙手中點掛載。使用者不接受這個結論,指出雙手掛載機制目前的做法(中點掛載+其中一手的角度)「根本沒有拿在手上」,要求實際試做「用兩隻手的真實座標」這個方向,而不是只憑推算否決。<br><br><b>實測方向一:真兩點掛載</b>——武器上取兩個握把距離點,整把武器做仿射變換,讓這兩點精準對齊 <code>handNear</code>/<code>handFar</code> 的真實世界座標(不再只取中點)。用掛載點除錯標記(magenta 點)實際渲染關刀/死神鐮刀走路循環驗證,結果比 v48.3 推算的「拉伸變形」更糟:因為雙手反相位擺動,走路循環中有些影格兩手會擺到彼此非常接近,而整把武器長度是照兩手實際距離等比縮放,兩手一靠近整把武器直接縮到幾乎消失,不是變形,是消失。<br><br><b>實測方向二:縮放下限鎖定</b>——在方向一的基礎上,把縮放係數鎖下限(不讓它逼近 0),量測走路循環中係數的實際分布(中位數 2.6,最小值 0.2)後,鎖 <code>s≥1.0</code> 重新渲染。消失的問題解決了,但兩手靠近的同一批影格換了一個新問題:方向不穩定,因為兩手真實座標的水平差,在這個側視角簡化 rig 裡主要代表「前臂/後臂的景深」,不是真正的武器寬度方向,兩手一靠近這個方向就變成雜訊主導、大幅跳動——這正是 a3bb065(v48.7)已經測過並否決的「純角度版」同一個根因,不是新問題,而是同一個結構性限制在另一種做法下再度出現。<br><br><b>結論</b>:兩個「讓掛載點更聰明」的方向都被證實不可行,使用者直接決定改回單手掛載(比照長杖/三叉戟),並表示會依實際渲染結果自行判斷關刀/死神鐮刀的長度是否需要縮短。</p>
+    <p class="sub"><b>實作</b>:<code>guandao</code>/<code>deathScythe</code> 兩筆登記從 <code>dualGripWeaponEntry(...)</code> 改成 <code>stuckWeaponEntry(...)</code>,跟長杖/三叉戟走完全相同的單手掛載路徑,武器形狀資料(<code>totalLen</code>/<code>gripRatio</code>/<code>heldTilt</code>/<code>parts</code>)不變。<code>dualGripWeaponEntry()</code> 工廠函式跟 <code>stepFsm</code> 呼叫端的 <code>holdStyle==='twoHanded'</code> 分支只有這兩筆配件在用,確認沒有其他呼叫點後整段移除,不留不會再執行的機制。<br><br><b>重新驗證單手掛載(v48.8 曾經測過並否決同一個方向)</b>:v48.8 的否決理由是「跑步循環多個影格柄身被同色腿吃掉」,但取樣方式是固定間隔截圖,容易跟步態週期產生頻率疊加(aliasing)漏掉問題影格,也可能沒吻合。這次用交錯間隔(137ms/110ms,非步態週期的整除數)密集取樣走路+跑步各 16 張,涵蓋 <code>longlimb</code>/<code>chubby</code>/<code>bighead</code>/<code>boxChubbyBlur</code>/<code>wideFlatBlur</code> 五種頭身比例、粗細腿型都有涵蓋的原型組合,逐張檢視:v48.8 描述的「柄身被吃、只剩刀刃浮空」現象這次沒有重現,所有取樣影格柄身都清楚連到其中一隻手。推測原因:v48.8 那筆否決記錄寫下的當下,同一輪稍後才追加的 <code>heldTilt:-90°</code> 修正(讓武器轉成貼近水平、髖部高度持握,而非原本近乎垂直貼腿)可能還沒套用到否決測試當時的版本,舊角度更貼腿平行,才更容易被同色腿蓋住。<br><br><b>驗證</b>:17 原型 × 8 姿態(含新增的坐下/躺下/趴下/跳躍/正面站姿全组合,不只走路/跑步)× 關刀/死神鐮刀回歸測試 zero console 錯誤;額外用掛載點除錯標記逐姿態截圖確認柄身全程可見、清楚連到手部,沒有懸空或被吃掉的情形。武器長度本輪未調整,留給使用者依此次渲染結果判斷是否要縮短。</p>
     <p class="sub"><b>背景</b>:針對 v48.8 的修正結果,使用者提出兩個具體問題:① 關刀、死神鐮刀的配件精準度問題「先擺一邊」,但想確認這兩款是否跟長杖、三叉戟用同一套掛載方式,如果不是,建議直接套用長杖/三叉戟的方式;② 巨劍的握拿點沒有對齊掛載點錨點。兩者都用掛載點除錯標記實際渲染驗證,而非直接套用建議。<br><br><b>① 關刀/死神鐮刀掛載機制——查證後維持原狀,不採用單手掛載</b>:查證後確認長杖、三叉戟(以及幾乎所有其他配件)用的是 <code>stuckWeaponEntry</code>(單手掛載,只認 <code>handNear</code> 一個真實座標),跟關刀/死神鐮刀用的 <code>dualGripWeaponEntry</code>(雙手掛載,取 <code>handNear</code>/<code>handFar</code> 的中點)不是同一套機制——這點確認了使用者的觀察沒錯,中點座標的確不對應任何一隻真實的手,是這兩款配件「你看不到的問題」的真正來源。<br><br>但實際把這兩款配件改成跟長杖/三叉戟一樣的單手掛載後渲染測試,發現雖然掛握點確實精準貼齊 <code>handNear</code>(跟長杖/三叉戟一樣零縫隙),卻在跑步循環的多個影格中出現更嚴重的新問題:又細又長的柄身,因為只固定在單一隻手(單條腿)的座標上,在跑步交叉腿的某些影格整段被同色的腿吃掉,只剩刀刃末端浮在半空,完全看不出跟身體的連接,比雙手中點掛載時的效果明顯更差。嘗試放大 <code>heldOutward</code> 到 0.6 做補償,多個跑步影格仍然被吃掉。也就是說,雙手中點掛載雖然座標本身不對應任何一隻真實的手,但實測顯示它在避免被腿吃掉這件事上,平均比單手掛載更穩定,不是單純為了處理雙手座標而做的妥協,而是有實際功能的必要設計。<b>不採用</b>,維持雙手中點掛載機制。<br><br><b>② 巨劍握拿點懸空——確認為真實問題,已修正</b>:用除錯標記渲染巨劍走路循環,確認握拿點(護手/握把)跟掛載點錨點之間有明顯可見的縫隙,長杖同一張截圖比對下幾乎貼齊掛載點,巨劍卻有清楚落差。根因是 <code>heldOutward: 0.75</code>——這個值是 v48.3 特別加大的(預設 0.42 不夠,寬版刀身會被同色的腿吃掉一部分),但加大到 0.75 又同時把握把跟真實掛載點的距離拉開到肉眼可見的程度,這是兩個互相拉扯的目標(貼近錨點 vs 避免被腿吃掉),v48.3 只顧到了後者。<br><br>掃描 0.5/0.55/0.6 三個中間值,渲染走路+跑步連續截圖比對:0.5 能把握把跟掛載點的縫隙縮小到跟其他單手配件(用預設 0.42)幾乎一樣的程度,同時刀身在所有取樣影格中仍然清楚跟腿分開、沒有被吃掉——兩個目標同時達成,不是取捨。已將 <code>WEAPON_SHAPES.greatsword.heldOutward</code> 從 0.75 調整為 0.5。<br><br><b>結論</b>:①維持現狀但把理由記錄清楚(避免下一輪又被同樣的建議推翻已驗證過的設計);②實際修正並驗證。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>背景</b>:v48.7 用掛載點除錯標記做了嚴謹的自動化量測(<code>gap_measure.js</code>,對 18 款配件、待機+4 個走路影格全部量測),關刀/死神鐮刀的握把到掛載點像素距離落在 1.4-2.8px,跟西洋刺劍、武士刀等單手武器的 1-3px 完全同一個範圍,數字上看不出異常。但使用者接著提供 5 張手機實拍截圖,直接指出「關刀跟鐮刀很明顯沒有拿在手上的錨點,整體動作像是配件被擱置在身邊而已」,並要求誠實判斷這個瑕疵是否可以接受——而不是繼續拿數字安慰。<br><br><b>重新診斷</b>:先複現使用者的觀察——用①的除錯標記渲染關刀走路循環比對,確認洋紅色掛載點(真實手部座標)跟武器握把起點的像素距離的確很小,問題不在「握把有沒有貼齊手」。真正的問題出在<b>持握角度</b>:關刀/死神鐮刀沿用全配件共用的 <code>WEAPON_HELD_TILT = -50°</code>,但這兩款武器的掛載點角度(<code>mount.angle</code>)在走路/跑步循環中大約落在 150-170°(等同「手臂垂在身側,接近垂直向下」),疊加 -50° 之後幾乎沒有轉開,導致總長 3.6-3.8 單位的長柄幾乎整段貼著腿垂下、末端拖到腳邊——這是「拖在地上」的視覺,不是握把偏移的問題,而是<b>整把武器的持握姿勢</b>本身就讀不出「拿著」的感覺,加大或縮小 <code>heldOutward</code>(前一輪測過縮到 0.15)對這個姿勢問題幾乎沒有影響,兩組走路循環截圖並排比對後肉眼幾乎看不出差異,因此沒有採用。<br><br><b>修正方式</b>:改用實測掃描找出更好的持握角度,而非直接套用單一「應該對」的公式。分別對 <code>heldTilt</code> = -20°/-90°/-130° 渲染關刀/死神鐮刀的走路+跑步 8 格連續截圖比對:-20° 讓長柄更貼近地面拖行,明顯更差;-130° 讓刀身舉高到肩膀/頭部附近,部分影格穿過軀幹,有遮擋風險;<b>-90°</b> 讓武器穩定轉成接近水平,拿在髖部高度,清楚讀出「握在手邊平舉/夾持」的姿勢,在 longlimb 與預設兩種原型的走路、跑步循環中都一致成立,另外用除錯標記量測整個跑步循環的即時角度(181-183 個影格樣本),確認角度掃動範圍 48.9°-129.2°,從未觸及 <code>WEAPON_HELD_MAX_ANGLE</code>(148°)的上限,不會有卡角度上限造成的突兀感。已對 <code>WEAPON_SHAPES.guandao</code>、<code>WEAPON_SHAPES.deathScythe</code> 個別加上 <code>heldTilt: -90°</code> 覆寫,其餘配件沿用全域 -50° 不受影響。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。<br><br><b>誠實結論(回應使用者的提問)</b>:v48.7 之前「握把跟掛載點對不齊」的問題已經修好,量測數據也支持這點;但這不代表整體「握持感」就已經足夠——這兩款超長雙手武器的持握<b>姿勢角度</b>是另一個獨立的問題,前幾輪一直在調整握把位置/推移量,方向就沒對準真正的根因,這是一個確實存在、應該承認的落差,而不是可以用像素數字含糊帶過的瑕疵。這輪修正後主觀判斷:已經是明顯可以接受的水準。</p>
     <p class="sub"><b>背景</b>:收到一份交接文件,提議三項變更——① 新增「顯示掛載點」除錯按鈕(把 <code>handNear</code>/<code>handFar</code> 真實座標畫成洋紅色小圓點)② 修正雙手武器(關刀/死神鐮刀)的軸線角度算法,從「借用近手自己的擺動角度」改成「直接用兩手真實座標算出的向量方向」③ 修正握持推移(<code>WEAPON_HELD_OUTWARD</code>)的座標系,從「世界座標系偏移」改成「配件自身旋轉後的局部座標系偏移」,理由是文件推論「推移方向跟配件實際畫出來的角度對不上,會造成懸空縫隙」。文件本身也註明②③兩項只完成程式碼推導,沒有實際在瀏覽器測試過。<br><br><b>處理方式</b>:沿用這個檔案一貫的原則——不相信推導,只相信截圖。三項變更都不是直接套用,而是先各自在獨立副本上實作,用①做出來的除錯標記親眼比對修改前後,再決定要不要真的併入正式檔案。<br><br><b>① 掛載點除錯功能——採用</b>:純視覺化工具,不影響任何既有繪製邏輯,新增一顆「顯示掛載點:關/開」按鈕(手機也能點,不需要開發者工具),切換後直接在最終合成畫布上(不經過模糊原型的柔化後製,標記本身永遠銳利)畫出 <code>handNear</code>/<code>handFar</code> 的真實座標,對之後任何握持精確度的討論都很有幫助,先併入正式檔案。<br><br><b>② 雙手武器軸線角度——實測後否決</b>:用①的除錯標記實際渲染關刀/死神鐮刀走路循環比對,發現套用後武器整個轉向指向肩膀/軀幹上方,跟兩個洋紅色掛載點(還停留在腿部附近)完全脫節,讀起來像是一截斷掉的尾巴而不是武器,比修改前明顯更差。<br><br>原因:兩手在這個角色的側身簡化模型裡,x 座標差異其實是模擬「景深」(一手較靠近鏡頭、一手較遠),不是武器實際的握持軸線方向;強行把武器方向對齊這條「近遠手連線」,算出來的角度跟兩手本身的擺動角度(<code>near.angle</code>,原本的做法)可以相差 60-90 度以上,方向徹底不合理。原本用 <code>near.angle</code>(單手擺動角度)雖然只借用了一隻手的資訊,但這隻手的角度至少是這個角色動畫系統裡有意義、經過設計的量,兩手 x 座標差算出的向量則不是。<b>不採用</b>,維持 v48.6 的 <code>angle: near.angle</code>。<br><br><b>③ 握持推移改局部座標系——實測後否決</b>:一樣先用①的除錯標記檢查「文件推論的懸空縫隙」是否真的存在——結果在停下、走路循環多個影格、西洋刺劍、巨劍等配件上,洋紅色掛載點都精確落在配件握把/護手緊鄰的位置,沒有看到縫隙。這點本身就先反駁了這項提案的修改動機。<br><br>再實際套用這項改動測試,發現造成明確倒退:巨劍原本為了避免份量感被腿吃掉,特別把 <code>heldOutward</code> 加大到 0.75(見 v48.3 紀錄),這個放大效果是建立在「往外推移」的方向,是跟角色軀幹垂直、不受配件自己傾角影響的世界座標方向;改成局部座標系後,推移方向變成跟著配件自己的持握傾角(<code>WEAPON_HELD_TILT</code>,多數配件是 -50 度)一起轉,對巨劍來說這個方向不再確實指向遠離腿的一側,實測截圖巨劍護手明顯重新被腿吃掉一部分,份量感倒退回 v48.3 修正前的狀態(兩張截圖並排比對已附在下方回報)。<code>WEAPON_HELD_OUTWARD</code> 當初選擇世界座標系,就是為了讓「離腿多遠」這件事不受個別配件傾角影響、對每一款配件都可預期一致(見該常數本身的既有註解)，改成局部座標系會讓每款配件的實際淨空距離變成跟著自己的傾角亂跑，巨劍只是第一個被抓到的案例。<b>不採用</b>,維持 v48.6 的世界座標系推移。<br><br><b>結論</b>:這輪只有①實際併入正式檔案,②③經實測證實會造成明顯倒退,予以否決並記錄理由。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤(僅新增了除錯按鈕與其事件綁定,沒有動到任何既有繪製邏輯)。</p>
@@ -4384,10 +4386,12 @@
         { type: 'circle', at: 1.9 + 0.72 + 0.18, r: 0.18 }
       ]
     },
-    // 關刀 guandao (v48.3): the catalog's first genuinely dual-hold
-    // weapon (holdStyle:'twoHanded', a NEW mechanism -- see that flag's
-    // own comment at the registry factory site for why it's not reusing
-    // 'dual', which means something different: two independent copies).
+    // 關刀 guandao (v48.3): originally held via dualGripWeaponEntry()'s
+    // holdStyle:'twoHanded' (a blended near/far mount); switched to
+    // ordinary single-hold in v48.10 -- see HAND_ACCESSORY_REGISTRY's own
+    // comment on the guandao/deathScythe entries for why. This shape data
+    // (totalLen/gripRatio/parts) is unaffected either way; only which
+    // mount mechanism reads it changed.
     // Broad hooked dao blade built as one closed 'polygon' -- a wide
     // curved cutting edge (positive dx) swept from near the shaft out to
     // the tip, and a shorter counter-curved hook on the spine side
@@ -4425,9 +4429,11 @@
         { type: 'shaft', from: 1.05, to: 1.05 + 2.75, width: 0.16 }
       ]
     },
-    // 死神鐮刀 deathScythe (v48.3): also holdStyle:'twoHanded'. dist0 is
-    // the hook's outer tip (matching this catalog's usual "business end
-    // first" convention), a wide curved 'polygon' hook that reaches WAY
+    // 死神鐮刀 deathScythe (v48.3): same mount-mechanism history as
+    // guandao above (dualGripWeaponEntry() through v48.9, single-hold
+    // from v48.10). dist0 is the hook's outer tip (matching this
+    // catalog's usual "business end first" convention), a wide curved
+    // 'polygon' hook that reaches WAY
     // further off-axis (dx up to 0.95) than any other item in the
     // catalog -- the defining silhouette contrast the brief asks for
     // ("彎曲刀刃跟直柄的對比要清楚") is the hook's large dx sweep against the
@@ -5658,84 +5664,6 @@
     };
   }
 
-  // dualGripWeaponEntry() (v48.3): stuckWeaponEntry()'s counterpart for a
-  // GENUINE two-handed weapon (guandao/deathScythe), not to be confused
-  // with the pre-existing holdStyle:'dual' (maraca) -- that flag means
-  // "draw the SAME shape independently at BOTH mounts" (correct for a
-  // matched worn PAIR, wrong here: it would render two guandaos, one per
-  // hand, not one polearm spanning both). This factory's holdStyle:
-  // 'twoHanded' is a distinct value the stepFsm call site branches on
-  // separately, wired to a `drawTwoHanded(ctx, near, far, headR)` method
-  // instead of the ordinary single-mount `draw`.
-  //
-  // The core problem a real dual-anchor render has to solve: handNear and
-  // handFar swing independently (opposite-phase arm animation), so their
-  // separation and individual angles both fluctuate hard through a walk
-  // cycle -- measured on longlimb mid-walk, hand-to-hand distance alone
-  // ranged 6.5px to 19.4px (headR=7.5, i.e. 0.9-2.6 headR) within a single
-  // stride, and the two hands' own angles diverged by up to ~50deg at the
-  // extreme. A rigid transform that forces the weapon's own two grip
-  // points to land exactly on both moving mounts would have to STRETCH
-  // the weapon's rendered length by that same ~3x range every stride --
-  // exactly the "扭曲變形" distortion risk flagged in the brief.
-  //
-  // v48.4 correction: the first version of this function ALSO blended the
-  // ANGLE (circular mean of near.angle/far.angle, not just position), and
-  // user testing caught that this reads as a completely frozen/static
-  // prop, not a held weapon. Root cause, confirmed with real logged
-  // coordinates rather than guessed: handNear/handFar swing in
-  // near-OPPOSITE phase (that's the whole reason position-blending is so
-  // stable above), so averaging their two angles doesn't just dampen the
-  // swing, it cancels almost all of it BY CONSTRUCTION, for any gait --
-  // logged deathScythe's drawMount.angle across 6 walk-cycle frames and
-  // it moved a total of ~3deg (-225 to -228) while handNear's own angle
-  // moved ~15deg in the same frames, confirming the blended angle isn't
-  // "extra stable," it's structurally inert. Fixed by un-blending the
-  // angle: position stays the midpoint of handNear/handFar (still the
-  // measured-stable quantity above), but rotation now comes from
-  // handNear.angle directly -- the exact same live, per-frame value every
-  // proven single-hold weapon already uses, not a new formula.
-  //
-  // v48.5 correction: both hands' grip markers were plain discs at the
-  // TRUE handNear/handFar positions, and user screenshots caught the same
-  // "stark floating ball" problem single-hold weapons had. Switched to a
-  // capsule(near/far -> blendedMount) per hand.
-  //
-  // v48.6 removal: that capsule pairing created a NEW, worse artifact --
-  // since both capsules share the endpoint blendedMount and near/far/
-  // blendedMount are close to collinear (blendedMount IS their midpoint),
-  // the two capsules render as one visually continuous straight rod
-  // running from handNear all the way to handFar, cutting across the
-  // torso/legs -- confirmed by screenshot (guandao mid-walk shows exactly
-  // this diagonal line). See WEAPON_GRIP_WRAP_R's own comment for the
-  // full removal rationale, which applies identically here: no marker,
-  // just the weapon itself at the blended mount.
-  function dualGripWeaponEntry(label, shapeKey, opts){
-    const shape = WEAPON_SHAPES[shapeKey];
-    const rarity = (opts && opts.rarity) || null;
-    const style = opts ? { rarity: opts.rarity, color: opts.color } : undefined;
-    function blendedMount(near, far){
-      return {
-        x: (near.x + far.x) / 2,
-        y: (near.y + far.y) / 2,
-        angle: near.angle
-      };
-    }
-    return {
-      label: label,
-      rarity: rarity,
-      holdStyle: 'twoHanded',
-      drawTwoHanded: (ctx, near, far, headR) => {
-        drawWeaponParts(ctx, blendedMount(near, far), headR, shape, 'held', style);
-      },
-      footStow: {
-        placement: 'stuck',
-        draw: (ctx, mount, headR) => drawWeaponParts(ctx, mount, headR, shape, 'stuck', style),
-        apex: headR => shape.totalLen * headR
-      }
-    };
-  }
-
   // itemEntry(): stuckWeaponEntry()'s counterpart for component XI's
   // ITEM_SHAPES catalog (B/C/F/K groups) -- identical held-in-hand wiring
   // (always drawWeaponParts('held'), regardless of footStow placement),
@@ -5793,12 +5721,14 @@
     // of these 'dual' would render two separate axes/flails, not one held
     // two-handed -- the wrong visual. A real two-handed-single-weapon
     // mount (anchored between both hands) was an unbuilt mechanism at the
-    // time this comment was written -- v48.3's dualGripWeaponEntry() now
-    // provides exactly that (see guandao/deathScythe below), but these
-    // three head-heavy axes/flails stay as originally designed:
-    // "gripped further back for leverage" via gripRatio overrides, not
-    // retrofitted to 'twoHanded', since none of them were ever meant to
-    // read as a two-handed weapon in the first place.
+    // time this comment was written -- v48.3 built exactly that for
+    // guandao/deathScythe (dualGripWeaponEntry(), later removed in
+    // v48.10 when both switched back to single-hold; see
+    // HAND_ACCESSORY_REGISTRY's own comment on those two entries), but
+    // these three head-heavy axes/flails stay as originally designed:
+    // "gripped further back for leverage" via gripRatio overrides, not a
+    // two-handed mount, since none of them were ever meant to read as a
+    // two-handed weapon in the first place.
     shortSword: stuckWeaponEntry('匕首', 'shortSword'),
     longsword: stuckWeaponEntry('長劍', 'longsword'),
     spear: stuckWeaponEntry('長矛', 'spear'),
@@ -5848,30 +5778,36 @@
     // deciding unilaterally) -- flagged as a candidate in this round's
     // reply given its scale rivals katana/lightsaber, not set here.
     greatsword: stuckWeaponEntry('巨劍', 'greatsword'),
-    // guandao/deathScythe: the catalog's first dualGripWeaponEntry() uses
-    // (holdStyle:'twoHanded' -- see that factory's own comment for the
-    // full mechanism). rarity left null, same reasoning as greatsword.
-    //
-    // v48.8: tested switching these two to stuckWeaponEntry (single-hold,
-    // handNear only -- the same mechanism staff/trident use), on the
-    // theory that a real hand anchor beats the blended near/far midpoint
-    // this factory uses. Rendered comparison confirmed the anchor itself
-    // gets tighter (identical to staff/trident's near-zero gap), but it
-    // introduced a WORSE regression: in several run-cycle frames the
-    // long thin shaft, rooted at a single leg's hand point instead of
-    // the near/far midpoint, ran almost entirely behind that same-color
-    // leg -- only the blade tip stayed visible, floating with no visible
-    // connection to the body at all. Tried compensating with a larger
-    // heldOutward (0.6, same idea as greatsword's fix below); the shaft
-    // was still swallowed in multiple sampled frames. The blended
-    // midpoint mount, despite not being either individual real hand,
-    // empirically sits further from both individual legs on average than
-    // either hand alone does, so it's not just a compromise for handling
-    // two mount points -- it's actively load-bearing for keeping these
-    // two long weapons visible against the leg during a run cycle.
-    // Keeping dualGripWeaponEntry; not switching to single-hold.
-    guandao: dualGripWeaponEntry('關刀', 'guandao'),
-    deathScythe: dualGripWeaponEntry('死神鐮刀', 'deathScythe'),
+    // guandao/deathScythe (v48.10): switched to stuckWeaponEntry
+    // (single-hold, handNear only -- the same mechanism staff/trident
+    // use), per explicit user instruction. History: v48.3 introduced
+    // dualGripWeaponEntry()/holdStyle:'twoHanded' (blended near/far
+    // midpoint mount) specifically because a literal two-point anchor
+    // wasn't built yet; v48.8 tried single-hold once and rejected it
+    // (several run-cycle frames swallowed the shaft behind a same-color
+    // leg); v48.9 tried a genuine two-point stretch mount (both grip
+    // points pinned to the real handNear/handFar world coordinates) and
+    // that failed worse -- when the two hands swing close together
+    // in-frame the weapon's whole length collapses toward zero, and
+    // clamping the collapse floor just traded that for an unstable
+    // fallback direction. Given both "make the mount smarter" directions
+    // failed, re-tested the plain single-hold rejected in v48.8: dense
+    // frame sampling (16 frames/cycle, staggered interval to avoid
+    // aliasing against the gait period) across walk AND run, on
+    // longlimb/chubby/bighead/boxChubbyBlur/wideFlatBlur, found the
+    // v48.8 swallowing regression no longer reproduces -- every sampled
+    // frame shows a clean, fully connected shaft (most likely because
+    // v48.8's own heldTilt fix, -90deg instead of the -50deg default,
+    // landed in the SAME v48.8 round after that rejection was written,
+    // so the rejection was tested against the old, more leg-parallel
+    // angle). dualGripWeaponEntry()/holdStyle:'twoHanded' had exactly
+    // one caller (these two weapons) and is removed entirely along with
+    // its stepFsm branch, not kept as unused infrastructure. rarity left
+    // null, same reasoning as greatsword. Weapon length (totalLen) left
+    // unchanged this round -- user will judge from the shipped render
+    // whether guandao/deathScythe should be shortened.
+    guandao: stuckWeaponEntry('關刀', 'guandao'),
+    deathScythe: stuckWeaponEntry('死神鐮刀', 'deathScythe'),
 
     // ---- B group: round/block armor & relic items (4) ----
     // All 'flat' footStow -- shield/book/cross/chalice all read better
@@ -6126,15 +6062,14 @@
             // the one consistent hand for every single-hold item; handFar
             // only gets drawn when an item explicitly opts into
             // holdStyle: 'dual' (a genuinely matching-worn-pair item).
-            // 'twoHanded' (v48.3, dualGripWeaponEntry's own flag -- see its
-            // comment) is a third, distinct case: ONE weapon spanning both
-            // hands, routed through drawTwoHanded instead of draw.
-            if (handAcc.holdStyle === 'twoHanded'){
-              handAcc.drawTwoHanded(accCtx, mounts.handNear, mounts.handFar, WALK_CFG.headR);
-            } else {
-              handAcc.draw(accCtx, mounts.handNear, WALK_CFG.headR);
-              if (handAcc.holdStyle === 'dual') handAcc.draw(accCtx, mounts.handFar, WALK_CFG.headR);
-            }
+            // (v48.3-v48.9 also had a 'twoHanded' case here, a single
+            // weapon spanning both hands via a blended near/far mount --
+            // removed in v48.10 along with dualGripWeaponEntry() when its
+            // only two callers, guandao/deathScythe, switched back to
+            // ordinary single-hold; see HAND_ACCESSORY_REGISTRY's own
+            // comment on those two entries for why.)
+            handAcc.draw(accCtx, mounts.handNear, WALK_CFG.headR);
+            if (handAcc.holdStyle === 'dual') handAcc.draw(accCtx, mounts.handFar, WALK_CFG.headR);
           }
           if (ACCESSORY_CAT_TAIL) drawCatTailAccessory(accCtx, mounts.back);
           if (ACCESSORY_PROP){
