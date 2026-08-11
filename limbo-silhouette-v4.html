@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.10 — 關刀/死神鐮刀改回單手掛載,移除雙手掛載機制</title>
+<title>剪影走路/跑步循環 v48.11 — 巨型武器持握模組:持握手臂擺動抑制,武器改為微幅晃動</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.10</div>
-    <h1>關刀/死神鐮刀改回單手掛載(比照長杖/三叉戟),移除雙手掛載機制</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.11</div>
+    <h1>巨型武器持握模組:巨劍/關刀/死神鐮刀持握手臂擺動抑制,武器改為微幅晃動</h1>
+    <p class="sub"><b>需求</b>:使用者提供完整的巨型武器持握模組規格,涵蓋巨劍/關刀/死神鐮刀三款——① 關刀/死神鐮刀統一單手持握(v48.10 已完成,這輪只需確認);② 持握手臂擺動大幅抑制;③ 另一手擺動整體調降但保留可見幅度,讓武器「在手上有微幅晃動感」而非完全凍結。規格文件明確建議先做「微晃」(選項 A),不做「拖地」(選項 B,需要反解角度讓武器末端貼地,牽涉姿態相依的地面定義跟 z-order,複雜度/風險明顯更高),照建議只實作選項 A。<br><br><b>實作</b>:全檔案唯一一處用 <code>limbFK</code>+振幅持續擺動計算 <code>armNear</code>/<code>armFar</code> 的地方是 <code>drawCharacter</code>(側身走路/跑步循環用的核心姿勢函式)——其餘姿勢函式(坐下/正面待機/鞠躬等)本來就用固定角度而非振幅擺動,不受影響,查證後確認跟需求文件的描述一致,不需要另外改。新增 <code>GIANT_WEAPON_KEYS</code>(巨劍/關刀/死神鐮刀)、<code>GIANT_HOLD_ARM_AMP_MUL</code>(0.15,持握手臂)、<code>GIANT_OFF_ARM_AMP_MUL</code>(0.45,另一手)兩個振幅倍率常數,依目前是否裝備這三款之一,分別對 <code>armNear</code>/<code>armFar</code> 的振幅做縮放。武器角度本來就直接讀 <code>handNear.angle</code>(單手掛載路徑,v48.7 已驗證握把貼合),持握手臂振幅變小後,武器角度自然只在小範圍內波動,不需要另外寫任何武器晃動邏輯——完全是既有機制的自然結果。<br><br><b>驗證</b>:17 原型 × 8 姿態 × 巨劍/關刀/死神鐮刀回歸測試 zero console 錯誤。走路+跑步連續截圖比對:三款巨型武器的持握手角度全程穩定、只有小幅晃動,另一手仍看得出自然擺動,腿部擺動完全不受影響;同一組截圖跟長劍(未套用抑制)並排比對,長劍的握持角度明顯來回擺動一大段,三款巨型武器則穩定貼在小範圍內——差異清楚可辨。坐下/躺下/趴下/跳躍/正面站姿五種姿態額外截圖確認,這些姿態走的是固定角度路徑,套用模組前後畫面一致,沒有意外受影響。倍率 0.15/0.45 為起始建議值,截圖主觀判斷已經達到「微晃、不凍結」的效果,如需微調可再提供新數值。</p>
     <p class="sub"><b>背景</b>:v48.9 否決了關刀/死神鐮刀改單手掛載的提案,維持雙手中點掛載。使用者不接受這個結論,指出雙手掛載機制目前的做法(中點掛載+其中一手的角度)「根本沒有拿在手上」,要求實際試做「用兩隻手的真實座標」這個方向,而不是只憑推算否決。<br><br><b>實測方向一:真兩點掛載</b>——武器上取兩個握把距離點,整把武器做仿射變換,讓這兩點精準對齊 <code>handNear</code>/<code>handFar</code> 的真實世界座標(不再只取中點)。用掛載點除錯標記(magenta 點)實際渲染關刀/死神鐮刀走路循環驗證,結果比 v48.3 推算的「拉伸變形」更糟:因為雙手反相位擺動,走路循環中有些影格兩手會擺到彼此非常接近,而整把武器長度是照兩手實際距離等比縮放,兩手一靠近整把武器直接縮到幾乎消失,不是變形,是消失。<br><br><b>實測方向二:縮放下限鎖定</b>——在方向一的基礎上,把縮放係數鎖下限(不讓它逼近 0),量測走路循環中係數的實際分布(中位數 2.6,最小值 0.2)後,鎖 <code>s≥1.0</code> 重新渲染。消失的問題解決了,但兩手靠近的同一批影格換了一個新問題:方向不穩定,因為兩手真實座標的水平差,在這個側視角簡化 rig 裡主要代表「前臂/後臂的景深」,不是真正的武器寬度方向,兩手一靠近這個方向就變成雜訊主導、大幅跳動——這正是 a3bb065(v48.7)已經測過並否決的「純角度版」同一個根因,不是新問題,而是同一個結構性限制在另一種做法下再度出現。<br><br><b>結論</b>:兩個「讓掛載點更聰明」的方向都被證實不可行,使用者直接決定改回單手掛載(比照長杖/三叉戟),並表示會依實際渲染結果自行判斷關刀/死神鐮刀的長度是否需要縮短。</p>
     <p class="sub"><b>實作</b>:<code>guandao</code>/<code>deathScythe</code> 兩筆登記從 <code>dualGripWeaponEntry(...)</code> 改成 <code>stuckWeaponEntry(...)</code>,跟長杖/三叉戟走完全相同的單手掛載路徑,武器形狀資料(<code>totalLen</code>/<code>gripRatio</code>/<code>heldTilt</code>/<code>parts</code>)不變。<code>dualGripWeaponEntry()</code> 工廠函式跟 <code>stepFsm</code> 呼叫端的 <code>holdStyle==='twoHanded'</code> 分支只有這兩筆配件在用,確認沒有其他呼叫點後整段移除,不留不會再執行的機制。<br><br><b>重新驗證單手掛載(v48.8 曾經測過並否決同一個方向)</b>:v48.8 的否決理由是「跑步循環多個影格柄身被同色腿吃掉」,但取樣方式是固定間隔截圖,容易跟步態週期產生頻率疊加(aliasing)漏掉問題影格,也可能沒吻合。這次用交錯間隔(137ms/110ms,非步態週期的整除數)密集取樣走路+跑步各 16 張,涵蓋 <code>longlimb</code>/<code>chubby</code>/<code>bighead</code>/<code>boxChubbyBlur</code>/<code>wideFlatBlur</code> 五種頭身比例、粗細腿型都有涵蓋的原型組合,逐張檢視:v48.8 描述的「柄身被吃、只剩刀刃浮空」現象這次沒有重現,所有取樣影格柄身都清楚連到其中一隻手。推測原因:v48.8 那筆否決記錄寫下的當下,同一輪稍後才追加的 <code>heldTilt:-90°</code> 修正(讓武器轉成貼近水平、髖部高度持握,而非原本近乎垂直貼腿)可能還沒套用到否決測試當時的版本,舊角度更貼腿平行,才更容易被同色腿蓋住。<br><br><b>驗證</b>:17 原型 × 8 姿態(含新增的坐下/躺下/趴下/跳躍/正面站姿全组合,不只走路/跑步)× 關刀/死神鐮刀回歸測試 zero console 錯誤;額外用掛載點除錯標記逐姿態截圖確認柄身全程可見、清楚連到手部,沒有懸空或被吃掉的情形。武器長度本輪未調整,留給使用者依此次渲染結果判斷是否要縮短。</p>
     <p class="sub"><b>背景</b>:針對 v48.8 的修正結果,使用者提出兩個具體問題:① 關刀、死神鐮刀的配件精準度問題「先擺一邊」,但想確認這兩款是否跟長杖、三叉戟用同一套掛載方式,如果不是,建議直接套用長杖/三叉戟的方式;② 巨劍的握拿點沒有對齊掛載點錨點。兩者都用掛載點除錯標記實際渲染驗證,而非直接套用建議。<br><br><b>① 關刀/死神鐮刀掛載機制——查證後維持原狀,不採用單手掛載</b>:查證後確認長杖、三叉戟(以及幾乎所有其他配件)用的是 <code>stuckWeaponEntry</code>(單手掛載,只認 <code>handNear</code> 一個真實座標),跟關刀/死神鐮刀用的 <code>dualGripWeaponEntry</code>(雙手掛載,取 <code>handNear</code>/<code>handFar</code> 的中點)不是同一套機制——這點確認了使用者的觀察沒錯,中點座標的確不對應任何一隻真實的手,是這兩款配件「你看不到的問題」的真正來源。<br><br>但實際把這兩款配件改成跟長杖/三叉戟一樣的單手掛載後渲染測試,發現雖然掛握點確實精準貼齊 <code>handNear</code>(跟長杖/三叉戟一樣零縫隙),卻在跑步循環的多個影格中出現更嚴重的新問題:又細又長的柄身,因為只固定在單一隻手(單條腿)的座標上,在跑步交叉腿的某些影格整段被同色的腿吃掉,只剩刀刃末端浮在半空,完全看不出跟身體的連接,比雙手中點掛載時的效果明顯更差。嘗試放大 <code>heldOutward</code> 到 0.6 做補償,多個跑步影格仍然被吃掉。也就是說,雙手中點掛載雖然座標本身不對應任何一隻真實的手,但實測顯示它在避免被腿吃掉這件事上,平均比單手掛載更穩定,不是單純為了處理雙手座標而做的妥協,而是有實際功能的必要設計。<b>不採用</b>,維持雙手中點掛載機制。<br><br><b>② 巨劍握拿點懸空——確認為真實問題,已修正</b>:用除錯標記渲染巨劍走路循環,確認握拿點(護手/握把)跟掛載點錨點之間有明顯可見的縫隙,長杖同一張截圖比對下幾乎貼齊掛載點,巨劍卻有清楚落差。根因是 <code>heldOutward: 0.75</code>——這個值是 v48.3 特別加大的(預設 0.42 不夠,寬版刀身會被同色的腿吃掉一部分),但加大到 0.75 又同時把握把跟真實掛載點的距離拉開到肉眼可見的程度,這是兩個互相拉扯的目標(貼近錨點 vs 避免被腿吃掉),v48.3 只顧到了後者。<br><br>掃描 0.5/0.55/0.6 三個中間值,渲染走路+跑步連續截圖比對:0.5 能把握把跟掛載點的縫隙縮小到跟其他單手配件(用預設 0.42)幾乎一樣的程度,同時刀身在所有取樣影格中仍然清楚跟腿分開、沒有被吃掉——兩個目標同時達成,不是取捨。已將 <code>WEAPON_SHAPES.greatsword.heldOutward</code> 從 0.75 調整為 0.5。<br><br><b>結論</b>:①維持現狀但把理由記錄清楚(避免下一輪又被同樣的建議推翻已驗證過的設計);②實際修正並驗證。17 原型 × 8 姿態 × 74 配件回歸測試 zero console 錯誤。</p>
@@ -478,6 +479,28 @@
   let WALK_CFG, RUN_CFG;
   const EYE_COLOR = '#f5f2ea';
 
+  // Giant-weapon hold module (v48.11, per explicit user spec): greatsword/
+  // guandao/deathScythe are heavy enough that swinging the holding arm
+  // through the same full armAmp as an empty-handed walk cycle reads
+  // wrong -- a real two-handed grip on something that size wouldn't swing
+  // freely at the shoulder. armNear/armFar below (drawCharacter, the
+  // side-view walk/run gait) are the ONLY place in the file that computes
+  // a continuously-swinging arm via limbFK+cfg.armAmp -- every other pose
+  // function (sit/idle-front/bow, see their own armEnd/limbEnd calls)
+  // already uses a fixed angle, not an oscillating amplitude, so none of
+  // them need this. Damping the amplitude here is sufficient on its own
+  // for the "weapon has a subtle sway, not a full swing" effect: the held
+  // weapon's angle already reads directly off handNear.angle (the
+  // single-hold path, confirmed working since v48.7), so a smaller
+  // armNear swing mechanically produces a smaller weapon sway with no
+  // separate weapon-side code needed. handNear is always the near arm for
+  // every single-hold item (see HAND_ACCESSORY_REGISTRY's own comment),
+  // so the holding arm is always armNear regardless of which of the two
+  // hands a given archetype happens to draw first.
+  const GIANT_WEAPON_KEYS = ['greatsword', 'guandao', 'deathScythe'];
+  const GIANT_HOLD_ARM_AMP_MUL = 0.15;
+  const GIANT_OFF_ARM_AMP_MUL = 0.45;
+
   function drawCharacter(ctx, baseX, baseY, Theta, cfg, warpOn){
     const legPhaseL = Theta, legPhaseR = Theta + Math.PI;
     const armPhaseR = legPhaseL, armPhaseL = legPhaseR;
@@ -509,8 +532,11 @@
     // behind the torso at the join) -- fixed for the whole animation
     const legNear = limbFK(hipNearPt.x, hipNearPt.y, legPhaseR, cfg.legAmp, cfg.legLen, legK, legH2, cfg.legH2Off);
     const legFar = limbFK(hipFarPt.x, hipFarPt.y, legPhaseL, cfg.legAmp, cfg.legLen, legK, legH2, cfg.legH2Off);
-    const armNear = limbFK(shNearPt.x, shNearPt.y, armPhaseR, cfg.armAmp, cfg.armLen, armK, armH2, cfg.armH2Off);
-    const armFar = limbFK(shFarPt.x, shFarPt.y, armPhaseL, cfg.armAmp, cfg.armLen, armK, armH2, cfg.armH2Off);
+    const isGiantWeapon = GIANT_WEAPON_KEYS.includes(currentHandAccessory);
+    const nearArmAmp = isGiantWeapon ? cfg.armAmp * GIANT_HOLD_ARM_AMP_MUL : cfg.armAmp;
+    const farArmAmp = isGiantWeapon ? cfg.armAmp * GIANT_OFF_ARM_AMP_MUL : cfg.armAmp;
+    const armNear = limbFK(shNearPt.x, shNearPt.y, armPhaseR, nearArmAmp, cfg.armLen, armK, armH2, cfg.armH2Off);
+    const armFar = limbFK(shFarPt.x, shFarPt.y, armPhaseL, farArmAmp, cfg.armLen, armK, armH2, cfg.armH2Off);
 
     function drawLimb(l, w){ capsule(ctx, l.baseX, l.baseY, l.endX, l.endY, w, SIL); }
 
