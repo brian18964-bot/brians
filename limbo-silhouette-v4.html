@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.14 — 11 款巨型配件統一比照關刀水平持握(heldTilt/gripRatio)</title>
+<title>剪影走路/跑步循環 v48.15 — 隨身寵物加上本體飄浮 + 雙眼獨立眨眼</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.14</div>
-    <h1>11 款巨型配件統一比照關刀水平持握(heldTilt/gripRatio),巨型鑰匙個別回報</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.15</div>
+    <h1>隨身寵物加上本體飄浮(accessoryT 驅動)+ 雙眼獨立眨眼</h1>
+    <p class="sub"><b>需求</b>:讓現有寵物(造型不變)加上兩個動作——① 本體上下飄浮;② 白點眼睛獨立眨眼。指定重用既有機制,不另外設計新系統:<code>accessoryT</code>(已在 <code>stepFsm</code> 裡無條件每幀遞增,貓尾巴搖擺已經在用同一個變數)當時間源,飄浮用「包一層 mount 再傳入 <code>draw()</code>」的方式疊加 y 偏移,不直接改 <code>drawPetAccessory</code> 本體。<br><br><b>實作</b>:新增 <code>withPetFloat(mount, headR)</code>,用 <code>Math.sin(accessoryT * PET_FLOAT_SPEED) * PET_FLOAT_AMP</code> 疊加 y 偏移後回傳一份新的 mount 物件,不動原本的 <code>drawPetAccessory()</code>。<code>PET_FLOAT_SPEED</code>(1.0)刻意比貓尾巴自己的 1.6 rad/s 低,避免寵物同時裝備貓尾巴時兩個 <code>accessoryT</code> 驅動的擺動頻率相近而看起來像同步在動。呼叫端有兩處會畫到寵物:側身用的 <code>petSideMount</code>(一定是寵物,直接套 <code>withPetFloat</code>)、正面用的 <code>footMount</code>(這個掛載點跟手部配件收納共用,只有 <code>resolveFootDisplay()</code> 回傳值真的是寵物本身時才套 <code>withPetFloat</code>,收納中的武器不會跟著飄)。<br><br>眨眼新增 <code>petEyeBlink</code>(每隻眼睛一份獨立狀態,用陣列索引 0/1 分開存)、<code>petEyeScale(eyeIndex, now)</code>——沒有排定下次眨眼時間就先排一個(<code>now + 2~5 秒隨機</code>),排定時間一到就開始一段 0.12 秒的眨眼(用 <code>|p-0.5|*2</code> 把 0→1 的進度摺成 1→0→1 的縮放比例,眨到一半瞳孔縮放到 0),眨完立刻排下一次。兩隻眼睛的下次眨眼時間各自獨立 <code>Math.random()</code>,天生不會同步。畫眼睛的迴圈從原本固定半徑改成 <code>PET_EYE_R * headR * scale</code>。<br><br><b>驗證</b>:飄浮用像素座標追蹤(側身走路 10 格截圖,鎖定寵物白眼點的像素質心)確認 y 座標隨時間平滑起伏,量級跟 4x 縮放下 <code>PET_FLOAT_AMP=2</code> 换算的預期範圍吻合。眨眼機制截圖在這個渲染尺度下雜訊太大看不準,改用暫時性除錯出口(<code>window.__PET_DEBUG</code>,僅測試用,未進正式檔案)每 20ms 直接讀 <code>petEyeScale</code> 的即時輸出,8 秒取樣確認兩隻眼睛各自都有縮放到 ~0.11(近全閉)的眨眼時刻,且兩眼觸發時間點不同(例如一次分別在 t=3.28s 與 t=3.44s,另一次在 t=7.86s 與 t=8.34s),證實真的獨立、非同步。17 原型 × 8 姿態(含走路/快走/停下/正面站姿)裝備寵物回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求</b>:使用者指定關刀目前的持握表現(水平持握、握把後方留一小截凸出)是全部 11 款巨型配件都該比照的標準,對應到兩個參數——① <code>heldTilt</code>(水平持握角度);② <code>gripRatio</code>(凸出的一截由未到 1 的比例決定)。要求先確認關刀是「自訂 <code>gripRatio</code>」還是「吃全域 <code>DEFAULT_WEAPON_GRIP_RATIO</code>」,再依情況套用到 11 款新配件,全部先改成水平持握,個別配件如果因為造型特殊(明確點名可能是巨型鑰匙、羽毛筆)看起來不自然,個別回報,不用整批卡住。<br><br><b>查證</b>:關刀 <code>heldTilt: -90° * Math.PI/180</code>、<code>gripRatio: 0.72</code> 都是自訂值,不是吃 <code>DEFAULT_WEAPON_GRIP_RATIO</code>(0.68)——兩個值都比全域預設更靠近整數但不完全等於,確認是關刀專屬的調校值,不是巧合套到預設。屬於「有自訂」的情況,直接把這兩個數值原封不動套進 11 款新配件各自的定義。<br><br><b>實作</b>:11 款配件的 <code>gripRatio</code> 全部改成 <code>0.72</code>(取代原本每款各自的 0.82-0.88,巨型花朵原本因為 <code>heldReverse</code> 機制用的是 0.08,這輪一併改成 0.72,和其餘 10 款用同一個數字,而不是保留花朵自己的邏輯);未設定 <code>heldTilt</code> 的 9 款(巨型長矛、巨型軍旗已在 v48.13 設過,不重複)全部加上 <code>heldTilt: -90° * Math.PI/180</code>。沒有另外調整任何配件自己的形狀點位或 <code>heldOutward</code>——這輪只動持握角度跟握把比例這兩個參數,跟關刀當初的做法完全對齊。<br><br><b>截圖結果</b>:10 款(巨斧、巨型長矛、巨型狼牙棒、巨型十字鎬、巨型羽毛筆、巨型軍旗、巨型魚骨、啞鈴、巨戰斧、巨型花朵)水平持握後清楚可辨,握把後方的凸出截段也看得出來,跟關刀的持握質感一致——包含使用者原本擔心的羽毛筆,細長造型水平持握後依然讀作優雅的筆而非武器,沒有問題。<br><br><b>巨型鑰匙個別回報,建議不採用這次改動</b>:巨型鑰匙原本 <code>gripRatio</code>(0.87)是照弓形握把環(<code>ring</code> 圖元)的實際位置量身調校的,握把環本來就設計成落在握把附近;改成 0.72 後握把點往鑰匙齒那端移動,環形握把被推到握把點外側、變成配件「凸出的那一截」,渲染出來環形握把幾乎完全消失,只剩鑰匙齒那端一小段線條,讀不出鑰匙的形狀,比 v48.13 修正前更差。這款的 <code>gripRatio</code> 保留原本的 0.87(不套用這輪的 0.72),但 <code>heldTilt: -90°</code> 仍然套用——兩者分開測試後確認單獨換成水平角度、握把比例維持鑰匙自己原本量身調校的值,環形握把清楚可辨又同時是水平持握,比「整批套用同一組數字」或「整款退回原本的垂直持握」都更好,不是非黑即白的取捨。<br><br><b>驗證</b>:11 款配件(巨型鑰匙的 <code>gripRatio</code> 保留原值、<code>heldTilt</code> 套新值,其餘 10 款兩個參數都套新值)逐一走路循環除錯標記截圖確認。17 原型 × 8 姿態 × 全部 86 款配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報</b>:使用者用實際截圖指出 v48.12 兩個問題——① 大部分新配件沿用巨劍那套「垂直下垂」的持握角度,只有巨型魚骨這類例外讀起來自然;巨型軍旗、巨型長矛應該比照關刀/死神鐮刀改成水平持握,長矛的長度也要對齊關刀;② 巨型花朵、巨型食人花、巨型棒骨、巨型狼牙棒、巨型十字鎬、巨斧共 6 款,配件跟手部之間有明顯懸空縫隙,讀起來像「沒有拿在手上」,並指示食人花更名為「巨戰斧」、棒骨更名為「啞鈴」。<br><br><b>問題②根因</b>:v48.12.1 那輪為了讓這幾款配件的頭部在渲染尺度下夠大夠清楚,把 <code>heldOutward</code> 一路推到 0.85-1.0(遠高於巨劍/關刀/死神鐮刀等既有配件穩定使用的 0.42-0.5),只顧到「頭部有沒有被腿吃掉」,沒有回頭檢查「握把端跟真實手部座標的距離」——這正是巨劍在 v48.3→v48.9 那輪已經踩過、也修過的同一個 <code>heldOutward</code> 拉扯(貼近手 vs 避開腿),這次在新配件上重蹈覆轍。除錯標記重新渲染確認:6 款配件握把端到 <code>handNear</code> 洋紅點之間都有明顯像素縫隙,巨型棒骨最嚴重。修正方式不是重新發明,直接沿用巨劍當初找到的解法——全部退回 <code>heldOutward: 0.5</code>,重新截圖確認縫隙消失、頭部仍然清楚跟腿分開(不會退回 v48.12.1 修正前「讀起來太小」的狀態,因為造成「太小」的根因是形狀本身的點位設計,不是 <code>heldOutward</code>,這輪只改後者)。<br><br><b>問題①修正</b>:巨型長矛、巨型軍旗新增 <code>heldTilt: -90°</code> 覆寫(跟關刀/死神鐮刀 v48.8 的修正同一個機制),從預設 -50° 改成水平、髖部高度持握。長矛全長對齊關刀(1.05+2.75=3.8),從 3.85 微調為 3.8;軍旗全長也拉長到 3.8(原本 3.15)。兩款 <code>heldOutward</code> 一併降到 0.5,跟問題②的修正保持一致,不是兩套不同的數字。<br><br><b>更名</b>:「巨型食人花」重新命名為「巨戰斧」——縮小縫隙後兩片鏡像鋸齒葉片實際讀起來更像雙刃斧而非捕蟲夾,直接照使用者指示更名,不重新設計幾何;「巨型棒骨」重新命名為「啞鈴」。兩款內部變數名稱(<code>giantVenusFlytrap</code>→<code>giantWarAxe</code>、<code>giantBoneBone</code>→<code>giantDumbbell</code>)一併改名,不只改顯示文字,避免識別碼跟顯示名稱對不上號。<br><br><b>驗證</b>:8 款配件(巨斧、巨型狼牙棒、巨型十字鎬、啞鈴、巨戰斧、巨型花朵、巨型長矛、巨型軍旗)走路循環除錯標記截圖逐一確認握把緊貼 <code>handNear</code>、長矛/軍旗清楚呈水平持握。17 原型 × 8 姿態 × 全部 86 款配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求</b>:使用者提供 11 款巨型配件的完整規格與命名定案清單——A 組 9 款長柄型(巨斧、巨型長矛、巨型狼牙棒、巨型十字鎬、巨型羽毛筆、巨型鑰匙、巨型軍旗、巨型魚骨、巨型棒骨)沿用既有「一根軸線+一端造型」慣例;B 組 2 款非長柄型(巨型食人花、巨型花朵)輻射對稱造型需獨立設計。全部 11 款都要用 <code>stuckWeaponEntry()</code> 單手註冊、加進 <code>GIANT_WEAPON_KEYS</code> 套用 v48.11 的持握手臂擺動抑制。<br><br><b>A 組實作</b>:9 款都沿用 <code>WEAPON_SHAPES</code> 既有的 tip-to-butt part 語彙(<code>polygon</code>/<code>shaft</code>/<code>crossbar</code>/<code>diagonal</code>/<code>circle</code>/<code>ring</code>),dist0=業務端(斧刃/矛尖/狼牙棒頭/鎬尖/筆尖/鑰匙齒/旗面/骨頭關節端),gripRatio 靠近 totalLen 端,跟關刀/死神鐮刀同一套慣例。個別區隔特徵:巨斧用單側大彎刃(跟戰斧的對稱雙刃區隔);巨型長矛加一根戰爭矛式的十字護翼跟既有長矛區隔;巨型狼牙棒是頭部直接嵌 <code>diagonal</code> 短刺的實心棒頭(跟流星錘的鏈條+星頭機制區隔);巨型十字鎬是兩支往相反 dx 側彎的尖鎬(全配件庫唯一頭部垂直於握柄軸線的造型);巨型羽毛筆刻意壓低寬度(最大 dx 0.22,遠低於其他武器頭)避免「巨型」放大後变成看起来像武器;巨型鑰匙用 <code>ring</code> 環當弓形握把(苦無的環形機制);巨型軍旗這輪只做固定角度的旗面多邊形,不做布料飄動(飄動效果列為獨立技術驗證項目);巨型魚骨用中軸+交錯 <code>diagonal</code> 短刺做出魚骨架感;巨型棒骨用兩端各三顆疊圓做啞鈴狀,跟魚骨刻意走不同形狀語彙(不是同一個骨頭形狀換皮)。<br><br><b>B 組實作</b>:巨型食人花沿用「dist0=業務端」慣例(捕蟲夾本身就是該朝外的一端,不需要 <code>heldReverse</code>),兩片鏡像鋸齒多邊形在 dist0 交會,後接厚莖 <code>shaft</code>;巨型花朵沿用既有向日葵/玫瑰/百合家族的 <code>heldReverse:true</code> 慣例(dist0 是莖的切口端,握持時翻轉讓花朵朝外),用兩層同心 <code>buildStarPoints()</code>(外層大、內層小)疊出層次感,不做到植物學等級的精細花瓣。<br><br><b>截圖驗證發現 4 款份量感不足,已修正(v48.12.1)</b>:接上角色後逐款截圖,巨斧、巨型十字鎬、巨型食人花的頭部在這個渲染尺度下讀起來只是一個小凸起或細線,巨型棒骨則幾乎整段被腿吃掉——比對既有戰斧發現巨斧原本的 dx(0.62)只比戰斧(0.5)大 24%,這點差距在這個尺度下幾乎看不出來,不是「巨型」該有的誇張感;十字鎬的兩支尖鎬原本 4 個點擠在很窄的軸線區間,渲染成一條細線而非實心尖角;食人花的鋸齒太密(每片 10 個點)在這個尺度下糊成一坨;棒骨的 <code>heldOutward</code>(0.5)相對它的短全長(1.72)明顯不足。四款都重新設計(巨斧刃寬 0.62→0.9、十字鎬尖角加寬「at 跨距」做出實心楔形、食人花鋸齒從 10 點精簡成 3 個大齒且 dx 0.46→0.72、棒骨全長 1.72→2.2 且 <code>heldOutward</code> 0.5→0.95),重新截圖比對確認四款都清楚可辨。<br><br><b>握持模組轉移驗證</b>:使用者特別提醒食人花/花朵這類「蓬鬆、頭重腳輕感沒那麼明顯」的造型,晃動效果可能需要重新微調倍率——實際截圖比對走路循環後,兩款在現有 <code>GIANT_HOLD_ARM_AMP_MUL</code>(0.15)/<code>GIANT_OFF_ARM_AMP_MUL</code>(0.45)倍率下角度一樣穩定、只有小幅晃動,沒有出現異常,判斷不需要另外調整——花朵造型本身輻射對稱,小角度旋轉本來就不明顯,是形狀自身的特性,不是模組失效。<br><br><b>驗證</b>:17 原型 × 8 姿態 × 11 款新配件回歸測試 zero console 錯誤。</p>
@@ -5900,12 +5901,8 @@
   // round body + two small ear nubs + two EYE_COLOR dots so it reads as
   // "alive" through the same light-dots-on-dark-silhouette technique the
   // main character's own eyes already use, without needing any color or
-  // glow effect. Pure flat silhouette, static standing pose only, on
-  // purpose -- no independent idle sway yet (that would reuse the cat
-  // tail's accessoryT-driven technique, near-zero new mechanism, but is
-  // being held back until the mount/proportions are confirmed first, per
-  // direction). No glow/gradient rendering either -- this project's entire
-  // visual language is flat SIL fills with zero exceptions, and a genuine
+  // glow effect. No glow/gradient rendering -- this project's entire visual
+  // language is flat SIL fills with zero exceptions, and a genuine
   // light-emission effect would be the first departure from that, which
   // needs its own separate evaluation rather than being bundled in here.
   // Body enlarged after screenshot review -- at the original size, sitting
@@ -5913,10 +5910,64 @@
   // small and merged into the leg rather than as a distinct standing
   // companion; also benefits from the same footMountDx margin increase
   // applied above.
+  //
+  // v48.15: idle sway added, exactly the "reuse accessoryT" plan flagged
+  // above as future work -- accessoryT already increments unconditionally
+  // every frame in stepFsm regardless of animation state (that's what
+  // drives the cat tail's sway independent of walk/run/idle), so the same
+  // driver works here with no new timing mechanism. Two independent parts:
+  //
+  // (1) body float -- withPetFloat() (defined after this function, used at
+  // both stepFsm call sites) wraps the mount object with a sinusoidal y
+  // offset rather than baking the offset into drawPetAccessory itself, so
+  // the draw function stays a pure "render at this mount" primitive and
+  // the two call sites (footMount for front-facing, petSideMount for
+  // side-view) can each decide independently whether to float -- matters
+  // because footMount is SHARED with stowed hand-accessory display (see
+  // resolveFootDisplay), so that call site must only float when the thing
+  // actually being drawn there is the pet, not a stowed sword.
+  //
+  // (2) eye blink -- petEyeBlink/petEyeScale below, one independent timer
+  // per eye (keyed by array index) so the two eyes don't blink in
+  // lockstep -- each eye rolls its own next-blink-at with an independent
+  // Math.random() offset, which desyncs them by construction with no
+  // explicit "make sure they differ" logic needed.
   const PET_BODY_RX = 0.68, PET_BODY_RY = 0.62;
   const PET_EAR_R = 0.16, PET_EAR_DX = 0.28, PET_EAR_DY_RATIO = 1.6;
   const PET_EYE_R = 0.07, PET_EYE_DX = 0.19, PET_EYE_DY_RATIO = 1.05;
   const PET_HEIGHT_RATIO = PET_BODY_RY * PET_EAR_DY_RATIO + PET_EAR_R;
+  // PET_FLOAT_SPEED deliberately well below CAT_TAIL_SWAY's own 1.6 rad/s
+  // multiplier so the two accessoryT-driven motions don't beat/sync
+  // against each other when both are visible at once (pet + cat tail).
+  const PET_FLOAT_SPEED = 1.0, PET_FLOAT_AMP = 2;
+  function withPetFloat(mount, headR){
+    if (!mount) return mount;
+    const floatY = Math.sin(accessoryT * PET_FLOAT_SPEED) * PET_FLOAT_AMP;
+    return Object.assign({}, mount, { y: mount.y + floatY });
+  }
+  // petEyeBlink: one entry per eye index (0/1), lazily created on first
+  // read so no separate init call is needed. blinkStart<0 means "not
+  // currently blinking, waiting for nextBlinkAt"; once now passes that,
+  // the blink itself runs for BLINK_DUR seconds as a closed-open triangle
+  // (0 -> 1 -> 0 relative time maps to scale 1 -> 0 -> 1 via the
+  // |p-0.5|*2 fold below), then a fresh nextBlinkAt is rolled.
+  const petEyeBlink = {};
+  function petEyeScale(eyeIndex, now){
+    let s = petEyeBlink[eyeIndex];
+    if (!s) s = petEyeBlink[eyeIndex] = { nextBlinkAt: now + 2 + Math.random() * 3, blinkStart: -1 };
+    if (s.blinkStart < 0 && now >= s.nextBlinkAt) s.blinkStart = now;
+    if (s.blinkStart >= 0){
+      const BLINK_DUR = 0.12;
+      const p = (now - s.blinkStart) / BLINK_DUR;
+      if (p >= 1){
+        s.blinkStart = -1;
+        s.nextBlinkAt = now + 2 + Math.random() * 3;
+        return 1;
+      }
+      return Math.abs(p - 0.5) * 2;
+    }
+    return 1;
+  }
   function drawPetAccessory(ctx, footMount, headR){
     drawInMountFrame(ctx, footMount, function(c){
       const bodyCy = -PET_BODY_RY * headR;
@@ -5931,11 +5982,12 @@
       }
       c.fillStyle = EYE_COLOR;
       const eyeY = -PET_BODY_RY * PET_EYE_DY_RATIO * headR;
-      for (const dx of [-PET_EYE_DX, PET_EYE_DX]){
+      [-PET_EYE_DX, PET_EYE_DX].forEach(function(dx, i){
+        const scale = petEyeScale(i, accessoryT);
         c.beginPath();
-        c.arc(dx * headR, eyeY, PET_EYE_R * headR, 0, Math.PI * 2);
+        c.arc(dx * headR, eyeY, PET_EYE_R * headR * scale, 0, Math.PI * 2);
         c.fill();
-      }
+      });
     });
   }
 
@@ -6426,13 +6478,20 @@
       if (headAcc || footDisplay || (petEntry && mounts.petSideMount) || (handAcc && handHeldVisible) || ACCESSORY_CAT_TAIL || ACCESSORY_PROP){
         drawAccessoriesMaybeSoftened(stage, accessoryBuf, function(accCtx){
           if (headAcc) headAcc.draw(accCtx, mounts.headTop, WALK_CFG.headR);
-          if (footDisplay && mounts.footMount) footDisplay.draw(accCtx, mounts.footMount, WALK_CFG.headR);
+          // withPetFloat only applied when footDisplay IS the pet -- this
+          // mount is shared with stowed hand-accessory display (see
+          // resolveFootDisplay's own comment), and a stowed sword/staff
+          // has no business floating.
+          if (footDisplay && mounts.footMount){
+            const footMountForDraw = footDisplay === petEntry ? withPetFloat(mounts.footMount, WALK_CFG.headR) : mounts.footMount;
+            footDisplay.draw(accCtx, footMountForDraw, WALK_CFG.headR);
+          }
           // petSideMount: side-view-only companion anchor (walk/run/
           // idleStop), computed in drawCharacter -- see its own comment.
           // Absent from every other pose function on purpose this round
           // (sit/lie/prone/front-family all still gate the pet through
           // footDisplay/footMount instead, or show nothing).
-          if (petEntry && mounts.petSideMount) petEntry.draw(accCtx, mounts.petSideMount, WALK_CFG.headR);
+          if (petEntry && mounts.petSideMount) petEntry.draw(accCtx, withPetFloat(mounts.petSideMount, WALK_CFG.headR), WALK_CFG.headR);
           if (handAcc && handHeldVisible){
             // holdStyle defaults to 'single' when omitted (see
             // HAND_ACCESSORY_REGISTRY's own comment on why) -- handNear is
