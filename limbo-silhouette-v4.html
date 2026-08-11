@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.12 — 巨型配件擴充清單:新增 11 款單手持握巨型配件</title>
+<title>剪影走路/跑步循環 v48.13 — 修正巨型配件握持縫隙;長矛/軍旗改水平持握;2 款更名</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.12</div>
-    <h1>巨型配件擴充清單:新增 11 款單手持握巨型配件,套用巨型武器持握模組</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.13</div>
+    <h1>修正巨型配件握持縫隙(6 款);長矛/軍旗改水平持握+對齊關刀長度;2 款更名</h1>
+    <p class="sub"><b>問題回報</b>:使用者用實際截圖指出 v48.12 兩個問題——① 大部分新配件沿用巨劍那套「垂直下垂」的持握角度,只有巨型魚骨這類例外讀起來自然;巨型軍旗、巨型長矛應該比照關刀/死神鐮刀改成水平持握,長矛的長度也要對齊關刀;② 巨型花朵、巨型食人花、巨型棒骨、巨型狼牙棒、巨型十字鎬、巨斧共 6 款,配件跟手部之間有明顯懸空縫隙,讀起來像「沒有拿在手上」,並指示食人花更名為「巨戰斧」、棒骨更名為「啞鈴」。<br><br><b>問題②根因</b>:v48.12.1 那輪為了讓這幾款配件的頭部在渲染尺度下夠大夠清楚,把 <code>heldOutward</code> 一路推到 0.85-1.0(遠高於巨劍/關刀/死神鐮刀等既有配件穩定使用的 0.42-0.5),只顧到「頭部有沒有被腿吃掉」,沒有回頭檢查「握把端跟真實手部座標的距離」——這正是巨劍在 v48.3→v48.9 那輪已經踩過、也修過的同一個 <code>heldOutward</code> 拉扯(貼近手 vs 避開腿),這次在新配件上重蹈覆轍。除錯標記重新渲染確認:6 款配件握把端到 <code>handNear</code> 洋紅點之間都有明顯像素縫隙,巨型棒骨最嚴重。修正方式不是重新發明,直接沿用巨劍當初找到的解法——全部退回 <code>heldOutward: 0.5</code>,重新截圖確認縫隙消失、頭部仍然清楚跟腿分開(不會退回 v48.12.1 修正前「讀起來太小」的狀態,因為造成「太小」的根因是形狀本身的點位設計,不是 <code>heldOutward</code>,這輪只改後者)。<br><br><b>問題①修正</b>:巨型長矛、巨型軍旗新增 <code>heldTilt: -90°</code> 覆寫(跟關刀/死神鐮刀 v48.8 的修正同一個機制),從預設 -50° 改成水平、髖部高度持握。長矛全長對齊關刀(1.05+2.75=3.8),從 3.85 微調為 3.8;軍旗全長也拉長到 3.8(原本 3.15)。兩款 <code>heldOutward</code> 一併降到 0.5,跟問題②的修正保持一致,不是兩套不同的數字。<br><br><b>更名</b>:「巨型食人花」重新命名為「巨戰斧」——縮小縫隙後兩片鏡像鋸齒葉片實際讀起來更像雙刃斧而非捕蟲夾,直接照使用者指示更名,不重新設計幾何;「巨型棒骨」重新命名為「啞鈴」。兩款內部變數名稱(<code>giantVenusFlytrap</code>→<code>giantWarAxe</code>、<code>giantBoneBone</code>→<code>giantDumbbell</code>)一併改名,不只改顯示文字,避免識別碼跟顯示名稱對不上號。<br><br><b>驗證</b>:8 款配件(巨斧、巨型狼牙棒、巨型十字鎬、啞鈴、巨戰斧、巨型花朵、巨型長矛、巨型軍旗)走路循環除錯標記截圖逐一確認握把緊貼 <code>handNear</code>、長矛/軍旗清楚呈水平持握。17 原型 × 8 姿態 × 全部 86 款配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求</b>:使用者提供 11 款巨型配件的完整規格與命名定案清單——A 組 9 款長柄型(巨斧、巨型長矛、巨型狼牙棒、巨型十字鎬、巨型羽毛筆、巨型鑰匙、巨型軍旗、巨型魚骨、巨型棒骨)沿用既有「一根軸線+一端造型」慣例;B 組 2 款非長柄型(巨型食人花、巨型花朵)輻射對稱造型需獨立設計。全部 11 款都要用 <code>stuckWeaponEntry()</code> 單手註冊、加進 <code>GIANT_WEAPON_KEYS</code> 套用 v48.11 的持握手臂擺動抑制。<br><br><b>A 組實作</b>:9 款都沿用 <code>WEAPON_SHAPES</code> 既有的 tip-to-butt part 語彙(<code>polygon</code>/<code>shaft</code>/<code>crossbar</code>/<code>diagonal</code>/<code>circle</code>/<code>ring</code>),dist0=業務端(斧刃/矛尖/狼牙棒頭/鎬尖/筆尖/鑰匙齒/旗面/骨頭關節端),gripRatio 靠近 totalLen 端,跟關刀/死神鐮刀同一套慣例。個別區隔特徵:巨斧用單側大彎刃(跟戰斧的對稱雙刃區隔);巨型長矛加一根戰爭矛式的十字護翼跟既有長矛區隔;巨型狼牙棒是頭部直接嵌 <code>diagonal</code> 短刺的實心棒頭(跟流星錘的鏈條+星頭機制區隔);巨型十字鎬是兩支往相反 dx 側彎的尖鎬(全配件庫唯一頭部垂直於握柄軸線的造型);巨型羽毛筆刻意壓低寬度(最大 dx 0.22,遠低於其他武器頭)避免「巨型」放大後变成看起来像武器;巨型鑰匙用 <code>ring</code> 環當弓形握把(苦無的環形機制);巨型軍旗這輪只做固定角度的旗面多邊形,不做布料飄動(飄動效果列為獨立技術驗證項目);巨型魚骨用中軸+交錯 <code>diagonal</code> 短刺做出魚骨架感;巨型棒骨用兩端各三顆疊圓做啞鈴狀,跟魚骨刻意走不同形狀語彙(不是同一個骨頭形狀換皮)。<br><br><b>B 組實作</b>:巨型食人花沿用「dist0=業務端」慣例(捕蟲夾本身就是該朝外的一端,不需要 <code>heldReverse</code>),兩片鏡像鋸齒多邊形在 dist0 交會,後接厚莖 <code>shaft</code>;巨型花朵沿用既有向日葵/玫瑰/百合家族的 <code>heldReverse:true</code> 慣例(dist0 是莖的切口端,握持時翻轉讓花朵朝外),用兩層同心 <code>buildStarPoints()</code>(外層大、內層小)疊出層次感,不做到植物學等級的精細花瓣。<br><br><b>截圖驗證發現 4 款份量感不足,已修正(v48.12.1)</b>:接上角色後逐款截圖,巨斧、巨型十字鎬、巨型食人花的頭部在這個渲染尺度下讀起來只是一個小凸起或細線,巨型棒骨則幾乎整段被腿吃掉——比對既有戰斧發現巨斧原本的 dx(0.62)只比戰斧(0.5)大 24%,這點差距在這個尺度下幾乎看不出來,不是「巨型」該有的誇張感;十字鎬的兩支尖鎬原本 4 個點擠在很窄的軸線區間,渲染成一條細線而非實心尖角;食人花的鋸齒太密(每片 10 個點)在這個尺度下糊成一坨;棒骨的 <code>heldOutward</code>(0.5)相對它的短全長(1.72)明顯不足。四款都重新設計(巨斧刃寬 0.62→0.9、十字鎬尖角加寬「at 跨距」做出實心楔形、食人花鋸齒從 10 點精簡成 3 個大齒且 dx 0.46→0.72、棒骨全長 1.72→2.2 且 <code>heldOutward</code> 0.5→0.95),重新截圖比對確認四款都清楚可辨。<br><br><b>握持模組轉移驗證</b>:使用者特別提醒食人花/花朵這類「蓬鬆、頭重腳輕感沒那麼明顯」的造型,晃動效果可能需要重新微調倍率——實際截圖比對走路循環後,兩款在現有 <code>GIANT_HOLD_ARM_AMP_MUL</code>(0.15)/<code>GIANT_OFF_ARM_AMP_MUL</code>(0.45)倍率下角度一樣穩定、只有小幅晃動,沒有出現異常,判斷不需要另外調整——花朵造型本身輻射對稱,小角度旋轉本來就不明顯,是形狀自身的特性,不是模組失效。<br><br><b>驗證</b>:17 原型 × 8 姿態 × 11 款新配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求</b>:使用者提供完整的巨型武器持握模組規格,涵蓋巨劍/關刀/死神鐮刀三款——① 關刀/死神鐮刀統一單手持握(v48.10 已完成,這輪只需確認);② 持握手臂擺動大幅抑制;③ 另一手擺動整體調降但保留可見幅度,讓武器「在手上有微幅晃動感」而非完全凍結。規格文件明確建議先做「微晃」(選項 A),不做「拖地」(選項 B,需要反解角度讓武器末端貼地,牽涉姿態相依的地面定義跟 z-order,複雜度/風險明顯更高),照建議只實作選項 A。<br><br><b>實作</b>:全檔案唯一一處用 <code>limbFK</code>+振幅持續擺動計算 <code>armNear</code>/<code>armFar</code> 的地方是 <code>drawCharacter</code>(側身走路/跑步循環用的核心姿勢函式)——其餘姿勢函式(坐下/正面待機/鞠躬等)本來就用固定角度而非振幅擺動,不受影響,查證後確認跟需求文件的描述一致,不需要另外改。新增 <code>GIANT_WEAPON_KEYS</code>(巨劍/關刀/死神鐮刀)、<code>GIANT_HOLD_ARM_AMP_MUL</code>(0.15,持握手臂)、<code>GIANT_OFF_ARM_AMP_MUL</code>(0.45,另一手)兩個振幅倍率常數,依目前是否裝備這三款之一,分別對 <code>armNear</code>/<code>armFar</code> 的振幅做縮放。武器角度本來就直接讀 <code>handNear.angle</code>(單手掛載路徑,v48.7 已驗證握把貼合),持握手臂振幅變小後,武器角度自然只在小範圍內波動,不需要另外寫任何武器晃動邏輯——完全是既有機制的自然結果。<br><br><b>驗證</b>:17 原型 × 8 姿態 × 巨劍/關刀/死神鐮刀回歸測試 zero console 錯誤。走路+跑步連續截圖比對:三款巨型武器的持握手角度全程穩定、只有小幅晃動,另一手仍看得出自然擺動,腿部擺動完全不受影響;同一組截圖跟長劍(未套用抑制)並排比對,長劍的握持角度明顯來回擺動一大段,三款巨型武器則穩定貼在小範圍內——差異清楚可辨。坐下/躺下/趴下/跳躍/正面站姿五種姿態額外截圖確認,這些姿態走的是固定角度路徑,套用模組前後畫面一致,沒有意外受影響。倍率 0.15/0.45 為起始建議值,截圖主觀判斷已經達到「微晃、不凍結」的效果,如需微調可再提供新數值。</p>
     <p class="sub"><b>背景</b>:v48.9 否決了關刀/死神鐮刀改單手掛載的提案,維持雙手中點掛載。使用者不接受這個結論,指出雙手掛載機制目前的做法(中點掛載+其中一手的角度)「根本沒有拿在手上」,要求實際試做「用兩隻手的真實座標」這個方向,而不是只憑推算否決。<br><br><b>實測方向一:真兩點掛載</b>——武器上取兩個握把距離點,整把武器做仿射變換,讓這兩點精準對齊 <code>handNear</code>/<code>handFar</code> 的真實世界座標(不再只取中點)。用掛載點除錯標記(magenta 點)實際渲染關刀/死神鐮刀走路循環驗證,結果比 v48.3 推算的「拉伸變形」更糟:因為雙手反相位擺動,走路循環中有些影格兩手會擺到彼此非常接近,而整把武器長度是照兩手實際距離等比縮放,兩手一靠近整把武器直接縮到幾乎消失,不是變形,是消失。<br><br><b>實測方向二:縮放下限鎖定</b>——在方向一的基礎上,把縮放係數鎖下限(不讓它逼近 0),量測走路循環中係數的實際分布(中位數 2.6,最小值 0.2)後,鎖 <code>s≥1.0</code> 重新渲染。消失的問題解決了,但兩手靠近的同一批影格換了一個新問題:方向不穩定,因為兩手真實座標的水平差,在這個側視角簡化 rig 裡主要代表「前臂/後臂的景深」,不是真正的武器寬度方向,兩手一靠近這個方向就變成雜訊主導、大幅跳動——這正是 a3bb065(v48.7)已經測過並否決的「純角度版」同一個根因,不是新問題,而是同一個結構性限制在另一種做法下再度出現。<br><br><b>結論</b>:兩個「讓掛載點更聰明」的方向都被證實不可行,使用者直接決定改回單手掛載(比照長杖/三叉戟),並表示會依實際渲染結果自行判斷關刀/死神鐮刀的長度是否需要縮短。</p>
@@ -505,8 +506,8 @@
   const GIANT_WEAPON_KEYS = [
     'greatsword', 'guandao', 'deathScythe',
     'giantAxe', 'giantSpear', 'giantClub', 'giantPickaxe', 'giantQuill',
-    'giantKey', 'giantBanner', 'giantFishBone', 'giantBoneBone',
-    'giantVenusFlytrap', 'giantFlower'
+    'giantKey', 'giantBanner', 'giantFishBone', 'giantDumbbell',
+    'giantWarAxe', 'giantFlower'
   ];
   const GIANT_HOLD_ARM_AMP_MUL = 0.15;
   const GIANT_OFF_ARM_AMP_MUL = 0.45;
@@ -4519,10 +4520,18 @@
     // just incrementally past battleAxe) and shallowed the dip to ~30%
     // (0.9->0.62) so it still reads as ONE curved edge, not two blades.
     // heldOutward raised to match (0.85 -> 1.0).
+    // v48.13 correction: 1.0 was too aggressive -- user screenshots showed
+    // a visible GAP between the true hand marker and the weapon's own
+    // grip end, reading as "not actually held," the same
+    // clear-the-leg-vs-stay-near-the-hand tension greatsword's own v48.9
+    // fix already resolved (0.75->0.5). Brought back down to greatsword's
+    // settled value (1.0 -> 0.5) rather than re-deriving a new number --
+    // screenshot-confirmed the gap closes and the wing still clears the
+    // leg.
     giantAxe: {
       totalLen: 0.55 + 1.9,
       gripRatio: 0.85,
-      heldOutward: 1.0,
+      heldOutward: 0.5,
       parts: [
         { type: 'shaft', from: 0, to: 0.55 + 1.9, width: 0.16 },
         { type: 'polygon', points: [
@@ -4532,27 +4541,37 @@
         { type: 'polygon', points: [{ at: 0.34, dx: -0.06 }, { at: 0.5, dx: -0.4 }, { at: 0.38, dx: -0.06 }] }
       ]
     },
-    // 巨型長矛 giantSpear: longer than the existing spear (3.2 -> 3.85
-    // total) with a boar-spear crossbar wing at the base of the head --
-    // the wing is the one silhouette feature separating it from just "a
-    // scaled-up spear".
+    // 巨型長矛 giantSpear: longer than the existing spear (3.2 -> 3.8
+    // total, exactly matching guandao's own length per user request) with
+    // a boar-spear crossbar wing at the base of the head -- the wing is
+    // the one silhouette feature separating it from just "a scaled-up
+    // spear".
+    // v48.13: default heldTilt (-50deg) left this weapon hanging near-
+    // vertical alongside the leg, the exact "dragging, not held" read
+    // guandao/deathScythe already hit and fixed in v48.8 -- same
+    // heldTilt:-90deg override applied here for the same horizontal,
+    // hip-height carry.
     giantSpear: {
-      totalLen: 0.55 + 3.3,
+      totalLen: 0.55 + 3.25,
       gripRatio: 0.88,
+      heldTilt: -90 * Math.PI / 180,
       parts: [
         { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.22, dx: 0.22 }, { at: 0.55, dx: 0 }, { at: 0.22, dx: -0.22 }] },
         { type: 'crossbar', at: 0.5, halfLen: 0.22, width: 0.08 },
-        { type: 'shaft', from: 0.55, to: 0.55 + 3.3, width: 0.2 }
+        { type: 'shaft', from: 0.55, to: 0.55 + 3.25, width: 0.2 }
       ]
     },
     // 巨型狼牙棒 giantClub: a solid barrel-shaped head (not flailMace's
     // separate star-on-a-chain) with spikes embedded directly in the
     // head via 'diagonal' parts -- a real morning-star club, distinct
     // from flailMace's flail mechanism.
+    // v48.13: heldOutward brought down to greatsword's settled 0.5 (was
+    // 0.55) as part of the batch-wide gap fix -- see giantAxe's own
+    // comment for the full reasoning, identical here.
     giantClub: {
       totalLen: 0.6 + 1.6,
       gripRatio: 0.85,
-      heldOutward: 0.55,
+      heldOutward: 0.5,
       parts: [
         { type: 'shaft', from: 0, to: 0.6 + 1.6, width: 0.22 },
         { type: 'polygon', points: [
@@ -4579,10 +4598,12 @@
     // wedge (narrow at the shaft, flares out wide, tapers back to a
     // point), same technique giantAxe's wing uses, with dx reach raised
     // to 0.75 to match. heldOutward raised to match (0.7 -> 0.9).
+    // v48.13: 0.9 opened a visible gap between the hand and the tines --
+    // same batch-wide fix as giantAxe, brought back down to 0.5.
     giantPickaxe: {
       totalLen: 0.4 + 2.1,
       gripRatio: 0.85,
-      heldOutward: 0.9,
+      heldOutward: 0.5,
       parts: [
         { type: 'polygon', points: [{ at: 0.16, dx: 0.04 }, { at: 0.3, dx: 0.75 }, { at: 0.42, dx: 0.55 }, { at: 0.34, dx: 0.08 }, { at: 0.22, dx: 0.04 }] },
         { type: 'polygon', points: [{ at: 0.16, dx: -0.04 }, { at: 0.3, dx: -0.75 }, { at: 0.42, dx: -0.55 }, { at: 0.34, dx: -0.08 }, { at: 0.22, dx: -0.04 }] },
@@ -4627,19 +4648,26 @@
     // 巨型軍旗 giantBanner: plain pole + a FIXED-angle pennant polygon
     // near the top (per user note: no cloth-sway animation this round,
     // that's a separate future item) + a small finial cap at dist0.
+    // v48.13: lengthened to match guandao's totalLen exactly (3.15 -> 3.8,
+    // per user request), and heldTilt:-90deg added for the same
+    // horizontal hip-height carry as giantSpear above -- same "dragging,
+    // not held" problem at the default tilt, same fix. heldOutward
+    // brought down from 0.8 to 0.5 as part of the batch-wide gap fix (see
+    // giantAxe's own comment).
     giantBanner: {
-      totalLen: 3.15,
+      totalLen: 3.8,
       gripRatio: 0.88,
-      heldOutward: 0.8,
+      heldTilt: -90 * Math.PI / 180,
+      heldOutward: 0.5,
       parts: [
         { type: 'circle', at: 0, r: 0.08 },
         { type: 'polygon', points: [{ at: 0.15, dx: 0 }, { at: 0.15, dx: 0.55 }, { at: 0.55, dx: 0.3 }, { at: 0.9, dx: 0.5 }, { at: 0.9, dx: 0 }] },
-        { type: 'shaft', from: 0, to: 3.15, width: 0.12 }
+        { type: 'shaft', from: 0, to: 3.8, width: 0.12 }
       ]
     },
     // 巨型魚骨 giantFishBone: central spine + alternating 'diagonal' rib
     // capsules (the rib pairs are the identifying feature against
-    // giantBoneBone below) + a small tail fin at dist0 + a rounder skull
+    // giantDumbbell below) + a small tail fin at dist0 + a rounder skull
     // shape near the grip end.
     giantFishBone: {
       totalLen: 2.0,
@@ -4663,11 +4691,15 @@
           ] }
       ]
     },
-    // 巨型棒骨 giantBoneBone: dumbbell silhouette -- a knob cluster
-    // (three overlapping circles) at EACH end of a thin shaft, unlike
-    // giantFishBone's spine+ribs -- deliberately a different shape
-    // family, not the same bone shape renamed (per user's explicit
-    // instruction the two must not read as reskins of each other).
+    // 啞鈴 giantDumbbell (v48.13 rename, was "巨型棒骨"): dumbbell
+    // silhouette -- a knob cluster (three overlapping circles) at EACH
+    // end of a thin shaft, unlike giantFishBone's spine+ribs --
+    // deliberately a different shape family, not the same bone shape
+    // renamed (per user's explicit instruction the two must not read as
+    // reskins of each other). Renamed at the user's own request once the
+    // rendered shape read more clearly as a dumbbell than a bone -- key
+    // renamed too (not just the label) so the identifier and the display
+    // name stay in agreement.
     // v48.12.1 revision: at the original scale (totalLen 1.72, knob
     // r=0.16, heldOutward 0.5) the whole item rendered almost entirely
     // swallowed inside the leg silhouette, confirmed by screenshot --
@@ -4678,10 +4710,14 @@
     // "it's a small object" as a reason to under-push it outward -- the
     // giant-item brief calls for exaggerated scale regardless of the
     // real-world object's own size.
-    giantBoneBone: {
+    // v48.13 correction: 0.95 swung too far the OTHER way -- user
+    // screenshots showed a visible gap between the hand and the near
+    // knob, same batch-wide issue as giantAxe/giantClub/giantPickaxe (see
+    // giantAxe's own comment). Brought back down to 0.5.
+    giantDumbbell: {
       totalLen: 2.2,
       gripRatio: 0.85,
-      heldOutward: 0.95,
+      heldOutward: 0.5,
       parts: [
         { type: 'shaft', from: 0.32, to: 1.68, width: 0.14 },
         { type: 'circle', at: 0.14, dx: 0.22, r: 0.24 },
@@ -4694,22 +4730,31 @@
     },
     // ---- B group: 2 radial/symmetric giant items, independently
     // designed (not axis-parameterized the same way as the 9 above) ----
-    // 巨型食人花 giantVenusFlytrap: two mirrored jagged-edge lobe
-    // polygons meeting at dist0 (the trap, business/display end -- same
-    // "dist0 = business end" convention as every axis-based item above,
-    // NOT the flower's heldReverse convention below, since the trap
-    // itself already reads correctly as the outward end), on a thick
-    // stem shaft.
+    // 巨戰斧 giantWarAxe (v48.13 rename, was "巨型食人花" venus flytrap):
+    // two mirrored jagged-edge lobe polygons meeting at dist0 (the
+    // business/display end -- same "dist0 = business end" convention as
+    // every axis-based item above, NOT the flower's heldReverse
+    // convention below, since this end already reads correctly as the
+    // outward end), on a thick stem/haft shaft. Shape geometry unchanged
+    // by the rename -- once heldOutward brought the lobes close enough to
+    // the hand to read clearly (see the v48.13 note below), the mirrored
+    // curved-lobe silhouette read more like a double-bit axe than a
+    // flytrap, so renamed to match rather than redesigning the geometry;
+    // key renamed too, matching giantDumbbell's own reasoning.
     // v48.12.1 revision: the first version's 10-point zigzag packed too
     // many small teeth into a short 0.55 axial span -- at this render
     // scale they blurred into a single small blob instead of individually
     // legible teeth, confirmed by screenshot. Rebuilt with 3 large teeth
     // (clear tip/valley pairs) over a longer 0.68 span, dx reach raised
     // 0.46 -> 0.72. heldOutward raised to match (0.75 -> 0.95).
-    giantVenusFlytrap: {
+    // v48.13 correction: 0.95 opened a visible gap between the hand and
+    // the lobes -- same batch-wide issue as giantAxe/giantClub/
+    // giantPickaxe/giantDumbbell (see giantAxe's own comment). Brought
+    // back down to 0.5.
+    giantWarAxe: {
       totalLen: 0.68 + 1.5,
       gripRatio: 0.85,
-      heldOutward: 0.95,
+      heldOutward: 0.5,
       parts: [
         { type: 'polygon', points: [
             { at: 0, dx: 0.02 }, { at: 0.12, dx: 0.3 }, { at: 0.08, dx: 0.18 }, { at: 0.3, dx: 0.58 },
@@ -4730,11 +4775,14 @@
     // SAME center (a smaller bright layer directly on top of a larger
     // one) for the "layered petals" look, simpler than true per-petal
     // geometry per the user's own "simplified version is fine" note.
+    // v48.13: heldOutward brought down to greatsword's settled 0.5 (was
+    // 0.75) as part of the batch-wide gap fix -- see giantAxe's own
+    // comment for the full reasoning, identical here.
     giantFlower: {
       totalLen: 2.31,
       gripRatio: 0.08,
       heldReverse: true,
-      heldOutward: 0.75,
+      heldOutward: 0.5,
       parts: [
         { type: 'shaft', from: 0, to: 1.5, width: 0.09 },
         { type: 'polygon', points: [{ at: 0.4, dx: 0.05 }, { at: 0.55, dx: 0.32 }, { at: 0.65, dx: 0.26 }, { at: 0.5, dx: 0.05 }] },
@@ -6108,8 +6156,8 @@
     giantKey: stuckWeaponEntry('巨型鑰匙', 'giantKey'),
     giantBanner: stuckWeaponEntry('巨型軍旗', 'giantBanner'),
     giantFishBone: stuckWeaponEntry('巨型魚骨', 'giantFishBone'),
-    giantBoneBone: stuckWeaponEntry('巨型棒骨', 'giantBoneBone'),
-    giantVenusFlytrap: stuckWeaponEntry('巨型食人花', 'giantVenusFlytrap'),
+    giantDumbbell: stuckWeaponEntry('啞鈴', 'giantDumbbell'),
+    giantWarAxe: stuckWeaponEntry('巨戰斧', 'giantWarAxe'),
     giantFlower: stuckWeaponEntry('巨型花朵', 'giantFlower'),
 
     // ---- B group: round/block armor & relic items (4) ----
