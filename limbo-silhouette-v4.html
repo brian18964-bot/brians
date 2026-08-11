@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.16.4 — 寵物眼睛改側臉邏輯,隨轉正面切換對稱/偏側</title>
+<title>剪影走路/跑步循環 v48.16.5 — 翅膀款改疊坐小小煤炭 + 寵物地面陰影</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.16.4</div>
-    <h1>寵物眼睛改側臉邏輯,隨轉正面切換對稱/偏側</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.16.5</div>
+    <h1>翅膀款改疊坐小小煤炭 + 寵物地面陰影</h1>
+    <p class="sub"><b>需求(v48.16.5)</b>:兩項調整——① 翅膀拔掉改名「雙煤炭」效果不好,改成主體頭上疊坐一隻更小的小小煤炭,取代 <code>coalWings</code>/<code>coalWingsFeet</code>,小小煤炭自己也要有眼睛、也要套用側臉/正面切換邏輯;② 寵物目前完全沒有地面陰影,跟一直都有陰影的角色本體放在一起顯得像浮貼上去,要補上,且陰影必須釘死在地面、不能跟著 <code>withPetFloat</code> 的飄浮偏移一起動。<br><br><b>①實作</b>:新增 <code>drawCoalRider(c, headR, bodyCy, facing)</code>,疊在主體頭頂上方,水平方向套用自己獨立的 <code>Math.sin(accessoryT*PET_FLOAT_SPEED - PET_RIDER_LAG)*PET_RIDER_SWAY_AMP*headR</code>(新增 <code>PET_RIDER_LAG=0.8</code>/<code>PET_RIDER_SWAY_AMP=0.08</code> 兩個常數)——沿用主體同一個 <code>accessoryT</code> 時鐘但帶相位延遲,讀起來像「坐在上面被主體帶動甩動」而不是「跟主體完全同步鏡像」。眼睛用獨立 blink index(<code>petEyeScale(100, ...)</code>,跟主體的 0/1/2 明顯不撞號),同樣吃 <code>facing</code> 參數切換置中(正面)/偏面向側(側面)。<code>coalWings</code>/<code>coalWingsFeet</code> 兩筆整個換成 <code>coalRider</code>/<code>coalRiderFeet</code>,<code>apex</code> 從共用的 <code>PET_HEIGHT_RATIO*headR</code> 改成 <code>(PET_HEIGHT_RATIO+0.55)*headR</code>(疊高後的量測值)——雖然目前 <code>PET_REGISTRY</code> 的 <code>apex</code> 欄位查證後全程式碼還沒有實際呼叫端在用(頭部配件的 <code>apex</code> 才有接到 <code>headAccessoryClearance()</code>),但作為未來可能接上的 metadata,疊高多少就照實反映多少,不留錯誤的數字在那裡。<br><br><b>①截圖抓到一個問題,已修正</b>:小小煤炭的眼睛半徑最初照使用者片段給的 <code>PET_EYE_R*headR*0.75</code>,截圖放大檢視後這顆眼睛在畫面上幾乎融進小小煤炭自己的黑色剪影裡、看不出白點(這個畫布尺度下 <code>headR</code> 只有個位數 px,0.75 倍的 <code>PET_EYE_R</code> 換算下來已經是次像素等級,被畫面縮放的抗鋸齒稀釋到幾乎不可見,主體自己的眼睛半徑更大一些才勉強撐得住同樣的稀釋)。掃了幾組倍率後改成 1.4(其餘位置/計算不變),重新截圖確認小小煤炭的白點眼睛清楚可辨,跟主體的兩顆眼睛明顯是兩個獨立個體、不是同一組眼睛分身。<br><br><b>②實作</b>:新增 <code>drawPetShadow(ctx, mount, headR)</code>,不重新發明畫法,直接包一層呼叫角色本體既有的 <code>drawGroundShadow()</code>(同一份顏色深淺/橢圓扁平比例,兩份陰影視覺上自然一致)。兩個既有呼叫處都在套用 <code>withPetFloat()</code> 之前,先用原始(未套飄浮偏移)的 <code>mounts.petSideMount</code>/<code>mounts.footMount</code> 呼叫 <code>drawPetShadow</code>,陰影因此固定貼地,只有寵物本體(套了 float 偏移的版本)上下飄浮;<code>footMount</code> 那處額外用 <code>footDisplay === petEntry</code> 判斷式擋掉,收納中的手部配件(劍/水壺)不會意外長出寵物陰影。繪製順序陰影在前、本體在後,本體正確蓋在陰影上面。<br><br><b>驗證</b>:<code>coalRider</code>/<code>coalRiderFeet</code> 側面走路+正面站定(等轉場完全結束)各截圖,小小煤炭疊在頭上位置協調、facing 切換有生效(正面置中、側面偏面向側)、眨眼跟主體不同步(獨立 index 確認過)。陰影驗證用連續 6 格走路截圖量測——寵物剪影的最上緣 y 座標隨飄浮在 118-123px 之間變動(確認本體真的在飄),同一批影格裡陰影本身最暗的那一列固定卡在 y=150,6 格完全沒有變動(確認陰影真的釘死不動),繪製順序目視確認本體疊在陰影上面而非陰影蓋住本體。17 原型 × 8 款寵物切換回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.16.4)</b>:角色本身雖然定義兩顆白色眼睛,但因為是側面呈現,畫面上只看得到靠近觀眾這一側的那一顆(另一顆的半徑在側面時被 tween 到 0,見 <code>drawCharacter</code> 的 <code>eye1Dx</code>/<code>eye2Dx</code> 註解)。寵物的眼睛卻是以身體中心線左右對稱分佈,讀起來像正面面對觀眾,跟角色的側臉邏輯不一致。使用者要求先回報「角色轉正面站定後,眼睛是維持單點還是變成對稱兩點」,再決定寵物側面/正面是否需要分開處理。<br><br><b>回報</b>:查證 <code>drawCharacter</code> 的 <code>eye1Dx</code>/<code>eye2Dx</code> 混合公式——<code>e</code>(轉身進度)從 0 到 1 時,<code>eye2</code> 的半徑是 <code>eyeR * e</code>,側面(<code>e=0</code>)時 <code>eye2</code> 半徑為 0(視覺上只有一顆),正面(<code>e=1</code>)時兩顆眼睛等半徑、<code>eye1Dx</code>/<code>eye2Dx</code> 互為正負鏡像,完全對稱。屬於「角色正面變成對稱兩點」的情況,需要切換,採用使用者提供的方案。<br><br><b>實作</b>:新增 <code>PET_FACE_DX = PET_EYE_DX * 0.9</code>,正號對應 <code>drawCharacter</code> 自己的側面慣例(<code>sideDx = +0.48*headR</code> 是側面時唯一可見的近側眼睛,方向一致,不是另外猜的)——實際截圖角色走路頭部確認可見眼睛落在畫面右側,跟這個正號假設吻合,不需要改負號。<code>drawPetAccessory</code>/7 款小煤炭延伸的 <code>draw()</code> 簽名都加上第 4 個參數 <code>facing</code>,新增 3 個共用小工具 <code>coalSingleEyeDefs(facing)</code>/<code>coalDoubleEyeDefs(facing)</code>/<code>coalTripleEyeDefs(facing)</code>,把使用者範例裡每款各自重複的三元判斷收成一處,8 款寵物(含原本沒被使用者範例列出的基礎「隨身寵物」——同樣是共用小煤炭基底、同樣的對稱問題,一併處理,不留下不一致的漏網之魚)全部改成呼叫這三個工具之一。<br><br><b>切換掛鉤</b>:比照使用者指定的技術掛鉤點,兩個既有呼叫處分別補上第 4 個實參——<code>mounts.petSideMount</code> 那處(僅走路/快走/停下三種側身姿勢有效)傳 <code>'side'</code>;<code>mounts.footMount</code> 那處(<code>resolveFootDisplay()</code>,只有角色完全轉正面站定、<code>turnP>=1</code> 才存在)傳 <code>'front'</code>,同一行也服務非寵物的手部配件收納 <code>draw()</code>,多出的第 4 個實參對那些函式是無操作的多餘參數(JS 對函式呼叫多傳的參數本來就會忽略,不需要另外判斷是不是寵物才傳)。轉場期間(<code>turnP</code> 介於 0~1)沿用既有機制——<code>footMount</code> 這段期間本來就回傳 <code>null</code>、<code>petSideMount</code> 也只在 <code>drawCharacter</code>(側身走跑停)才會算,轉身過程中兩者都不存在,寵物這幾格本來就不繪製,不是這輪改動新增或需要另外處理的行為。<br><br><b>驗證</b>:先截圖角色走路頭部特寫,確認可見眼睛在畫面右側,佐證 <code>PET_FACE_DX</code> 正負號選擇正確。4 款代表性寵物(原版隨身寵物、獨眼、三眼、翅膀)各截側面走路 + 點擊「正面站姿」按鈕等待 <code>FRONT_TURN_DUR</code> 轉場完全結束(2 秒緩衝)後的正面站定,共 8 張——側面版本眼睛全部偏向畫面右側(跟角色可見眼同側)且仍落在身體剪影內,正面版本全部切回原本的置中/對稱排列,確認切換方向與時機都正確。17 原型 × 8 款寵物切換回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.16.3)</b>:使用者提出 4 項清單調整——① 移除「小煤炭(小手)」;② 三眼版改成一列橫排,不要三角形排列;③ 新增 3 款「+小腳」組合(獨眼+小腳、三眼+小腳、翅膀+小腳);④ 小腳畫法抽成共用函式 <code>drawCoalFeet(c, headR, bodyCy)</code>,供 <code>coalFeet</code> 本身跟新的 3 款組合共用。使用者提供的規格片段也把 <code>drawCoalEyes()</code> 簽名從 <code>(c, headR, bodyCy, eyeDefs)</code> 精簡成 <code>(c, headR, eyeDefs)</code>(<code>bodyCy</code> 參數自 v48.16.2 起函式內部就沒在用),連帶更新全部呼叫端。<br><br><b>規格片段裡的 <code>drawCoalFeet</code> 有一個座標錯誤,實作前先截圖抓出來,沒有照抄</b>:使用者提供的片段寫 <code>const footY = PET_BODY_RY * 0.95 * headR;</code>(不疊加 <code>bodyCy</code>,理由寫「比照眼睛的修法」)。但眼睛跟腳的正確基準點方向不同——身體橢圓中心 <code>bodyCy</code> 是負值(往上),橢圓底緣落在掛載原點 <code>y=0</code>;v48.16.2 眼睛的修正之所以能拿掉 <code>bodyCy</code>,是因為眼睛落在頭頂附近,「不疊加 bodyCy 直接用 <code>-PET_BODY_RY*dyRatio*headR</code>」在 dyRatio≈1 時剛好跟 <code>bodyCy</code> 自己的公式重合,拿掉的是true的雙重疊加;腳落在橢圓底緣附近(既有 <code>coalFeet</code> 舊寫法 <code>bodyCy + PET_BODY_RY*0.95*headR</code> 算出來非常接近 0,也就是掛載原點),兩者用的是相反方向的偏移,不能套用同一招。實際把片段原樣接上去渲染截圖比對,腳的位置確實掉到身體下方一大截,懸空在剪影外——因此 <code>drawCoalFeet()</code> 保留原本 <code>coalFeet</code> 舊寫法已驗證正確的 <code>bodyCy + PET_BODY_RY*0.95*headR</code> 公式(只是抽成共用函式,数值/邏輯不變),沒有照抄使用者片段裡這一行。片段裡 <code>capsule()</code> 呼叫的顏色參數也誤寫成 <code>headR*0.13</code>(跟寬度參數重複,不是合法顏色字串)——這行沒有實際造成畫面錯誤(canvas 對不合法的 <code>fillStyle</code> 賦值會直接忽略、維持 <code>drawInMountFrame</code> 一開始設定的 <code>SIL</code>),但仍照舊有 <code>coalFeet</code> 的寫法,直接傳 <code>SIL</code>,不依賴這個沒有明說的忽略行為。<br><br><b>實作</b>:<code>coalHands</code> 從 <code>PET_REGISTRY</code> 整筆刪除,選單自動少一項(<code>populatePetSelect()</code> 本來就是遍歷註冊表產生)。<code>coalEyeTriple</code> 的 <code>eyeDefs</code> 改成三顆同高、只靠 <code>dx</code>(±1.6 倍 <code>PET_EYE_DX</code>)分開的橫排,不再帶各自的 <code>dyRatio</code> 覆寫。新增 <code>coalEyeSingleFeet</code>/<code>coalEyeTripleFeet</code>/<code>coalWingsFeet</code> 三款,各自在原本的眼睛/翅膀邏輯前插入一行 <code>drawCoalFeet(c, headR, bodyCy)</code>。<br><br><b>驗證</b>:7 款(小腳、獨眼、獨眼+小腳、三眼、三眼+小腳、翅膀、翅膀+小腳)4x 放大截圖逐款確認——眼睛全部落在身體剪影內;三眼版三顆眼睛同高橫排,不再是三角形;3 款「+小腳」組合的腳部起點都貼在身體底緣、跟既有 <code>coalFeet</code> 單獨一款的腳部位置一致,沒有出現規格片段那個掉到身體外的錯誤。17 原型 × 7 款寵物切換回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.16.2)</b>:使用者截圖指出 v48.16.1 那輪修正後,5 款小煤炭延伸寵物的眼睛仍然跑到身體剪影外面。<br><br><b>根因</b>:<code>drawCoalEyes(c, headR, bodyCy, eyeDefs)</code> 裡眼睛 y 座標寫成 <code>bodyCy - PET_BODY_RY * dyRatio * headR</code>——但 <code>bodyCy</code> 本身就等於 <code>drawCoalBody()</code> 回傳的 <code>-PET_BODY_RY * headR</code>,兩者相加等於把身體橢圓中心的偏移量疊加了兩次。原本(重構前)獨立算眼睛 y 座標的寫法是 <code>-PET_BODY_RY * PET_EYE_DY_RATIO * headR</code>,單純只有一份偏移;重構成共用函式時多加了一次 <code>bodyCy</code>,v48.16.1 那輪只檢查了三眼版 <code>dyRatio</code> 本身的數值是否合理,沒有回頭檢查這個雙重疊加的計算式,所以沒抓到。<br><br><b>修正</b>:把該行改成 <code>const ey = -PET_BODY_RY * dyRatio * headR;</code>,不再疊加 <code>bodyCy</code>。函式簽名保留 <code>bodyCy</code> 參數不動(5 處呼叫端不用跟著改),函式內部單純不再使用它。<br><br><b>驗證</b>:5 款延伸(小手、小腳、獨眼、三眼、翅膀)+ 原版寵物,4x 放大截圖逐一確認眼睛(含獨眼版放大 1.8 倍半徑、三眼版加寬橫向間距)都落在身體橢圓剪影內,不再突出。17 原型 × 6 款寵物切換回歸測試 zero console 錯誤。</p>
@@ -5939,10 +5940,12 @@
   //
   // v48.16: original single pet split into a shared "小煤炭" (coal
   // creature) base -- drawCoalBody()/drawCoalEyes() -- plus sibling
-  // registry entries (coalFeet/coalEyeSingle/coalEyeTriple/coalWings, and
-  // as of v48.16.3 three "+小腳" combos layering drawCoalFeet() on top of
-  // those) that reuse the same base and only add their own extra
-  // silhouette bits on top. The float/blink animation logic above is
+  // registry entries (coalFeet/coalEyeSingle/coalEyeTriple, three "+小腳"
+  // combos layering drawCoalFeet() on top of those as of v48.16.3, and as
+  // of v48.16.5 coalRider/coalRiderFeet layering a second smaller pet via
+  // drawCoalRider() -- replacing the earlier coalWings/coalWingsFeet)
+  // that reuse the same base and only add their own extra silhouette bits
+  // on top. The float/blink animation logic above is
   // completely untouched and applies to every sibling automatically: float
   // is applied at the stepFsm call sites (outside any per-pet draw
   // function), and blink lives in petEyeScale, called once per eye
@@ -5963,10 +5966,11 @@
   // PET_HEIGHT_RATIO: top of the body ellipse (2x its own radius, since
   // the ellipse's own center already sits PET_BODY_RY above the mount) --
   // recomputed for the earless body now that there's no ear apex to
-  // measure from. Shared by all 6 registry entries' apex(); none of the
-  // 5 siblings' own extra bits (arms/legs/wings) reach meaningfully above
-  // the body top, so one shared value stays accurate for the whole family
-  // rather than needing a per-variant override.
+  // measure from. Shared by most registry entries' apex() as-is; none of
+  // their own extra bits (arms/legs) reach meaningfully above the body
+  // top. coalRider/coalRiderFeet are the one exception -- a second smaller
+  // pet stacked on the head clearly does reach higher, so those two add
+  // their own +0.55 on top of this shared value instead of reusing it bare.
   const PET_HEIGHT_RATIO = PET_BODY_RY * 2;
   // PET_FLOAT_SPEED deliberately well below CAT_TAIL_SWAY's own 1.6 rad/s
   // multiplier so the two accessoryT-driven motions don't beat/sync
@@ -6044,7 +6048,8 @@
   }
   // drawCoalFeet(): shared foot pair for the "+小腳" combo variants. footY
   // anchors off bodyCy (the body ellipse's own center height) the same way
-  // drawCoalBody's other siblings (wings) already do -- NOT the "no bodyCy"
+  // drawCoalBody's other siblings (e.g. drawCoalRider below) already do --
+  // NOT the "no bodyCy"
   // pattern drawCoalEyes uses. Those are different reference points on
   // purpose: eyes sit near the top of the ellipse where the single-offset
   // formula (-PET_BODY_RY*ratio*headR) happens to coincide with bodyCy's own
@@ -6082,6 +6087,43 @@
     return facing === 'front'
       ? [{ dx: -PET_EYE_DX * 1.6 }, { dx: 0 }, { dx: PET_EYE_DX * 1.6 }]
       : [{ dx: PET_FACE_DX * 0.4 }, { dx: PET_FACE_DX * 1.1 }, { dx: PET_FACE_DX * 1.8 }];
+  }
+  // PET_RIDER_LAG / PET_RIDER_SWAY_AMP (v48.16.5): the coalRider variants'
+  // smaller "rider" pet reuses the main body's accessoryT-driven float
+  // clock but offset by a phase lag, with its own (smaller) horizontal
+  // sway amplitude, so it reads as being carried along on top rather than
+  // moving in perfect lockstep with the body underneath it.
+  const PET_RIDER_LAG = 0.8, PET_RIDER_SWAY_AMP = 0.08;
+  // drawCoalRider(): a second, smaller 小煤炭 sitting on the main body's
+  // head, used by coalRider/coalRiderFeet. Own body ellipse + own
+  // facing-aware eye, with an independent blink schedule (eyeIndex 100,
+  // well clear of the main body's 0/1/2 range) so the two don't visibly
+  // blink in sync -- two independent creatures, not one eye split in half.
+  function drawCoalRider(c, headR, bodyCy, facing){
+    const riderR = PET_BODY_RY * 0.42;
+    const riderCy = bodyCy - PET_BODY_RY * 1.5 * headR;
+    const sway = Math.sin(accessoryT * PET_FLOAT_SPEED - PET_RIDER_LAG) * PET_RIDER_SWAY_AMP * headR;
+    c.beginPath();
+    c.ellipse(sway, riderCy, riderR * headR, riderR * headR, 0, 0, Math.PI * 2);
+    c.fill();
+
+    c.fillStyle = EYE_COLOR;
+    const riderEyeDx = facing === 'front' ? 0 : PET_FACE_DX * 0.5;
+    const riderEyeScale = petEyeScale(100, accessoryT);
+    c.beginPath();
+    c.arc(sway + riderEyeDx * headR, riderCy - riderR * 0.15 * headR, PET_EYE_R * headR * 1.4 * riderEyeScale, 0, Math.PI * 2);
+    c.fill();
+  }
+  // drawPetShadow(): ground shadow for the companion pet, thin wrapper over
+  // the character's own drawGroundShadow() (same color/ratios, so the two
+  // shadows read as one consistent light source) rather than a
+  // reimplementation. Callers MUST pass the mount BEFORE withPetFloat() is
+  // applied -- a shadow that floated along with the body would defeat the
+  // point of having one (a real shadow stays on the ground while the
+  // object lifts away from it).
+  function drawPetShadow(ctx, mount, headR){
+    if (!mount) return;
+    drawGroundShadow(ctx, mount.x, mount.y, PET_BODY_RX * headR * 0.9);
   }
   function drawPetAccessory(ctx, footMount, headR, facing){
     drawInMountFrame(ctx, footMount, function(c){
@@ -6454,11 +6496,12 @@
   // below).
   const PET_REGISTRY = {
     pet: { label: '隨身寵物', rarity: null, draw: drawPetAccessory, apex: headR => PET_HEIGHT_RATIO * headR },
-    // v48.16.3: 小煤炭(小手) removed per user request. 7 siblings of the
+    // v48.16.3: 小煤炭(小手) removed per user request. v48.16.5: 小煤炭(翅膀)
+    // /(翅膀+小腳) replaced by coalRider/coalRiderFeet. 7 siblings of the
     // same 小煤炭 base remain, each adding its own extra silhouette bits via
-    // drawCoalBody()/drawCoalEyes()/drawCoalFeet() -- none of them touch
-    // withPetFloat/petEyeScale directly, so float+blink are inherited
-    // automatically through the shared stepFsm call sites and the shared
+    // drawCoalBody()/drawCoalEyes()/drawCoalFeet()/drawCoalRider() -- none
+    // of them touch withPetFloat/petEyeScale directly, so float+blink are
+    // inherited automatically through the shared stepFsm call sites and the shared
     // eye-drawing helper.
     coalFeet: {
       label: '小煤炭(小腳)', rarity: null,
@@ -6508,40 +6551,30 @@
       }),
       apex: headR => PET_HEIGHT_RATIO * headR
     },
-    coalWings: {
-      label: '小煤炭(翅膀)', rarity: null,
+    // v48.16.5: coalWings/coalWingsFeet replaced by coalRider/coalRiderFeet
+    // (a smaller 小煤炭 sitting on the main one's head) -- wings, once
+    // rendered at this scale, didn't read well; a second small creature
+    // does. apex is taller than the other siblings' shared PET_HEIGHT_RATIO
+    // to account for the rider stacked on top -- see drawCoalRider's own
+    // comment for how riderCy/riderR were measured.
+    coalRider: {
+      label: '小煤炭(疊坐小煤炭)', rarity: null,
       draw: (ctx, mount, headR, facing) => drawInMountFrame(ctx, mount, function(c){
         const bodyCy = drawCoalBody(c, headR);
-        const wingY = bodyCy - PET_BODY_RY * 0.2 * headR;
-        for (const side of [-1, 1]){
-          c.beginPath();
-          c.moveTo(side * PET_BODY_RX * 0.8 * headR, wingY);
-          c.lineTo(side * PET_BODY_RX * 1.8 * headR, wingY - headR * 0.5);
-          c.lineTo(side * PET_BODY_RX * 1.5 * headR, wingY + headR * 0.3);
-          c.closePath();
-          c.fill();
-        }
+        drawCoalRider(c, headR, bodyCy, facing);
         drawCoalEyes(c, headR, coalDoubleEyeDefs(facing));
       }),
-      apex: headR => PET_HEIGHT_RATIO * headR
+      apex: headR => (PET_HEIGHT_RATIO + 0.55) * headR
     },
-    coalWingsFeet: {
-      label: '小煤炭(翅膀+小腳)', rarity: null,
+    coalRiderFeet: {
+      label: '小煤炭(疊坐小煤炭+小腳)', rarity: null,
       draw: (ctx, mount, headR, facing) => drawInMountFrame(ctx, mount, function(c){
         const bodyCy = drawCoalBody(c, headR);
         drawCoalFeet(c, headR, bodyCy);
-        const wingY = bodyCy - PET_BODY_RY * 0.2 * headR;
-        for (const side of [-1, 1]){
-          c.beginPath();
-          c.moveTo(side * PET_BODY_RX * 0.8 * headR, wingY);
-          c.lineTo(side * PET_BODY_RX * 1.8 * headR, wingY - headR * 0.5);
-          c.lineTo(side * PET_BODY_RX * 1.5 * headR, wingY + headR * 0.3);
-          c.closePath();
-          c.fill();
-        }
+        drawCoalRider(c, headR, bodyCy, facing);
         drawCoalEyes(c, headR, coalDoubleEyeDefs(facing));
       }),
-      apex: headR => PET_HEIGHT_RATIO * headR
+      apex: headR => (PET_HEIGHT_RATIO + 0.55) * headR
     }
   };
   let currentPet = '';
@@ -6671,6 +6704,11 @@
           // resolveFootDisplay's own comment), and a stowed sword/staff
           // has no business floating.
           if (footDisplay && mounts.footMount){
+            // drawPetShadow BEFORE withPetFloat is applied -- shadow stays
+            // pinned to the ground mount, only the body above it floats.
+            // Gated on footDisplay === petEntry: a stowed hand accessory
+            // (sword/staff) isn't a pet and doesn't get a pet shadow.
+            if (footDisplay === petEntry) drawPetShadow(accCtx, mounts.footMount, WALK_CFG.headR);
             const footMountForDraw = footDisplay === petEntry ? withPetFloat(mounts.footMount, WALK_CFG.headR) : mounts.footMount;
             // 'front': footMount only exists once the character is fully
             // turned and settled front-facing (see this block's own
@@ -6686,8 +6724,13 @@
           // (sit/lie/prone/front-family all still gate the pet through
           // footDisplay/footMount instead, or show nothing). 'side' here
           // pairs with 'front' above -- see PET_FACE_DX and the coal*
-          // registry entries' facing-aware eye layouts.
-          if (petEntry && mounts.petSideMount) petEntry.draw(accCtx, withPetFloat(mounts.petSideMount, WALK_CFG.headR), WALK_CFG.headR, 'side');
+          // registry entries' facing-aware eye layouts. Shadow drawn from
+          // the raw (un-floated) mount first, same reasoning as footMount
+          // above.
+          if (petEntry && mounts.petSideMount){
+            drawPetShadow(accCtx, mounts.petSideMount, WALK_CFG.headR);
+            petEntry.draw(accCtx, withPetFloat(mounts.petSideMount, WALK_CFG.headR), WALK_CFG.headR, 'side');
+          }
           if (handAcc && handHeldVisible){
             // holdStyle defaults to 'single' when omitted (see
             // HAND_ACCESSORY_REGISTRY's own comment on why) -- handNear is
