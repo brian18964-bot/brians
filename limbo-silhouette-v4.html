@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.16.6 — 修正寵物飄浮到最低點時蓋住自己陰影</title>
+<title>剪影走路/跑步循環 v48.17 — 5 款發光 SSS 配件 + 燈籠復活 + 三叉戟水平持握</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.16.6</div>
-    <h1>修正寵物飄浮到最低點時蓋住自己陰影</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17</div>
+    <h1>5 款發光 SSS 配件 + 燈籠復活 + 三叉戟水平持握</h1>
+    <p class="sub"><b>需求(v48.17)</b>:三項調整——① 聖杯、智慧型手機、感測器指示燈、光環、皇冠 5 款配件加上發光效果並標記 <code>rarity:'SSS'</code>;② 燈籠(先前因「太小不易辨識」被移除)以巨型武器份量感重做復活,暗紅發光;③ 燈籠+三叉戟加進 <code>GIANT_WEAPON_KEYS</code>,三叉戟改水平持握。<br><br><b>1a 聖杯/智慧型手機(<code>drawWeaponParts</code> 系統)</b>:沿用光劍已驗證的 <code>p.glow</code> 機制(見該機制原始註解——<code>glow</code> 觸發時 <code>shadowColor</code> 直接讀該 part 自己 resolve 出來的顏色,不是另外指定),只在資料上加 <code>color</code>/<code>glow</code> 欄位,沒有新寫渲染邏輯。聖杯杯身+五顆杯緣圓點改暗金 <code>#7a5a1e</code>(杯身額外 <code>glow:8</code>);智慧型手機螢幕圓點改淺藍 <code>#8fd0ff</code>、<code>glow:6</code>。<br><br><b>截圖抓到一個問題,已修正</b>:兩款登記時都加了 <code>{rarity:'SSS'}</code>,但 <code>resolveWeaponColor()</code> 的優先權鏈是 part.color → style.color → style.rarity 查 <code>RARITY_STYLE</code>(<code>SSS</code> 對應近白 <code>#e9e6df</code>)→ 預設 <code>SIL</code>——聖杯的底座(<code>crossbar</code>/<code>shaft</code>)、手機的機身(<code>polygon</code>)跟鏡頭圓點原本都沒有自己的 <code>part.color</code>,一旦整組登記帶 <code>rarity:'SSS'</code>,這些「不該發光」的部位全部改抓 <code>RARITY_STYLE.SSS</code> 的近白色,截圖看起來變成整支手機/整個杯身泛白,不是「黑色本體 + 一小處發光」。修正方式是幫這些原本沒設色的 part 全部補上明確的 <code>color: SIL</code>,強制蓋過 rarity 查表這一層,只留意圖發光的 part 自己的顏色——跟武士刀當初「材質色蓋過稀有度色」的既有原則完全一致,只是這次反過來是「大部分維持黑,一小處自己上色」而非「整把上材質色」。<br><br><b>1b 感測器指示燈/光環/皇冠(獨立 draw 函式,沒接 <code>drawWeaponParts</code>)</b>:三款原本都寫死 <code>fillStyle=SIL</code>,額外接上 <code>shadowColor</code>/<code>shadowBlur</code>。感測器指示燈原本完全沒有 <code>ctx.save()</code>/<code>restore()</code> 包裹(不像多數頭部配件走 <code>drawInMountFrame</code>),補上明確的 save/restore,避免 shadow 狀態外洩到之後同一個 <code>accCtx</code> 上畫的貓尾巴/道具/表情符號;光環本來就有自己的 save/restore,直接在裡面加;皇冠走 <code>drawInMountFrame</code>(該函式本身就整段包 save/restore),不需要額外處理。三款登記表 <code>rarity</code> 從 <code>null</code> 改 <code>'SSS'</code>——頭部配件系統本身沒有稀有度驅動顏色的機制(顏色都是各自函式寫死),純粹 cataloging metadata,不會像 1a 的武器系統那樣有 rarity 污染色彩的風險。<br><br><b>2 燈籠復活</b>:新增 <code>WEAPON_SHAPES.lantern</code>(短握把+六邊形燈籠外殼+暗紅發光火焰圓,<code>#7a1f1f</code>,<code>glow:10</code>),沿用跟 1a 相同的教訓——握把、外殼都明確加 <code>color: SIL</code>,只留火焰自己的顏色,避免同一個 <code>rarity:'SSS'</code> 污染問題重演(這次實作時直接一併補上,沒有等截圖才發現)。<code>heldTilt</code> 沒有照抄關刀的 <code>-90°</code>——先用預設角度(未覆寫,即全域 <code>-50°</code>)截圖站立+走路兩種狀態,提在手上的角度已經自然可信(斜提,不拖地、不橫躺),不需要額外覆寫,維持預設值。<br><br><b>3 燈籠/三叉戟加入 <code>GIANT_WEAPON_KEYS</code></b>:三叉戟本身已是單手註冊,只需加進陣列(擺動抑制自動套用,不需要額外接線);另外加 <code>heldTilt:-90°*Math.PI/180</code> 覆寫,截圖確認站立/走路都轉成水平持握,跟關刀/死神鐮刀持握質感一致。<br><br><b>驗證</b>:5 款發光配件逐一截圖確認發光清楚可辨;感測器指示燈/皇冠額外搭配貓尾巴+手持道具同時開啟截圖,確認 shadow 沒有外洩到後面畫的其他配件(貓尾巴維持純黑,沒有跟著發光)。燈籠站立+走路兩種狀態截圖確認持握角度自然、暗紅火焰清楚。三叉戟站立+走路確認水平持握、跟巨型武器同一套擺動抑制生效。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.16.6)</b>:寵物飄浮到最低點時會蓋住自己的陰影。使用者列了兩個可能根因,要求先查再修——① 陰影是否誤用了套過 <code>withPetFloat</code> 偏移的 mount,兩邊共用同一個變數;② 陰影本來就用原始 mount,但本體/陰影的固定基礎間距不夠,飄到最低點時剪影範圍還是壓住陰影。<br><br><b>查證</b>:兩處呼叫都重新核對——<code>footMount</code> 那處先用原始 <code>mounts.footMount</code> 呼叫 <code>drawPetShadow</code>,才用 <code>withPetFloat(mounts.footMount,...)</code> 呼叫 <code>petEntry.draw</code>;<code>petSideMount</code> 那處同樣先原始後 float。兩處都是各自獨立變數,不是共用同一個已經套過偏移的變數——排除根因①。<br><br><b>根因確認為②(基礎間距不足),用幾何算清楚,不是憑感覺</b>:<code>drawCoalBody()</code> 的橢圓在本體自己的局部座標系裡,底緣剛好落在掛載原點(局部 <code>y=0</code>),等於「本體飄浮偏移為 0 時,底緣正好貼齊 mount.y」,完全沒有預留給陰影的間距;而 <code>PET_FLOAT_AMP_RATIO</code>(0.35×headR)本身就比舊版 <code>drawPetShadow</code> 讓陰影落在 mount.y 附近的那一點點厚度(約 0.17×headR)大上一倍以上——飄浮循環的下半段(本體下沉),本體底緣會下探到遠超陰影下緣的深度,寬度足夠的本體剪影因此整片蓋住陰影,不是單純視覺變淡,是真的被遮擋;「+小腳」款更嚴重,腳的末端又比本體底緣再往下延伸約 0.32×headR。<br><br><b>修正</b>:新增 <code>PET_SHADOW_GAP = 0.75</code>(headR 比例的固定基礎間距,不是飄浮幅度本身),<code>drawPetShadow()</code> 呼叫 <code>drawGroundShadow()</code> 時把 <code>groundY</code> 從 <code>mount.y</code> 改成 <code>mount.y + PET_SHADOW_GAP*headR</code>——用「+小腳」款在飄浮最低點的最深探底距離反推所需間距下限(0.35+0.32=0.67,含安全餘裕抓到 0.75),涵蓋所有款式的最壞情況,不是只顧本體較淺的無腳款。<br><br><b>驗證</b>:先寫程式化量測(不是憑肉眼猜)找出飄浮循環的實際峰值/谷值影格——側面走路連續截 24 張(涵蓋完整週期),量測寵物剪影 y 範圍,挑出最深(谷值)跟最高(峰值)兩張。「獨眼+小腳」款(最壞情況)谷值影格截圖確認陰影完整可見、清楚落在腳下方,沒有被本體剪影覆蓋;峰值影格陰影跟本體之間有明顯懸浮間距,飄浮感更清楚。無腳款(疊坐小煤炭)同樣兩個極值影格檢查,陰影全程可見,間距沒有大到讀起來像陰影脫節。17 原型 × 8 款寵物切換回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.16.5)</b>:兩項調整——① 翅膀拔掉改名「雙煤炭」效果不好,改成主體頭上疊坐一隻更小的小小煤炭,取代 <code>coalWings</code>/<code>coalWingsFeet</code>,小小煤炭自己也要有眼睛、也要套用側臉/正面切換邏輯;② 寵物目前完全沒有地面陰影,跟一直都有陰影的角色本體放在一起顯得像浮貼上去,要補上,且陰影必須釘死在地面、不能跟著 <code>withPetFloat</code> 的飄浮偏移一起動。<br><br><b>①實作</b>:新增 <code>drawCoalRider(c, headR, bodyCy, facing)</code>,疊在主體頭頂上方,水平方向套用自己獨立的 <code>Math.sin(accessoryT*PET_FLOAT_SPEED - PET_RIDER_LAG)*PET_RIDER_SWAY_AMP*headR</code>(新增 <code>PET_RIDER_LAG=0.8</code>/<code>PET_RIDER_SWAY_AMP=0.08</code> 兩個常數)——沿用主體同一個 <code>accessoryT</code> 時鐘但帶相位延遲,讀起來像「坐在上面被主體帶動甩動」而不是「跟主體完全同步鏡像」。眼睛用獨立 blink index(<code>petEyeScale(100, ...)</code>,跟主體的 0/1/2 明顯不撞號),同樣吃 <code>facing</code> 參數切換置中(正面)/偏面向側(側面)。<code>coalWings</code>/<code>coalWingsFeet</code> 兩筆整個換成 <code>coalRider</code>/<code>coalRiderFeet</code>,<code>apex</code> 從共用的 <code>PET_HEIGHT_RATIO*headR</code> 改成 <code>(PET_HEIGHT_RATIO+0.55)*headR</code>(疊高後的量測值)——雖然目前 <code>PET_REGISTRY</code> 的 <code>apex</code> 欄位查證後全程式碼還沒有實際呼叫端在用(頭部配件的 <code>apex</code> 才有接到 <code>headAccessoryClearance()</code>),但作為未來可能接上的 metadata,疊高多少就照實反映多少,不留錯誤的數字在那裡。<br><br><b>①截圖抓到一個問題,已修正</b>:小小煤炭的眼睛半徑最初照使用者片段給的 <code>PET_EYE_R*headR*0.75</code>,截圖放大檢視後這顆眼睛在畫面上幾乎融進小小煤炭自己的黑色剪影裡、看不出白點(這個畫布尺度下 <code>headR</code> 只有個位數 px,0.75 倍的 <code>PET_EYE_R</code> 換算下來已經是次像素等級,被畫面縮放的抗鋸齒稀釋到幾乎不可見,主體自己的眼睛半徑更大一些才勉強撐得住同樣的稀釋)。掃了幾組倍率後改成 1.4(其餘位置/計算不變),重新截圖確認小小煤炭的白點眼睛清楚可辨,跟主體的兩顆眼睛明顯是兩個獨立個體、不是同一組眼睛分身。<br><br><b>②實作</b>:新增 <code>drawPetShadow(ctx, mount, headR)</code>,不重新發明畫法,直接包一層呼叫角色本體既有的 <code>drawGroundShadow()</code>(同一份顏色深淺/橢圓扁平比例,兩份陰影視覺上自然一致)。兩個既有呼叫處都在套用 <code>withPetFloat()</code> 之前,先用原始(未套飄浮偏移)的 <code>mounts.petSideMount</code>/<code>mounts.footMount</code> 呼叫 <code>drawPetShadow</code>,陰影因此固定貼地,只有寵物本體(套了 float 偏移的版本)上下飄浮;<code>footMount</code> 那處額外用 <code>footDisplay === petEntry</code> 判斷式擋掉,收納中的手部配件(劍/水壺)不會意外長出寵物陰影。繪製順序陰影在前、本體在後,本體正確蓋在陰影上面。<br><br><b>驗證</b>:<code>coalRider</code>/<code>coalRiderFeet</code> 側面走路+正面站定(等轉場完全結束)各截圖,小小煤炭疊在頭上位置協調、facing 切換有生效(正面置中、側面偏面向側)、眨眼跟主體不同步(獨立 index 確認過)。陰影驗證用連續 6 格走路截圖量測——寵物剪影的最上緣 y 座標隨飄浮在 118-123px 之間變動(確認本體真的在飄),同一批影格裡陰影本身最暗的那一列固定卡在 y=150,6 格完全沒有變動(確認陰影真的釘死不動),繪製順序目視確認本體疊在陰影上面而非陰影蓋住本體。17 原型 × 8 款寵物切換回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.16.4)</b>:角色本身雖然定義兩顆白色眼睛,但因為是側面呈現,畫面上只看得到靠近觀眾這一側的那一顆(另一顆的半徑在側面時被 tween 到 0,見 <code>drawCharacter</code> 的 <code>eye1Dx</code>/<code>eye2Dx</code> 註解)。寵物的眼睛卻是以身體中心線左右對稱分佈,讀起來像正面面對觀眾,跟角色的側臉邏輯不一致。使用者要求先回報「角色轉正面站定後,眼睛是維持單點還是變成對稱兩點」,再決定寵物側面/正面是否需要分開處理。<br><br><b>回報</b>:查證 <code>drawCharacter</code> 的 <code>eye1Dx</code>/<code>eye2Dx</code> 混合公式——<code>e</code>(轉身進度)從 0 到 1 時,<code>eye2</code> 的半徑是 <code>eyeR * e</code>,側面(<code>e=0</code>)時 <code>eye2</code> 半徑為 0(視覺上只有一顆),正面(<code>e=1</code>)時兩顆眼睛等半徑、<code>eye1Dx</code>/<code>eye2Dx</code> 互為正負鏡像,完全對稱。屬於「角色正面變成對稱兩點」的情況,需要切換,採用使用者提供的方案。<br><br><b>實作</b>:新增 <code>PET_FACE_DX = PET_EYE_DX * 0.9</code>,正號對應 <code>drawCharacter</code> 自己的側面慣例(<code>sideDx = +0.48*headR</code> 是側面時唯一可見的近側眼睛,方向一致,不是另外猜的)——實際截圖角色走路頭部確認可見眼睛落在畫面右側,跟這個正號假設吻合,不需要改負號。<code>drawPetAccessory</code>/7 款小煤炭延伸的 <code>draw()</code> 簽名都加上第 4 個參數 <code>facing</code>,新增 3 個共用小工具 <code>coalSingleEyeDefs(facing)</code>/<code>coalDoubleEyeDefs(facing)</code>/<code>coalTripleEyeDefs(facing)</code>,把使用者範例裡每款各自重複的三元判斷收成一處,8 款寵物(含原本沒被使用者範例列出的基礎「隨身寵物」——同樣是共用小煤炭基底、同樣的對稱問題,一併處理,不留下不一致的漏網之魚)全部改成呼叫這三個工具之一。<br><br><b>切換掛鉤</b>:比照使用者指定的技術掛鉤點,兩個既有呼叫處分別補上第 4 個實參——<code>mounts.petSideMount</code> 那處(僅走路/快走/停下三種側身姿勢有效)傳 <code>'side'</code>;<code>mounts.footMount</code> 那處(<code>resolveFootDisplay()</code>,只有角色完全轉正面站定、<code>turnP>=1</code> 才存在)傳 <code>'front'</code>,同一行也服務非寵物的手部配件收納 <code>draw()</code>,多出的第 4 個實參對那些函式是無操作的多餘參數(JS 對函式呼叫多傳的參數本來就會忽略,不需要另外判斷是不是寵物才傳)。轉場期間(<code>turnP</code> 介於 0~1)沿用既有機制——<code>footMount</code> 這段期間本來就回傳 <code>null</code>、<code>petSideMount</code> 也只在 <code>drawCharacter</code>(側身走跑停)才會算,轉身過程中兩者都不存在,寵物這幾格本來就不繪製,不是這輪改動新增或需要另外處理的行為。<br><br><b>驗證</b>:先截圖角色走路頭部特寫,確認可見眼睛在畫面右側,佐證 <code>PET_FACE_DX</code> 正負號選擇正確。4 款代表性寵物(原版隨身寵物、獨眼、三眼、翅膀)各截側面走路 + 點擊「正面站姿」按鈕等待 <code>FRONT_TURN_DUR</code> 轉場完全結束(2 秒緩衝)後的正面站定,共 8 張——側面版本眼睛全部偏向畫面右側(跟角色可見眼同側)且仍落在身體剪影內,正面版本全部切回原本的置中/對稱排列,確認切換方向與時機都正確。17 原型 × 8 款寵物切換回歸測試 zero console 錯誤。</p>
@@ -515,7 +516,11 @@
     'greatsword', 'guandao', 'deathScythe',
     'giantAxe', 'giantSpear', 'giantClub', 'giantPickaxe', 'giantQuill',
     'giantKey', 'giantBanner', 'giantFishBone', 'giantDumbbell',
-    'giantWarAxe', 'giantFlower'
+    'giantWarAxe', 'giantFlower',
+    // v48.17: lantern (glowing SSS revival) + trident (per user request,
+    // same arm-sway suppression as the rest of this batch even though
+    // it's not itself a new "giant" shape).
+    'lantern', 'trident'
   ];
   const GIANT_HOLD_ARM_AMP_MUL = 0.15;
   const GIANT_OFF_ARM_AMP_MUL = 0.45;
@@ -3244,15 +3249,27 @@
   // thin antenna.
   const SENSOR_LIGHT_STEM_RATIO = 0.45, SENSOR_LIGHT_WIDTH_RATIO = 0.14, SENSOR_LIGHT_BALL_RATIO = 0.27;
   const SENSOR_LIGHT_HEIGHT_RATIO = SENSOR_LIGHT_STEM_RATIO + SENSOR_LIGHT_BALL_RATIO;
+  // v48.17: SSS-tier glow. This function draws straight to ctx (no
+  // drawInMountFrame wrapper, unlike most other head accessories), so
+  // unlike e.g. drawCrownAccessory below, shadowBlur/shadowColor here need
+  // their own explicit save()/restore() -- without it, the glow would leak
+  // into whatever draws next on the same accCtx (cat tail, prop, the
+  // emotion symbol), none of which should glow just because this
+  // accessory happened to be equipped alongside them.
+  const SENSOR_LIGHT_GLOW_COLOR = '#ff5a3c';
   function drawSensorLightAccessory(ctx, headTop, headR){
     if (!headTop) return;
     const out = mountOutward(headTop);
     const tipX = headTop.x + out.x * SENSOR_LIGHT_STEM_RATIO * headR, tipY = headTop.y + out.y * SENSOR_LIGHT_STEM_RATIO * headR;
     capsule(ctx, headTop.x, headTop.y, tipX, tipY, SENSOR_LIGHT_WIDTH_RATIO * headR, SIL);
-    ctx.fillStyle = SIL;
+    ctx.save();
+    ctx.fillStyle = SENSOR_LIGHT_GLOW_COLOR;
+    ctx.shadowColor = SENSOR_LIGHT_GLOW_COLOR;
+    ctx.shadowBlur = 6;
     ctx.beginPath();
     ctx.arc(tipX, tipY, SENSOR_LIGHT_BALL_RATIO * headR, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
   }
 
   // 聖誕帽 Santa hat: cone tilted to one side (the classic floppy droop) +
@@ -3284,12 +3301,18 @@
   // middle, the one accessory in this batch that isn't a solid silhouette.
   const HALO_RX = 0.42, HALO_RY = 0.11, HALO_CY = -1.0, HALO_STROKE_W = 0.07;
   const HALO_HEIGHT_RATIO = -HALO_CY + HALO_RY + HALO_STROKE_W / 2;
+  // v48.17: SSS-tier glow, cream-white instead of SIL. Already wrapped in
+  // its own save()/restore() (unlike sensorLight above), so the shadow
+  // state set here can't leak past this function's own restore() call.
+  const HALO_GLOW_COLOR = '#f5f3ec';
   function drawHaloAccessory(ctx, headTop, headR){
     if (!headTop) return;
     ctx.save();
     ctx.translate(headTop.x, headTop.y);
     ctx.rotate(headTop.angle);
-    ctx.strokeStyle = SIL;
+    ctx.strokeStyle = HALO_GLOW_COLOR;
+    ctx.shadowColor = HALO_GLOW_COLOR;
+    ctx.shadowBlur = 8;
     ctx.lineWidth = HALO_STROKE_W * headR;
     ctx.beginPath();
     ctx.ellipse(0, HALO_CY * headR, HALO_RX * headR, HALO_RY * headR, 0, 0, Math.PI * 2);
@@ -3301,8 +3324,17 @@
   const CROWN_BAND_HALF_W = 0.68, CROWN_BAND_HALF_H = 0.16, CROWN_BAND_CY = -0.2;
   const CROWN_PEAK_BASE_W = 0.28, CROWN_SIDE_PEAK_H = 0.48, CROWN_CENTER_PEAK_H = 0.72;
   const CROWN_HEIGHT_RATIO = -CROWN_BAND_CY + CROWN_BAND_HALF_H + CROWN_CENTER_PEAK_H;
+  // v48.17: SSS-tier glow, dark gold instead of SIL. drawInMountFrame
+  // already wraps its drawFn callback in save()/restore() (see that
+  // function's own definition), so setting shadowBlur/shadowColor here
+  // needs no extra cleanup -- unlike drawSensorLightAccessory above, which
+  // draws straight to ctx with no such wrapper.
+  const CROWN_GLOW_COLOR = '#c9973a';
   function drawCrownAccessory(ctx, headTop, headR){
     drawInMountFrame(ctx, headTop, function(c){
+      c.fillStyle = CROWN_GLOW_COLOR;
+      c.shadowColor = CROWN_GLOW_COLOR;
+      c.shadowBlur = 6;
       const bandTop = (CROWN_BAND_CY - CROWN_BAND_HALF_H) * headR, bandBottom = (CROWN_BAND_CY + CROWN_BAND_HALF_H) * headR;
       c.fillRect(-CROWN_BAND_HALF_W * headR, bandTop, CROWN_BAND_HALF_W * 2 * headR, bandBottom - bandTop);
       const peaks = [
@@ -3492,10 +3524,10 @@
     singleAntenna:{ label: '單天線',   rarity: null, draw: drawSingleAntennaAccessory, apex: headR => SINGLE_ANTENNA_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
     ahoge:        { label: '呆毛',     rarity: null, draw: drawAhogeAccessory, apex: headR => AHOGE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
     partyHat:     { label: '生日派對帽', rarity: null, draw: drawPartyHatAccessory, apex: headR => PARTY_HAT_TOTAL_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    sensorLight:  { label: '感測器指示燈', rarity: null, draw: drawSensorLightAccessory, apex: headR => SENSOR_LIGHT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    sensorLight:  { label: '感測器指示燈', rarity: 'SSS', draw: drawSensorLightAccessory, apex: headR => SENSOR_LIGHT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
     santaHat:     { label: '聖誕帽',   rarity: null, draw: drawSantaHatAccessory, apex: headR => SANTA_HAT_HEIGHT_TOTAL_RATIO * headR + HAT_SYMBOL_MARGIN },
-    halo:         { label: '光環',     rarity: null, draw: drawHaloAccessory, apex: headR => HALO_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    crown:        { label: '皇冠',     rarity: null, draw: drawCrownAccessory, apex: headR => CROWN_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    halo:         { label: '光環',     rarity: 'SSS', draw: drawHaloAccessory, apex: headR => HALO_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    crown:        { label: '皇冠',     rarity: 'SSS', draw: drawCrownAccessory, apex: headR => CROWN_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
     fourLeafClover:{ label: '四葉草',  rarity: null, draw: drawFourLeafCloverAccessory, apex: headR => CLOVER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
     smallWhiteFlower:{ label: '小白花', rarity: null, draw: drawSmallWhiteFlowerAccessory, apex: headR => FLOWER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
     bambooDragonfly:{ label: '竹蜻蜓', rarity: null, draw: drawBambooDragonflyAccessory, apex: headR => DRAGONFLY_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
@@ -4138,6 +4170,10 @@
     // distinct pointed shapes, not one head simplified to a single point.
     trident: {
       totalLen: 0.5 + 2.7,
+      // v48.17: heldTilt added when trident joined GIANT_WEAPON_KEYS
+      // (see that array's own comment) for the same horizontal, hip-
+      // height carry as guandao/deathScythe/the giant-weapon batch.
+      heldTilt: -90 * Math.PI / 180,
       parts: [
         { type: 'polygon', points: [{ at: 0, dx: 0 }, { at: 0.16, dx: 0.06 }, { at: 0.5, dx: 0 }, { at: 0.16, dx: -0.06 }] },
         { type: 'polygon', points: [{ at: 0.12, dx: -0.32 }, { at: 0.26, dx: -0.28 }, { at: 0.5, dx: -0.06 }, { at: 0.42, dx: -0.02 }] },
@@ -4824,6 +4860,26 @@
         { type: 'polygon', points: buildStarPoints(1.85, 6, 0.28, 0.14) },
         { type: 'circle', at: 1.85, r: 0.14 }
       ]
+    },
+    // 燈籠 lantern (v48.17, revived -- previously cut for reading too
+    // small; rebuilt at giant-weapon scale): a short handle + a wide
+    // hexagonal cage polygon + a dark-red glowing flame circle centered
+    // inside the cage. rarity/registration live on the HAND_ACCESSORY_
+    // REGISTRY entry (stuckWeaponEntry's opts), same as every other
+    // weapon -- rarity is never stored on the shape data itself (see
+    // katana's own comment on this split). handle/cage get explicit
+    // color:SIL -- same reasoning as chalice/smartphone's own v48.17
+    // comments: without it, resolveWeaponColor() falls through to
+    // RARITY_STYLE.SSS's near-white for every part lacking its own
+    // part.color, not just the flame.
+    lantern: {
+      totalLen: 1.6,
+      gripRatio: 0.85,
+      parts: [
+        { type: 'shaft', from: 0, to: 0.15, width: 0.05, color: SIL },
+        { type: 'polygon', points: [ { at: 0.15, dx: -0.3 }, { at: 0.2, dx: -0.42 }, { at: 1.3, dx: -0.4 }, { at: 1.5, dx: -0.2 }, { at: 1.5, dx: 0.2 }, { at: 1.3, dx: 0.4 }, { at: 0.2, dx: 0.42 }, { at: 0.15, dx: 0.3 } ], color: SIL },
+        { type: 'circle', at: 0.85, r: 0.28, color: '#7a1f1f', glow: 10 }
+      ]
     }
   };
 
@@ -4937,19 +4993,27 @@
     // 'held' only; gripRatio (0.35, landing the grip mid-stem at 0.49 of
     // 1.4) already puts the grip on the stem correctly once reversed, no
     // change needed there.
+    // v48.17: base(crossbar)/stem(shaft) get an explicit color:SIL now
+    // that this entry carries rarity:'SSS' -- without it, resolveWeaponColor()
+    // falls through past the missing part.color to style.rarity and picks
+    // up RARITY_STYLE.SSS's near-white '#e9e6df' for those two parts too
+    // (screenshotted: the whole item read as pale grey/white, not "black
+    // base + glowing gold bowl"). Only the bowl polygon/rim circles are
+    // meant to carry the gold, so every other part needs its own explicit
+    // SIL now instead of relying on "no rarity means SIL by default".
     chalice: {
       totalLen: 1.4,
       gripRatio: 0.35,
       heldReverse: true,
       parts: [
-        { type: 'crossbar', at: 0.05, halfLen: 0.28, width: 0.14 },
-        { type: 'shaft', from: 0.1, to: 0.9, width: 0.12 },
-        { type: 'polygon', points: [ { at: 0.85, dx: -0.12 }, { at: 1.1, dx: -0.38 }, { at: 1.4, dx: -0.42 }, { at: 1.4, dx: 0.42 }, { at: 1.1, dx: 0.38 }, { at: 0.85, dx: 0.12 } ] },
-        { type: 'circle', at: 1.4, dx: -0.35, r: 0.05 },
-        { type: 'circle', at: 1.4, dx: -0.17, r: 0.05 },
-        { type: 'circle', at: 1.4, dx: 0, r: 0.05 },
-        { type: 'circle', at: 1.4, dx: 0.17, r: 0.05 },
-        { type: 'circle', at: 1.4, dx: 0.35, r: 0.05 }
+        { type: 'crossbar', at: 0.05, halfLen: 0.28, width: 0.14, color: SIL },
+        { type: 'shaft', from: 0.1, to: 0.9, width: 0.12, color: SIL },
+        { type: 'polygon', points: [ { at: 0.85, dx: -0.12 }, { at: 1.1, dx: -0.38 }, { at: 1.4, dx: -0.42 }, { at: 1.4, dx: 0.42 }, { at: 1.1, dx: 0.38 }, { at: 0.85, dx: 0.12 } ], color: '#7a5a1e', glow: 8 },
+        { type: 'circle', at: 1.4, dx: -0.35, r: 0.05, color: '#7a5a1e' },
+        { type: 'circle', at: 1.4, dx: -0.17, r: 0.05, color: '#7a5a1e' },
+        { type: 'circle', at: 1.4, dx: 0, r: 0.05, color: '#7a5a1e' },
+        { type: 'circle', at: 1.4, dx: 0.17, r: 0.05, color: '#7a5a1e' },
+        { type: 'circle', at: 1.4, dx: 0.35, r: 0.05, color: '#7a5a1e' }
       ]
     },
     // 螺絲起子 screwdriver: flat blade tip (thin polygon) + thin shaft +
@@ -5629,14 +5693,18 @@
     // ---- G group: 3C/tech (1 -- tablet/gamepad/microphone/camera/pistol
     // removed per user trim request: too small to read clearly held) ----
     // smartphone: rounded-rect body + a small lens dot near dist0.
+    // v48.17: body/lens get explicit color:SIL now that this entry carries
+    // rarity:'SSS' -- same reasoning as chalice's own v48.17 comment above
+    // (RARITY_STYLE.SSS would otherwise leak its near-white color onto
+    // every color-less part, not just the intentionally-glowing screen).
     smartphone: {
       totalLen: 1.0,
       flatLift: 0.19,
       gripRatio: 0.85,
       parts: [
-        { type: 'polygon', points: [ { at: 0.03, dx: -0.19 }, { at: 0, dx: -0.15 }, { at: 0, dx: 0.15 }, { at: 0.03, dx: 0.19 }, { at: 0.97, dx: 0.19 }, { at: 1.0, dx: 0.15 }, { at: 1.0, dx: -0.15 }, { at: 0.97, dx: -0.19 } ] },
-        { type: 'circle', at: 0.1, r: 0.035 },
-        { type: 'circle', at: 0.92, r: 0.03 }
+        { type: 'polygon', points: [ { at: 0.03, dx: -0.19 }, { at: 0, dx: -0.15 }, { at: 0, dx: 0.15 }, { at: 0.03, dx: 0.19 }, { at: 0.97, dx: 0.19 }, { at: 1.0, dx: 0.15 }, { at: 1.0, dx: -0.15 }, { at: 0.97, dx: -0.19 } ], color: SIL },
+        { type: 'circle', at: 0.1, r: 0.035, color: SIL },
+        { type: 'circle', at: 0.92, r: 0.03, color: '#8fd0ff', glow: 6 }
       ]
     },
 
@@ -5765,9 +5833,12 @@
       ]
     },
 
-    // ---- J group: festive/fantasy items (3 -- lantern/balloon/
-    // paperAirplane removed per user trim request: too small to read
-    // clearly held) ----
+    // ---- J group: festive/fantasy items (3 -- balloon/paperAirplane
+    // removed per user trim request: too small to read clearly held.
+    // lantern was originally cut for the same reason but revived in
+    // v48.17 at giant-weapon scale -- see WEAPON_SHAPES.lantern's own
+    // comment; it lives there now, registered via stuckWeaponEntry
+    // below, not in this ITEM_SHAPES catalog) ----
     // 仙女棒 sparkler: a thin 'shaft' + 5 short spark 'polyline' rays
     // radiating around dist0 plus a tiny bright-core 'circle' -- the
     // rays deliberately fan in several directions (not a single
@@ -6403,7 +6474,7 @@
     kiteShield: itemEntry('鳶形盾', 'kiteShield', 'flat'),
     book: itemEntry('魔法書', 'book', 'flat'),
     cross: itemEntry('十字架', 'cross', 'flat'),
-    chalice: itemEntry('聖杯', 'chalice', 'flat'),
+    chalice: itemEntry('聖杯', 'chalice', 'flat', { rarity: 'SSS' }),
 
     // ---- C group: everyday tools (8; original brief said "9項" but
     // only lists 8 items -- flagged as a likely miscount rather than
@@ -6472,7 +6543,7 @@
 
     // ---- G group: 3C/tech (1 -- tablet/gamepad/microphone/camera/pistol
     // removed per user trim request: too small to read clearly held) ----
-    smartphone: itemEntry('智慧型手機', 'smartphone', 'flat'),
+    smartphone: itemEntry('智慧型手機', 'smartphone', 'flat', { rarity: 'SSS' }),
 
     // ---- H group: instruments/performance props (3 -- recorder/megaphone
     // removed per user trim request: too small to read clearly held) ----
@@ -6489,12 +6560,16 @@
     // clearly held) ----
     rubiksCube: itemEntry('魔術方塊', 'rubiksCube', 'flat'),
 
-    // ---- J group: festive/fantasy items (3 -- lantern/balloon/
-    // paperAirplane removed per user trim request: too small to read
-    // clearly held) ----
+    // ---- J group: festive/fantasy items (3 -- balloon/paperAirplane
+    // removed per user trim request: too small to read clearly held) ----
     sparkler: itemEntry('仙女棒', 'sparkler', 'stuck'),
     magicLamp: itemEntry('魔法神燈', 'magicLamp', 'flat'),
     voodooDoll: itemEntry('巫毒娃娃', 'voodooDoll', 'stuck'),
+    // 燈籠 lantern (v48.17, revived at giant-weapon scale -- see
+    // WEAPON_SHAPES.lantern's own comment): stuckWeaponEntry (not
+    // itemEntry), same registration path as every other GIANT_WEAPON_KEYS
+    // member.
+    lantern: stuckWeaponEntry('燈籠', 'lantern', { rarity: 'SSS' }),
 
     // ---- K group: sports/misc (3 -- toothbrush/testTube removed per user
     // trim request: too small to read clearly held; all 'flat' per the
