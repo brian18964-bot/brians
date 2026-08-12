@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.17.2 — 火把/燈籠/仙女棒 SSS 發光補強</title>
+<title>剪影走路/跑步循環 v48.17.3 — 燈籠本體放大 + 仙女棒發光範圍擴大</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17.2</div>
-    <h1>火把/燈籠/仙女棒 SSS 發光補強</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17.3</div>
+    <h1>燈籠本體放大 + 仙女棒發光範圍擴大</h1>
+    <p class="sub"><b>需求(v48.17.3)</b>:燈籠本體(<code>circle</code>)太小,<code>r</code> 從 0.22 加大到 0.4(接近翻倍);同時明確指出繩子的 <code>dx</code> 偏移量(原本 0.55)必須跟著放大到 0.65 左右一起調,不能只放大半徑不移動位置,否則放大後的本體會往回吃到桿身。仙女棒的發光範圍也要擴大,但沒有給出具體數字。<br><br><b>燈籠實作</b>:三個數字一起改,不是分開調——<code>circle</code> 的 <code>r</code> 0.22→0.4、<code>dx</code> 0.55→0.65,<code>polyline</code>(繩子)終點的 <code>dx</code> 同步從 0.4 改成 0.65(繩子跟本體要用同一個 <code>dx</code>,不然本體會懸空脫離繩子末端),<code>glow</code> 從 10 加到 12,發光暈染範圍跟著本體放大同步放大。<code>at</code> 維持上一輪修正後的 0(桿子真正的尖端),這輪沒有變動——使用者提供的片段沿用了舊版 <code>at:1.6</code> 的寫法,但那是上一輪已經確認錯誤、改成 0 的值,這輪只套用使用者明確要求的 r/dx/glow 三個數字,不連帶把 <code>at</code> 改回已知有問題的 1.6。<br><br><b>仙女棒實作</b>:使用者只說「發光範圍要擴大」沒給數字,判斷為核心圓的 <code>r</code>/<code>glow</code> 需要進一步放大,延續這輪「本體/發光跟著放大」的方向——核心 <code>r</code> 0.06→0.08、<code>glow</code> 10→14。火花 <code>polyline</code> 維持不帶 <code>glow</code>(v48.17.2 訂下的「發光只集中在核心」原則不變,使用者這次沒有要求連火花線一起發光)。<br><br><b>驗證</b>:燈籠站立+走路兩種狀態截圖確認本體明顯變大、繩子跟本體之間沒有懸空或重疊桿身的問題,發光暈染範圍隨本體放大同步擴大,腿部/腳部沒有穿模。仙女棒站立+走路截圖確認核心發光範圍明顯比上一輪更大更明顯。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.17.2)</b>:使用者截圖點出兩個既有配件的問題,並要求仙女棒補上發光。火把:截圖顯示火焰很小且完全沒有發光暈染,使用者明確指出「不是尺寸問題,是根本沒有 glow」——火焰讀起來像一塊扁平橘色色塊,不是火。燈籠:上一輪(v48.17.1)重做成「握把+垂掛圓形」後,參考圖比對仍然不對,讀起來像「一根棍子直接插進發光球裡」,而不是「水平持握的桿子,桿尖用一條線繩吊著一顆燈籠」——結構性錯誤,不是角度或顏色問題。<br><br><b>火把重做</b>:比照光劍「核心亮+外層暈」的分層做法,把單一小 <code>polygon</code> 拆成兩層:外層放大(<code>dx</code> 範圍從 ±0.16 加大到 ±0.26,火尖延伸到 <code>at:1.7</code>,超出握把本體)並加上 <code>glow:12</code>;內層核心縮小、改用更暖的近白色 <code>#ffe08a</code>,不帶自己的 glow——發光集中在外層,兩層疊起來才會是「中心亮、邊緣柔化暈開」而不是整團火焰均勻發霧。<code>totalLen</code> 依指示維持 1.5 不變(尖端雖然畫到 1.7,但不影響握持/安全距離判定)。<br><br><b>燈籠重做</b>:整個造型從「握把+垂掛圓形」改成「水平桿子+桿尖線繩+燈籠本體」——<code>totalLen:1.9</code>、<code>gripRatio:0.85</code>、<code>shaft</code> 從 0 到 1.6 畫出整根桿子,<code>polyline</code> 兩個端點共用同一個 <code>at</code>、只有 <code>dx</code> 不同(沿著垂直於桿身的方向延伸,不是沿桿子本身),<code>circle</code> 燈籠本體接著沿同一個 <code>dx</code> 方向再往外放,而不是用 <code>at</code>(那樣只會變成桿子的延伸段)。<code>heldTilt</code> 從垂直改回接近 <code>-90°</code> 的水平持握角度——這是造型改成「水平桿子」後的必然結果,不是走回頭路。<br><br>實作時自行抓到一個定位錯誤:直接沿用使用者範例的 <code>at:1.6</code> 放線繩/燈籠,但 <code>gripDist = gripRatio × totalLen = 0.85 × 1.9 = 1.615</code>,幾乎等於 1.6——而本系統的 <code>dist=0</code> 一律是持握時朝外的「尖端」,<code>dist≈gripDist</code> 則落在握把/手部附近,跟桿子本身的畫法慣例(<code>dist=totalLen</code> 才是尾端)搞反了方向,截圖顯示燈籠貼在角色手/腳邊,不是垂在桿子遠端。修正:線繩與圓形燈籠的 <code>at</code> 全部從 1.6 改成 0(桿子真正的尖端),讓燈籠改成垂在桿子遠端。修正後截圖確認:桿子水平、線繩+燈籠正確垂在桿尖(<code>dx</code> 正負號不需翻轉,原本的 0.4/0.55 方向就是對的)。<br><br><b>仙女棒補發光</b>:核心圓放大(r 0.04→0.06)並上暖白色 <code>#fff4c2</code>、加 <code>glow:10</code>;5 條火花 <code>polyline</code> 全部改用同一個暖白色(讓火花線也帶一點微光感),但刻意不加 <code>glow</code>——發光集中在核心圓,才會是「核心亮、火花線微微透光延伸出去」而不是整把仙女棒糊成一團光暈。握把 <code>shaft</code> 額外補上明確的 <code>color:SIL</code>,避免這個 entry 掛上 <code>rarity:'SSS'</code> 後,沒有自己顏色的 part 透過 <code>resolveWeaponColor()</code> 悄悄繼承 <code>RARITY_STYLE.SSS</code> 的近白色(跟聖杯/手機/燈籠先前踩過的同一種「顏色外洩」)。註冊表補上 <code>rarity:'SSS'</code>。<br><br>火把本輪未加 <code>rarity:'SSS'</code>——使用者這輪只對燈籠、仙女棒給出明確的註冊表程式碼,火把的敘述較偏向脈絡說明而非直接指令,故先保守不動,留待使用者確認是否也要補上。<br><br><b>驗證</b>:三款配件分別截取站立與走路兩種狀態。火把:火焰明顯比之前大,核心+外層發光層次可辨,走路循環中比例依然合理。燈籠:桿子水平、燈籠確實垂掛在桿尖下方(不是套在桿子上),走路循環發光依然清楚。仙女棒:頂端核心發光明顯,火花線有微光但沒有跟核心糊在一起,走路循環中效果依然可辨。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.17.1)</b>:使用者用參考圖(女孩提著圓形紙燈籠,手臂垂在身側,燈籠自然懸掛在手下方)指出燈籠造型完全不對——上一輪套用巨型武器那套「長條 <code>polygon</code>+水平持握(<code>heldTilt:-90°</code>)」,截圖裡燈籠變成一小坨貼在腳邊的紅色團塊,角度也不對,跟參考圖的「圓形+自然垂掛」相去甚遠。另外兩個小修正:聖杯的底座/杯莖上一輪只補了 <code>color:SIL</code>(黑色)沒有真的上暗金色,截圖顯示只有杯身有顏色;智慧型手機螢幕發光只有一個貼在手邊的小圓點(半徑僅手機自身寬度的 8%),使用者要求參考手電筒的柔光技法,改成佔手機約 80% 面積的方形發光。<br><br><b>燈籠重做</b>:捨棄長條造型,改成「握把在近手端(<code>gripRatio:0.92</code>,握把段 <code>totalLen</code> 的後 8%)、圓形燈籠主體垂在握把外側(<code>dist:0.3</code>,佔掉大部分長度)」的比例分配,搭配 <code>heldTilt</code> 從 <code>-90°</code>大幅調降到 <code>-15°</code>——這兩個改動缺一不可:只改形狀不改角度,圓形本體還是會被轉成水平;只改角度不改形狀,長條本體轉直了但還是讀不出「一顆燈籠」。截圖跟參考圖並排比對,主體垂掛角度、圓形輪廓、暖橘發光(色票從原本的暗紅 <code>#7a1f1f</code>换成更亮更暖的橘紅 <code>#e8631c</code>,glow 沿用 10)都跟參考圖的觀感接近,<code>-15°</code> 一次就達到「自然下垂」沒有再調的必要。<code>GIANT_WEAPON_KEYS</code> 的持握手臂擺動抑制维持保留(這是使用者特別點名要留住的行為,跟形狀/角度是分開的兩件事)。<br><br><b>聖杯補色</b>:底座(<code>crossbar</code>)、杯莖(<code>shaft</code>)兩個 part 的 <code>color</code> 從 <code>SIL</code> 改成跟杯身同一個暗金 <code>#7a5a1e</code>,但不加 <code>glow</code>——整顆聖杯統一材質色,只有杯身(視覺焦點)帶發光暈染,跟光劍「握把中性深色、只有刀身發光」是不同的分層方式(光劍是「材質色不同+只有一處發光」,聖杯這次是「材質色相同+只有一處發光」),但「只讓一個部位帶 <code>glow</code>」這個原則相同。<br><br><b>智慧型手機螢幕加大</b>:原本的小圓點(<code>circle</code>, r 0.03)換成一個跨手機本體約 80% 長寬的矩形 <code>polygon</code>(<code>at</code> 0.1~0.9,<code>dx</code> ±0.15,對比機身本體 <code>dx</code> 最大 ±0.19),沿用手電筒光束同一招半透明 <code>rgba()</code> 做出「微弱柔光」的質感(<code>rgba(143,208,255,0.55)</code>),額外加一個較弱的 <code>glow:4</code>(低於燈籠的 10、聖杯的 8,對應使用者「比手電筒再微弱一些」的要求)。截圖確認整片螢幕清楚可辨是方形發光區塊,不再是貼在手邊的一個小亮點。<br><br><b>驗證</b>:燈籠站立+走路兩種狀態截圖跟參考圖並排比對,垂掛角度、圓形主體、暖橘光暈都到位,走路循環持握手臂依然穩定(擺動抑制沒有被形狀重做影響)。聖杯截圖確認底座/杯莖/杯身/杯緣全部暗金,只有杯身有發光暈染。智慧型手機截圖確認方形螢幕發光佔機身大部分面積。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.17)</b>:三項調整——① 聖杯、智慧型手機、感測器指示燈、光環、皇冠 5 款配件加上發光效果並標記 <code>rarity:'SSS'</code>;② 燈籠(先前因「太小不易辨識」被移除)以巨型武器份量感重做復活,暗紅發光;③ 燈籠+三叉戟加進 <code>GIANT_WEAPON_KEYS</code>,三叉戟改水平持握。<br><br><b>1a 聖杯/智慧型手機(<code>drawWeaponParts</code> 系統)</b>:沿用光劍已驗證的 <code>p.glow</code> 機制(見該機制原始註解——<code>glow</code> 觸發時 <code>shadowColor</code> 直接讀該 part 自己 resolve 出來的顏色,不是另外指定),只在資料上加 <code>color</code>/<code>glow</code> 欄位,沒有新寫渲染邏輯。聖杯杯身+五顆杯緣圓點改暗金 <code>#7a5a1e</code>(杯身額外 <code>glow:8</code>);智慧型手機螢幕圓點改淺藍 <code>#8fd0ff</code>、<code>glow:6</code>。<br><br><b>截圖抓到一個問題,已修正</b>:兩款登記時都加了 <code>{rarity:'SSS'}</code>,但 <code>resolveWeaponColor()</code> 的優先權鏈是 part.color → style.color → style.rarity 查 <code>RARITY_STYLE</code>(<code>SSS</code> 對應近白 <code>#e9e6df</code>)→ 預設 <code>SIL</code>——聖杯的底座(<code>crossbar</code>/<code>shaft</code>)、手機的機身(<code>polygon</code>)跟鏡頭圓點原本都沒有自己的 <code>part.color</code>,一旦整組登記帶 <code>rarity:'SSS'</code>,這些「不該發光」的部位全部改抓 <code>RARITY_STYLE.SSS</code> 的近白色,截圖看起來變成整支手機/整個杯身泛白,不是「黑色本體 + 一小處發光」。修正方式是幫這些原本沒設色的 part 全部補上明確的 <code>color: SIL</code>,強制蓋過 rarity 查表這一層,只留意圖發光的 part 自己的顏色——跟武士刀當初「材質色蓋過稀有度色」的既有原則完全一致,只是這次反過來是「大部分維持黑,一小處自己上色」而非「整把上材質色」。<br><br><b>1b 感測器指示燈/光環/皇冠(獨立 draw 函式,沒接 <code>drawWeaponParts</code>)</b>:三款原本都寫死 <code>fillStyle=SIL</code>,額外接上 <code>shadowColor</code>/<code>shadowBlur</code>。感測器指示燈原本完全沒有 <code>ctx.save()</code>/<code>restore()</code> 包裹(不像多數頭部配件走 <code>drawInMountFrame</code>),補上明確的 save/restore,避免 shadow 狀態外洩到之後同一個 <code>accCtx</code> 上畫的貓尾巴/道具/表情符號;光環本來就有自己的 save/restore,直接在裡面加;皇冠走 <code>drawInMountFrame</code>(該函式本身就整段包 save/restore),不需要額外處理。三款登記表 <code>rarity</code> 從 <code>null</code> 改 <code>'SSS'</code>——頭部配件系統本身沒有稀有度驅動顏色的機制(顏色都是各自函式寫死),純粹 cataloging metadata,不會像 1a 的武器系統那樣有 rarity 污染色彩的風險。<br><br><b>2 燈籠復活</b>:新增 <code>WEAPON_SHAPES.lantern</code>(短握把+六邊形燈籠外殼+暗紅發光火焰圓,<code>#7a1f1f</code>,<code>glow:10</code>),沿用跟 1a 相同的教訓——握把、外殼都明確加 <code>color: SIL</code>,只留火焰自己的顏色,避免同一個 <code>rarity:'SSS'</code> 污染問題重演(這次實作時直接一併補上,沒有等截圖才發現)。<code>heldTilt</code> 沒有照抄關刀的 <code>-90°</code>——先用預設角度(未覆寫,即全域 <code>-50°</code>)截圖站立+走路兩種狀態,提在手上的角度已經自然可信(斜提,不拖地、不橫躺),不需要額外覆寫,維持預設值。<br><br><b>3 燈籠/三叉戟加入 <code>GIANT_WEAPON_KEYS</code></b>:三叉戟本身已是單手註冊,只需加進陣列(擺動抑制自動套用,不需要額外接線);另外加 <code>heldTilt:-90°*Math.PI/180</code> 覆寫,截圖確認站立/走路都轉成水平持握,跟關刀/死神鐮刀持握質感一致。<br><br><b>驗證</b>:5 款發光配件逐一截圖確認發光清楚可辨;感測器指示燈/皇冠額外搭配貓尾巴+手持道具同時開啟截圖,確認 shadow 沒有外洩到後面畫的其他配件(貓尾巴維持純黑,沒有跟著發光)。燈籠站立+走路兩種狀態截圖確認持握角度自然、暗紅火焰清楚。三叉戟站立+走路確認水平持握、跟巨型武器同一套擺動抑制生效。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
@@ -4906,14 +4907,21 @@
     // the end of the stick. String/circle moved to dist=0 (the true tip,
     // matching where the shaft itself starts) -- the shaft's own far end
     // is now where the lantern hangs from, not its near end.
+    // v48.17.3: body was too small (r 0.22). Enlarged to 0.4 (near double)
+    // per explicit instruction; the string's dx offset (0.55->0.65) and its
+    // own endpoint dx have to grow together with it, otherwise the bigger
+    // circle overlaps back into the stick -- the two numbers move as one
+    // pair, not independently. glow bumped 10->12 to keep the bloom radius
+    // proportionate to the now-larger body. `at` stays 0 (the tip fix
+    // above still applies; this round only touches size/offset/glow).
     lantern: {
       totalLen: 1.9,
       gripRatio: 0.85,
       heldTilt: -90 * Math.PI / 180,
       parts: [
         { type: 'shaft', from: 0, to: 1.6, width: 0.05, color: SIL },
-        { type: 'polyline', points: [ { at: 0, dx: 0 }, { at: 0, dx: 0.4 } ], width: 0.025, color: SIL },
-        { type: 'circle', at: 0, dx: 0.55, r: 0.22, color: '#e8631c', glow: 10 }
+        { type: 'polyline', points: [ { at: 0, dx: 0 }, { at: 0, dx: 0.65 } ], width: 0.03, color: SIL },
+        { type: 'circle', at: 0, dx: 0.65, r: 0.4, color: '#e8631c', glow: 12 }
       ]
     }
   };
@@ -5915,12 +5923,17 @@
     // color-leak fix as chalice/smartphone/lantern's own v48.17 comments
     // (resolveWeaponColor() would otherwise pick up RARITY_STYLE.SSS's
     // near-white for this color-less part too).
+    // v48.17.3: user asked for a wider glow range with no exact numbers
+    // given -- core r 0.06->0.08 and glow 10->14 (both further enlarged,
+    // consistent with this round's general "make it bigger" direction on
+    // lantern), rays left as-is (still no glow of their own, per the same
+    // "concentrate brightness on the core" reasoning as v48.17.2).
     sparkler: {
       totalLen: 1.0,
       gripRatio: 0.85,
       parts: [
         { type: 'shaft', from: 0.15, to: 1.0, width: 0.045, color: SIL },
-        { type: 'circle', at: 0, r: 0.06, color: '#fff4c2', glow: 10 },
+        { type: 'circle', at: 0, r: 0.08, color: '#fff4c2', glow: 14 },
         { type: 'polyline', points: [ { at: 0.05, dx: 0 }, { at: -0.05, dx: 0.08 } ], width: 0.02, color: '#fff4c2' },
         { type: 'polyline', points: [ { at: 0.02, dx: 0.03 }, { at: -0.08, dx: -0.02 } ], width: 0.02, color: '#fff4c2' },
         { type: 'polyline', points: [ { at: 0.08, dx: -0.05 }, { at: 0.15, dx: -0.15 } ], width: 0.02, color: '#fff4c2' },
