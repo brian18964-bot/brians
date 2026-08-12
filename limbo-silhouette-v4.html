@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.17.3 — 燈籠本體放大 + 仙女棒發光範圍擴大</title>
+<title>剪影走路/跑步循環 v48.17.4 — 移除薑餅人/雞腿/冰淇淋/團扇/拐杖/牛角</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17.3</div>
-    <h1>燈籠本體放大 + 仙女棒發光範圍擴大</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17.4</div>
+    <h1>移除薑餅人/雞腿/冰淇淋/團扇/拐杖/牛角</h1>
+    <p class="sub"><b>需求(v48.17.4)</b>:使用者指定從清單取消 6 款配件——薑餅人、雞腿、冰淇淋(手部配件,E 組食物類)、團扇、拐杖(手部配件,K 組)、牛角(頭部配件)。<br><br><b>實作</b>:比照這個檔案一貫的移除慣例(先前 beerStein/thermos/pizzaSlice/candyCane 等移除時的做法)——不是只刪註冊表那一行讓選單少一項,而是連同 <code>ITEM_SHAPES</code>/<code>drawBullHornsAccessory</code> 底層形狀定義一起整段刪除,不留下永遠不會被呼叫到的死程式碼。牛角額外牽動 <code>drawBullHornsAccessory()</code>、<code>bullHornApexBeyondHeadTop()</code> 兩個函式與 <code>BULL_HORN_*</code> 系列常數(眼部安全淨空計算專用,其他配件不會用到,確認後整段一併刪除)。<br><br>移除前查證兩個潛在依賴,確認都不是真的依賴:巫毒娃娃(<code>voodooDoll</code>)的註解提到「沿用薑餅人的人形骨架」,但該款是完全獨立的形狀物件字面量,只是設計語彙上參考薑餅人,程式碼沒有實際引用被刪除的 <code>gingerbreadMan</code> 物件,刪除後不受影響;掃描全檔案確認沒有其他地方以程式碼方式引用這 6 個識別碼(僅剩零星的英文單字 "fan"/"cane" 出現在其他配件——例如 <code>broom</code>/<code>fishingRod</code> 的註解——的一般用語中,不是識別碼)。<br><br>K 組、E 組的分組註解數量順手更新(K 組原本是「brief 說 2 項但列了 3 項」的錯誤已於前幾輪記錄過,這輪拿掉 fan/cane 後只剩 magnifyingGlass 一項,註解一併補上這輪移除的說明;E 組原本 5 項扣掉這輪的 3 項剩 2 項,同樣更新數量與說明)。<br><br><b>驗證</b>:回歸測試確認選單數量正確減少(手部配件 86→81、頭部配件 24→23,剛好對應移除的 5 款手部+1 款頭部),17 原型 × 81 款手部配件 × 23 款頭部配件 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.17.3)</b>:燈籠本體(<code>circle</code>)太小,<code>r</code> 從 0.22 加大到 0.4(接近翻倍);同時明確指出繩子的 <code>dx</code> 偏移量(原本 0.55)必須跟著放大到 0.65 左右一起調,不能只放大半徑不移動位置,否則放大後的本體會往回吃到桿身。仙女棒的發光範圍也要擴大,但沒有給出具體數字。<br><br><b>燈籠實作</b>:三個數字一起改,不是分開調——<code>circle</code> 的 <code>r</code> 0.22→0.4、<code>dx</code> 0.55→0.65,<code>polyline</code>(繩子)終點的 <code>dx</code> 同步從 0.4 改成 0.65(繩子跟本體要用同一個 <code>dx</code>,不然本體會懸空脫離繩子末端),<code>glow</code> 從 10 加到 12,發光暈染範圍跟著本體放大同步放大。<code>at</code> 維持上一輪修正後的 0(桿子真正的尖端),這輪沒有變動——使用者提供的片段沿用了舊版 <code>at:1.6</code> 的寫法,但那是上一輪已經確認錯誤、改成 0 的值,這輪只套用使用者明確要求的 r/dx/glow 三個數字,不連帶把 <code>at</code> 改回已知有問題的 1.6。<br><br><b>仙女棒實作</b>:使用者只說「發光範圍要擴大」沒給數字,判斷為核心圓的 <code>r</code>/<code>glow</code> 需要進一步放大,延續這輪「本體/發光跟著放大」的方向——核心 <code>r</code> 0.06→0.08、<code>glow</code> 10→14。火花 <code>polyline</code> 維持不帶 <code>glow</code>(v48.17.2 訂下的「發光只集中在核心」原則不變,使用者這次沒有要求連火花線一起發光)。<br><br><b>驗證</b>:燈籠站立+走路兩種狀態截圖確認本體明顯變大、繩子跟本體之間沒有懸空或重疊桿身的問題,發光暈染範圍隨本體放大同步擴大,腿部/腳部沒有穿模。仙女棒站立+走路截圖確認核心發光範圍明顯比上一輪更大更明顯。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.17.2)</b>:使用者截圖點出兩個既有配件的問題,並要求仙女棒補上發光。火把:截圖顯示火焰很小且完全沒有發光暈染,使用者明確指出「不是尺寸問題,是根本沒有 glow」——火焰讀起來像一塊扁平橘色色塊,不是火。燈籠:上一輪(v48.17.1)重做成「握把+垂掛圓形」後,參考圖比對仍然不對,讀起來像「一根棍子直接插進發光球裡」,而不是「水平持握的桿子,桿尖用一條線繩吊著一顆燈籠」——結構性錯誤,不是角度或顏色問題。<br><br><b>火把重做</b>:比照光劍「核心亮+外層暈」的分層做法,把單一小 <code>polygon</code> 拆成兩層:外層放大(<code>dx</code> 範圍從 ±0.16 加大到 ±0.26,火尖延伸到 <code>at:1.7</code>,超出握把本體)並加上 <code>glow:12</code>;內層核心縮小、改用更暖的近白色 <code>#ffe08a</code>,不帶自己的 glow——發光集中在外層,兩層疊起來才會是「中心亮、邊緣柔化暈開」而不是整團火焰均勻發霧。<code>totalLen</code> 依指示維持 1.5 不變(尖端雖然畫到 1.7,但不影響握持/安全距離判定)。<br><br><b>燈籠重做</b>:整個造型從「握把+垂掛圓形」改成「水平桿子+桿尖線繩+燈籠本體」——<code>totalLen:1.9</code>、<code>gripRatio:0.85</code>、<code>shaft</code> 從 0 到 1.6 畫出整根桿子,<code>polyline</code> 兩個端點共用同一個 <code>at</code>、只有 <code>dx</code> 不同(沿著垂直於桿身的方向延伸,不是沿桿子本身),<code>circle</code> 燈籠本體接著沿同一個 <code>dx</code> 方向再往外放,而不是用 <code>at</code>(那樣只會變成桿子的延伸段)。<code>heldTilt</code> 從垂直改回接近 <code>-90°</code> 的水平持握角度——這是造型改成「水平桿子」後的必然結果,不是走回頭路。<br><br>實作時自行抓到一個定位錯誤:直接沿用使用者範例的 <code>at:1.6</code> 放線繩/燈籠,但 <code>gripDist = gripRatio × totalLen = 0.85 × 1.9 = 1.615</code>,幾乎等於 1.6——而本系統的 <code>dist=0</code> 一律是持握時朝外的「尖端」,<code>dist≈gripDist</code> 則落在握把/手部附近,跟桿子本身的畫法慣例(<code>dist=totalLen</code> 才是尾端)搞反了方向,截圖顯示燈籠貼在角色手/腳邊,不是垂在桿子遠端。修正:線繩與圓形燈籠的 <code>at</code> 全部從 1.6 改成 0(桿子真正的尖端),讓燈籠改成垂在桿子遠端。修正後截圖確認:桿子水平、線繩+燈籠正確垂在桿尖(<code>dx</code> 正負號不需翻轉,原本的 0.4/0.55 方向就是對的)。<br><br><b>仙女棒補發光</b>:核心圓放大(r 0.04→0.06)並上暖白色 <code>#fff4c2</code>、加 <code>glow:10</code>;5 條火花 <code>polyline</code> 全部改用同一個暖白色(讓火花線也帶一點微光感),但刻意不加 <code>glow</code>——發光集中在核心圓,才會是「核心亮、火花線微微透光延伸出去」而不是整把仙女棒糊成一團光暈。握把 <code>shaft</code> 額外補上明確的 <code>color:SIL</code>,避免這個 entry 掛上 <code>rarity:'SSS'</code> 後,沒有自己顏色的 part 透過 <code>resolveWeaponColor()</code> 悄悄繼承 <code>RARITY_STYLE.SSS</code> 的近白色(跟聖杯/手機/燈籠先前踩過的同一種「顏色外洩」)。註冊表補上 <code>rarity:'SSS'</code>。<br><br>火把本輪未加 <code>rarity:'SSS'</code>——使用者這輪只對燈籠、仙女棒給出明確的註冊表程式碼,火把的敘述較偏向脈絡說明而非直接指令,故先保守不動,留待使用者確認是否也要補上。<br><br><b>驗證</b>:三款配件分別截取站立與走路兩種狀態。火把:火焰明顯比之前大,核心+外層發光層次可辨,走路循環中比例依然合理。燈籠:桿子水平、燈籠確實垂掛在桿尖下方(不是套在桿子上),走路循環發光依然清楚。仙女棒:頂端核心發光明顯,火花線有微光但沒有跟核心糊在一起,走路循環中效果依然可辨。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.17.1)</b>:使用者用參考圖(女孩提著圓形紙燈籠,手臂垂在身側,燈籠自然懸掛在手下方)指出燈籠造型完全不對——上一輪套用巨型武器那套「長條 <code>polygon</code>+水平持握(<code>heldTilt:-90°</code>)」,截圖裡燈籠變成一小坨貼在腳邊的紅色團塊,角度也不對,跟參考圖的「圓形+自然垂掛」相去甚遠。另外兩個小修正:聖杯的底座/杯莖上一輪只補了 <code>color:SIL</code>(黑色)沒有真的上暗金色,截圖顯示只有杯身有顏色;智慧型手機螢幕發光只有一個貼在手邊的小圓點(半徑僅手機自身寬度的 8%),使用者要求參考手電筒的柔光技法,改成佔手機約 80% 面積的方形發光。<br><br><b>燈籠重做</b>:捨棄長條造型,改成「握把在近手端(<code>gripRatio:0.92</code>,握把段 <code>totalLen</code> 的後 8%)、圓形燈籠主體垂在握把外側(<code>dist:0.3</code>,佔掉大部分長度)」的比例分配,搭配 <code>heldTilt</code> 從 <code>-90°</code>大幅調降到 <code>-15°</code>——這兩個改動缺一不可:只改形狀不改角度,圓形本體還是會被轉成水平;只改角度不改形狀,長條本體轉直了但還是讀不出「一顆燈籠」。截圖跟參考圖並排比對,主體垂掛角度、圓形輪廓、暖橘發光(色票從原本的暗紅 <code>#7a1f1f</code>换成更亮更暖的橘紅 <code>#e8631c</code>,glow 沿用 10)都跟參考圖的觀感接近,<code>-15°</code> 一次就達到「自然下垂」沒有再調的必要。<code>GIANT_WEAPON_KEYS</code> 的持握手臂擺動抑制维持保留(這是使用者特別點名要留住的行為,跟形狀/角度是分開的兩件事)。<br><br><b>聖杯補色</b>:底座(<code>crossbar</code>)、杯莖(<code>shaft</code>)兩個 part 的 <code>color</code> 從 <code>SIL</code> 改成跟杯身同一個暗金 <code>#7a5a1e</code>,但不加 <code>glow</code>——整顆聖杯統一材質色,只有杯身(視覺焦點)帶發光暈染,跟光劍「握把中性深色、只有刀身發光」是不同的分層方式(光劍是「材質色不同+只有一處發光」,聖杯這次是「材質色相同+只有一處發光」),但「只讓一個部位帶 <code>glow</code>」這個原則相同。<br><br><b>智慧型手機螢幕加大</b>:原本的小圓點(<code>circle</code>, r 0.03)換成一個跨手機本體約 80% 長寬的矩形 <code>polygon</code>(<code>at</code> 0.1~0.9,<code>dx</code> ±0.15,對比機身本體 <code>dx</code> 最大 ±0.19),沿用手電筒光束同一招半透明 <code>rgba()</code> 做出「微弱柔光」的質感(<code>rgba(143,208,255,0.55)</code>),額外加一個較弱的 <code>glow:4</code>(低於燈籠的 10、聖杯的 8,對應使用者「比手電筒再微弱一些」的要求)。截圖確認整片螢幕清楚可辨是方形發光區塊,不再是貼在手邊的一個小亮點。<br><br><b>驗證</b>:燈籠站立+走路兩種狀態截圖跟參考圖並排比對,垂掛角度、圓形主體、暖橘光暈都到位,走路循環持握手臂依然穩定(擺動抑制沒有被形狀重做影響)。聖杯截圖確認底座/杯莖/杯身/杯緣全部暗金,只有杯身有發光暈染。智慧型手機截圖確認方形螢幕發光佔機身大部分面積。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
@@ -2964,47 +2965,6 @@
     drawHornCapsule(ctx, pair.right, height, width, DEVIL_HORN_TILT_DEG, 1);
   }
 
-  // Bull horns -- reuses drawHornCapsule unchanged (already generic over
-  // width/tilt/side), just thicker (WIDTH_RATIO 0.22 vs devil horns' 0.16)
-  // and a shallower, wider-set tilt (25deg vs 20deg, HALF_W_RATIO 0.55 vs
-  // 0.5) for a "curving out to the sides" bull-horn silhouette instead of
-  // devil horns' mostly-upward "swept back" look. A first attempt at a much
-  // steeper tilt (45deg) failed outright -- at that angle most of the
-  // capsule's own length converts to SIDEWAYS displacement rather than
-  // outward reach, so the tip never even cleared the circle-head boundary
-  // (clearance went NEGATIVE, -1.4% "visibility") despite reading fine on
-  // rounded-square heads; re-solved at a shallower 25deg with a taller
-  // height (0.65 vs devil horns' 0.55) to compensate, landing both shapes
-  // at a real, comfortable 60% visibility (insideMargin 0.28px/1.19px on
-  // petite/longBox, the tightest cases across all 17 archetypes).
-  //
-  // Eye-safety verified explicitly this round (the bear-ears lesson) even
-  // though every capsule/triangle-shaped dual-anchor accessory has been
-  // safe by construction so far: unlike bear ears' circle (which grows in
-  // EVERY direction from its center, including back toward the head's
-  // interior), a capsule only extends AWAY from its own root point, so the
-  // only thing that could reach the eye is the root itself -- and the root
-  // sits at baseRatio>=0.77 from head center on both shapes, far above the
-  // eye's near-center height. verify_bull_horns.js confirms: root-to-eye
-  // distance stays >=3.3R... actually >=3.9px minimum across all 17
-  // archetypes even before subtracting a capsule-width buffer, an order of
-  // magnitude more margin than bear ears ever had.
-  const BULL_HORN_BASE_RATIO = 0.773, BULL_HORN_BASE_RATIO_SQUARE = 0.801, BULL_HORN_HALF_W_RATIO = 0.55;
-  const BULL_HORN_HEIGHT_RATIO = 0.65, BULL_HORN_WIDTH_RATIO = 0.22, BULL_HORN_TILT_DEG = 25;
-  function bullHornApexBeyondHeadTop(headR){
-    const baseRatio = shapeAwareRatio(BULL_HORN_BASE_RATIO, BULL_HORN_BASE_RATIO_SQUARE);
-    const height = BULL_HORN_HEIGHT_RATIO * headR;
-    return height * Math.cos(BULL_HORN_TILT_DEG * Math.PI / 180) - (1 - baseRatio) * headR;
-  }
-  function drawBullHornsAccessory(ctx, headTop, headR){
-    if (!headTop) return;
-    const baseRatio = shapeAwareRatio(BULL_HORN_BASE_RATIO, BULL_HORN_BASE_RATIO_SQUARE);
-    const pair = deriveSymmetricHeadPair(headTop, headR, baseRatio, BULL_HORN_HALF_W_RATIO);
-    const height = BULL_HORN_HEIGHT_RATIO * headR, width = BULL_HORN_WIDTH_RATIO * headR;
-    drawHornCapsule(ctx, pair.left, height, width, BULL_HORN_TILT_DEG, -1);
-    drawHornCapsule(ctx, pair.right, height, width, BULL_HORN_TILT_DEG, 1);
-  }
-
   // Deer antlers -- a main stem (verified exactly like bunny ears/cat ears:
   // apex along pure OUT) plus one small forking branch partway up, angled
   // outward via the same signed-tilt technique as devil horns. Only the
@@ -3516,7 +3476,6 @@
     catEars:      { label: '貓耳',     rarity: null, draw: drawCatEarsAccessory, apex: headR => earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
     bunnyEars:    { label: '兔耳',     rarity: null, draw: drawBunnyEarsAccessory, apex: headR => bunnyEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
     devilHorns:   { label: '惡魔角',   rarity: null, draw: drawDevilHornsAccessory, apex: headR => devilHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    bullHorns:    { label: '牛角',     rarity: null, draw: drawBullHornsAccessory, apex: headR => bullHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
     deerAntlers:  { label: '鹿角',     rarity: null, draw: drawDeerAntlersAccessory, apex: headR => deerAntlerApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
     dualAntenna:  { label: '雙天線',   rarity: null, draw: drawDualAntennaAccessory, apex: headR => dualAntennaApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
     baseballCap:  { label: '鴨舌帽',   rarity: null, draw: drawBaseballCapAccessory, apex: headR => BASEBALL_CAP_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
@@ -5291,33 +5250,6 @@
         { type: 'shaft', from: 0.6, to: 1.3, width: 0.15 }
       ]
     },
-    // 團扇 fan: a rounded octagon-ish fan face (the wide rounded outline
-    // itself is what reads as "fan," same silhouette-carries-the-feature
-    // approach used throughout this batch) + plain handle.
-    fan: {
-      totalLen: 1.15,
-      flatLift: 0.42,
-      gripRatio: 0.8,
-      parts: [
-        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.1, dx: 0.32 }, { at: 0.35, dx: 0.42 }, { at: 0.55, dx: 0.32 }, { at: 0.62, dx: 0 }, { at: 0.55, dx: -0.32 }, { at: 0.35, dx: -0.42 }, { at: 0.1, dx: -0.32 } ] },
-        { type: 'shaft', from: 0.62, to: 1.15, width: 0.14 }
-      ]
-    },
-    // 拐杖 cane: plain straight shaft (the tip plants at the ground,
-    // matching how a real cane stands on its own) with a curled polyline
-    // hook at the butt -- the hook is a small LOCAL detail right at the
-    // grip rather than a far-flung prominent feature (unlike an axe
-    // head), which is fine since a hook only needs to be recognizable up
-    // close to the hand, not legible from a distance.
-    cane: {
-      totalLen: 1.6,
-      gripRatio: 0.88,
-      parts: [
-        { type: 'shaft', from: 0, to: 1.35, width: 0.16 },
-        { type: 'polyline', points: [ { at: 1.35, dx: 0 }, { at: 1.5, dx: 0.12 }, { at: 1.6, dx: 0.05 }, { at: 1.55, dx: -0.08 } ], width: 0.15 }
-      ]
-    },
-
     // ==================== D/E/F/G group addition (component XII) ====================
     // Same drawWeaponParts()/drawWeaponPartsFlat()/itemEntry() mechanism as
     // B/C/F/K, still no reinvention. All 31 items below default to 'flat'
@@ -5488,63 +5420,6 @@
         { type: 'shaft', from: 0.56, to: 1.0, width: 0.06 }
       ]
     },
-    // 冰淇淋 iceCream: triangular cone (dist0 = the point, matching a real
-    // cone's tip) + a jagged zigzag-polygon swirl scoop on top (same
-    // technique as saw's zigzag teeth, applied to a soft-serve twist
-    // instead of a straight edge). 'stuck': cone-tip-down is the standard
-    // "cone in a display stand" pose, matching mushroom/carrot's own
-    // planted-root reading rather than anything morbid.
-    iceCream: {
-      totalLen: 1.05,
-      gripRatio: 0.9,
-      parts: [
-        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.5, dx: 0.18 }, { at: 0.5, dx: -0.18 } ] },
-        { type: 'polygon', points: [
-            { at: 0.5, dx: -0.2 }, { at: 0.65, dx: -0.24 }, { at: 0.75, dx: -0.1 }, { at: 0.85, dx: -0.2 }, { at: 0.95, dx: -0.05 },
-            { at: 1.05, dx: 0 }, { at: 0.95, dx: 0.05 }, { at: 0.85, dx: 0.2 }, { at: 0.75, dx: 0.1 }, { at: 0.65, dx: 0.24 }, { at: 0.5, dx: 0.2 }
-          ] }
-      ]
-    },
-    // 雞腿 chickenLeg: rounded meat polygon (dist0) + a thin bone shaft +
-    // a small round bone-knob at the butt -- the bone knob is the single
-    // feature that makes this read as "drumstick" instead of just "a
-    // rounded shape", same "the one distinguishing detail carries the
-    // whole read" approach as wrench's open notch.
-    chickenLeg: {
-      totalLen: 0.98,
-      flatLift: 0.16,
-      gripRatio: 0.85,
-      parts: [
-        { type: 'polygon', points: [ { at: 0, dx: 0 }, { at: 0.1, dx: 0.22 }, { at: 0.35, dx: 0.32 }, { at: 0.55, dx: 0.24 }, { at: 0.6, dx: 0 }, { at: 0.55, dx: -0.24 }, { at: 0.35, dx: -0.32 }, { at: 0.1, dx: -0.22 } ] },
-        { type: 'shaft', from: 0.6, to: 0.95, width: 0.08 },
-        { type: 'circle', at: 0.98, r: 0.1 }
-      ]
-    },
-    // 薑餅人 gingerbreadMan: the one humanoid item in the whole catalog --
-    // built from the existing primitives rather than a new drawing
-    // function: two 'diagonal' legs from a hip point, a trapezoid
-    // 'polygon' torso, two 'diagonal' arms from the shoulders, a 'circle'
-    // head, and 3 small 'circle' icing buttons down the front. dist0 =
-    // feet (bottom), head at the far/totalLen end -- 'stuck' reads as
-    // "stands on its own two feet", the most literal standing pose in
-    // this entire batch, same reasoning as the companion pet's own
-    // upright silhouette.
-    gingerbreadMan: {
-      totalLen: 1.37,
-      gripRatio: 0.5,
-      parts: [
-        { type: 'diagonal', at: 0.35, to: 0, dx: -0.18, width: 0.13 },
-        { type: 'diagonal', at: 0.35, to: 0, dx: 0.18, width: 0.13 },
-        { type: 'polygon', points: [ { at: 0.35, dx: -0.22 }, { at: 0.35, dx: 0.22 }, { at: 0.85, dx: 0.3 }, { at: 0.85, dx: -0.3 } ] },
-        { type: 'diagonal', at: 0.85, to: 1.05, dx: -0.42, width: 0.12 },
-        { type: 'diagonal', at: 0.85, to: 1.05, dx: 0.42, width: 0.12 },
-        { type: 'circle', at: 1.15, r: 0.22 },
-        { type: 'circle', at: 0.45, r: 0.04 },
-        { type: 'circle', at: 0.6, r: 0.04 },
-        { type: 'circle', at: 0.75, r: 0.04 }
-      ]
-    },
-
     // ---- F group: plants/nature (10) ----
     // sunflower/rose/lily share one structural exception to this whole
     // catalog's "dist0 = distinctive feature" convention: for a cut
@@ -6586,13 +6461,9 @@
     torch: itemEntry('火把', 'torch', 'stuck'),
 
     // ---- K group addition (brief said "2項" but lists 3 -- same
-    // miscount pattern as C group above, flagged rather than guessed) ----
-    // cane gets 'stuck': a cane standing on its own straight tip is the
-    // single most standard resting pose for one. magnifyingGlass/fan
-    // have no equivalent, stay 'flat'.
+    // miscount pattern as C group above, flagged rather than guessed;
+    // fan/cane removed per v48.17.4 user trim request) ----
     magnifyingGlass: itemEntry('放大鏡', 'magnifyingGlass', 'flat'),
-    fan: itemEntry('團扇', 'fan', 'flat'),
-    cane: itemEntry('拐杖', 'cane', 'stuck'),
 
     // ---- D group: kitchenware (6 -- beerStein/thermos removed per user
     // trim request: too small to read clearly held) ----
@@ -6603,14 +6474,11 @@
     mug: itemEntry('馬克杯', 'mug', 'flat'),
     teapot: itemEntry('茶壺', 'teapot', 'flat'),
 
-    // ---- E group: food (5 -- pizzaSlice/candyCane removed per user trim
-    // request: too small to read clearly held; merged 甜筒/cone into
-    // 冰淇淋/iceCream, see ITEM_SHAPES' own comment on why) ----
+    // ---- E group: food (2 -- pizzaSlice/candyCane removed per earlier
+    // user trim request; iceCream/chickenLeg/gingerbreadMan removed per
+    // v48.17.4 user trim request) ----
     carrot: itemEntry('胡蘿蔔', 'carrot', 'flat'),
     lollipop: itemEntry('棒棒糖', 'lollipop', 'stuck'),
-    iceCream: itemEntry('冰淇淋', 'iceCream', 'stuck'),
-    chickenLeg: itemEntry('雞腿', 'chickenLeg', 'flat'),
-    gingerbreadMan: itemEntry('薑餅人', 'gingerbreadMan', 'stuck'),
 
     // ---- F group: plants/nature (10) ----
     sunflower: itemEntry('向日葵', 'sunflower', 'stuck'),
