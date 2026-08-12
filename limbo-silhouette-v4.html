@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.17.4 — 移除薑餅人/雞腿/冰淇淋/團扇/拐杖/牛角</title>
+<title>剪影走路/跑步循環 v48.18 — 稀有度系統改版 B/A/S/SSS → N/R/SR/SSR</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17.4</div>
-    <h1>移除薑餅人/雞腿/冰淇淋/團扇/拐杖/牛角</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.18</div>
+    <h1>稀有度系統改版 B/A/S/SSS → N/R/SR/SSR</h1>
+    <p class="sub"><b>需求(v48.18)</b>:稀有度分級系統從 B/A/S/SSS 改名為 N/R/SR/SSR(等級順序不變,只是換名字),要求兩套系統(<code>RARITY_STYLE</code> 查表 + 所有配件登記表的 <code>rarity</code> 欄位)都要換,並提供一份完整分級清單(N 40 項、R 36 項、SR 10 項、SSR 15 項,共 101 項)要求依此套用每一款配件的 <code>rarity</code> 欄位。<br><br><b>RARITY_STYLE 改名</b>:<code>{ S: {...}, SSS: {...} }</code> 改成 <code>{ SR: {...}, SSR: {...} }</code>,顏色值不動,只換 key 名稱。N/R 沒有對應項目——這點跟改版前的 B/A 一樣,這兩層本來就不驅動顏色,純粹編目用。<br><br><b>套用完整分級清單</b>:逐一比對 <code>HEAD_ACCESSORY_REGISTRY</code>(23 款)、<code>HAND_ACCESSORY_REGISTRY</code>(81 款)裡的每一筆中文 label 跟清單對照,補上/改成對應的新 tier。改版前只有 6 款配件(武士刀+光劍 5 色)真的掛過 tier,其餘全部是 <code>rarity: null</code>(先前只保留欄位、沒有實際分級);這輪等於是第一次把清單裡的 101 款全部實際分級,不只是換名字。<br><br>套用時發現一個不是單純改名可以解決的地方:武士刀原本是 <code>rarity:'S'</code>(對照表直譯是 <code>'SR'</code>),但使用者這次的完整分級清單把武士刀放進 SSR 那一組,跟光劍/聖杯同一層——這是真正的分級調整,不只是換字串,已依照這輪的完整清單為準,改成 <code>rarity:'SSR'</code>。巨劍、關刀、死神鐮刀、11 款巨型配件先前都是 <code>rarity: null</code>(前幾輪明確記錄過「使用者未要求分級,先留空」),這輪依完整清單分別補上 R/SR/N 不等的 tier(不是統一套用同一層——例如 11 款巨型配件裡,啞鈴是 N、巨型鑰匙/巨型魚骨/巨型花朵是 SR,其餘 7 款是 R,依清單逐款判斷,不是「巨型 = 同一稀有度」的簡化規則)。<br><br><b>清單裡沒提到的項目,標記後保留原狀,沒有用猜的補上</b>:十字架(<code>cross</code>)不在使用者提供的完整清單裡,維持 <code>rarity: null</code>,留待使用者確認應歸入哪一層。劍/水壺兩個示範性質項目(<code>sword</code>/<code>canteen</code>,選單裡標註「手持/收納示範」)跟隨身寵物系列(<code>PET_REGISTRY</code>,8 款)也不在清單裡——這兩者原本就不是這套稀有度分級的對象(示範項目性質特殊,寵物系列在任何一輪的分級需求裡都沒出現過),維持 <code>rarity: null</code>,不當成遺漏硬套。<br><br><b>角色原型的稀有度系統——查證後沒有實際程式碼可改</b>:程式碼裡有兩處註解寫著配件分級「呼應角色原型自己的分級系統」(echoing the archetype rarity system's own tiers),但實際搜尋 <code>ARCHETYPES</code> 物件定義、以及全檔案任何以 B/A/S/SSS 作為 key 或值的角色原型相關程式碼,確認並不存在——這句註解只是設計意圖的說明文字,角色原型那邊從來沒有真的實作過對應的分級系統,沒有東西可以同步改名。已在該處註解明確補充這個查證結果,避免下一輪又有人以為漏改了什麼。<br><br><b>全域殘留檢查</b>:搜尋全檔案所有 <code>rarity:'S'</code>/<code>rarity:'B'</code>/<code>rarity:'A'</code>/<code>rarity:'SSS'</code>/<code>RARITY_STYLE.S</code>/<code>RARITY_STYLE.SSS</code> 等舊字串,確認程式碼區塊(物件字面量與註解)全部換成新名稱,沒有新舊混用;僅有的殘留是歷史版本的 changelog 段落文字(記錄當時實際做過的事,依這個檔案一貫的慣例維持原樣、不回頭改寫)——新舊術語在程式碼與歷史記錄之間不會互相污染。<br><br><b>驗證</b>:分級數量逐層核對(N 40、R 36、SR 10、SSR 15,合計 101,跟使用者清單完全吻合)。截圖確認武士刀(鋼色刀身)、光劍(螢光藍)、聖杯(暗金)三款重新命名後渲染顏色完全不受影響(這三款的實際顯示色來自各自的 <code>part.color</code>/<code>opts.color</code>,不吃 <code>RARITY_STYLE</code> 查表,重新命名對外觀零影響,純資料層變動)。17 原型 × 81 款手部配件 × 23 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.17.4)</b>:使用者指定從清單取消 6 款配件——薑餅人、雞腿、冰淇淋(手部配件,E 組食物類)、團扇、拐杖(手部配件,K 組)、牛角(頭部配件)。<br><br><b>實作</b>:比照這個檔案一貫的移除慣例(先前 beerStein/thermos/pizzaSlice/candyCane 等移除時的做法)——不是只刪註冊表那一行讓選單少一項,而是連同 <code>ITEM_SHAPES</code>/<code>drawBullHornsAccessory</code> 底層形狀定義一起整段刪除,不留下永遠不會被呼叫到的死程式碼。牛角額外牽動 <code>drawBullHornsAccessory()</code>、<code>bullHornApexBeyondHeadTop()</code> 兩個函式與 <code>BULL_HORN_*</code> 系列常數(眼部安全淨空計算專用,其他配件不會用到,確認後整段一併刪除)。<br><br>移除前查證兩個潛在依賴,確認都不是真的依賴:巫毒娃娃(<code>voodooDoll</code>)的註解提到「沿用薑餅人的人形骨架」,但該款是完全獨立的形狀物件字面量,只是設計語彙上參考薑餅人,程式碼沒有實際引用被刪除的 <code>gingerbreadMan</code> 物件,刪除後不受影響;掃描全檔案確認沒有其他地方以程式碼方式引用這 6 個識別碼(僅剩零星的英文單字 "fan"/"cane" 出現在其他配件——例如 <code>broom</code>/<code>fishingRod</code> 的註解——的一般用語中,不是識別碼)。<br><br>K 組、E 組的分組註解數量順手更新(K 組原本是「brief 說 2 項但列了 3 項」的錯誤已於前幾輪記錄過,這輪拿掉 fan/cane 後只剩 magnifyingGlass 一項,註解一併補上這輪移除的說明;E 組原本 5 項扣掉這輪的 3 項剩 2 項,同樣更新數量與說明)。<br><br><b>驗證</b>:回歸測試確認選單數量正確減少(手部配件 86→81、頭部配件 24→23,剛好對應移除的 5 款手部+1 款頭部),17 原型 × 81 款手部配件 × 23 款頭部配件 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.17.3)</b>:燈籠本體(<code>circle</code>)太小,<code>r</code> 從 0.22 加大到 0.4(接近翻倍);同時明確指出繩子的 <code>dx</code> 偏移量(原本 0.55)必須跟著放大到 0.65 左右一起調,不能只放大半徑不移動位置,否則放大後的本體會往回吃到桿身。仙女棒的發光範圍也要擴大,但沒有給出具體數字。<br><br><b>燈籠實作</b>:三個數字一起改,不是分開調——<code>circle</code> 的 <code>r</code> 0.22→0.4、<code>dx</code> 0.55→0.65,<code>polyline</code>(繩子)終點的 <code>dx</code> 同步從 0.4 改成 0.65(繩子跟本體要用同一個 <code>dx</code>,不然本體會懸空脫離繩子末端),<code>glow</code> 從 10 加到 12,發光暈染範圍跟著本體放大同步放大。<code>at</code> 維持上一輪修正後的 0(桿子真正的尖端),這輪沒有變動——使用者提供的片段沿用了舊版 <code>at:1.6</code> 的寫法,但那是上一輪已經確認錯誤、改成 0 的值,這輪只套用使用者明確要求的 r/dx/glow 三個數字,不連帶把 <code>at</code> 改回已知有問題的 1.6。<br><br><b>仙女棒實作</b>:使用者只說「發光範圍要擴大」沒給數字,判斷為核心圓的 <code>r</code>/<code>glow</code> 需要進一步放大,延續這輪「本體/發光跟著放大」的方向——核心 <code>r</code> 0.06→0.08、<code>glow</code> 10→14。火花 <code>polyline</code> 維持不帶 <code>glow</code>(v48.17.2 訂下的「發光只集中在核心」原則不變,使用者這次沒有要求連火花線一起發光)。<br><br><b>驗證</b>:燈籠站立+走路兩種狀態截圖確認本體明顯變大、繩子跟本體之間沒有懸空或重疊桿身的問題,發光暈染範圍隨本體放大同步擴大,腿部/腳部沒有穿模。仙女棒站立+走路截圖確認核心發光範圍明顯比上一輪更大更明顯。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.17.2)</b>:使用者截圖點出兩個既有配件的問題,並要求仙女棒補上發光。火把:截圖顯示火焰很小且完全沒有發光暈染,使用者明確指出「不是尺寸問題,是根本沒有 glow」——火焰讀起來像一塊扁平橘色色塊,不是火。燈籠:上一輪(v48.17.1)重做成「握把+垂掛圓形」後,參考圖比對仍然不對,讀起來像「一根棍子直接插進發光球裡」,而不是「水平持握的桿子,桿尖用一條線繩吊著一顆燈籠」——結構性錯誤,不是角度或顏色問題。<br><br><b>火把重做</b>:比照光劍「核心亮+外層暈」的分層做法,把單一小 <code>polygon</code> 拆成兩層:外層放大(<code>dx</code> 範圍從 ±0.16 加大到 ±0.26,火尖延伸到 <code>at:1.7</code>,超出握把本體)並加上 <code>glow:12</code>;內層核心縮小、改用更暖的近白色 <code>#ffe08a</code>,不帶自己的 glow——發光集中在外層,兩層疊起來才會是「中心亮、邊緣柔化暈開」而不是整團火焰均勻發霧。<code>totalLen</code> 依指示維持 1.5 不變(尖端雖然畫到 1.7,但不影響握持/安全距離判定)。<br><br><b>燈籠重做</b>:整個造型從「握把+垂掛圓形」改成「水平桿子+桿尖線繩+燈籠本體」——<code>totalLen:1.9</code>、<code>gripRatio:0.85</code>、<code>shaft</code> 從 0 到 1.6 畫出整根桿子,<code>polyline</code> 兩個端點共用同一個 <code>at</code>、只有 <code>dx</code> 不同(沿著垂直於桿身的方向延伸,不是沿桿子本身),<code>circle</code> 燈籠本體接著沿同一個 <code>dx</code> 方向再往外放,而不是用 <code>at</code>(那樣只會變成桿子的延伸段)。<code>heldTilt</code> 從垂直改回接近 <code>-90°</code> 的水平持握角度——這是造型改成「水平桿子」後的必然結果,不是走回頭路。<br><br>實作時自行抓到一個定位錯誤:直接沿用使用者範例的 <code>at:1.6</code> 放線繩/燈籠,但 <code>gripDist = gripRatio × totalLen = 0.85 × 1.9 = 1.615</code>,幾乎等於 1.6——而本系統的 <code>dist=0</code> 一律是持握時朝外的「尖端」,<code>dist≈gripDist</code> 則落在握把/手部附近,跟桿子本身的畫法慣例(<code>dist=totalLen</code> 才是尾端)搞反了方向,截圖顯示燈籠貼在角色手/腳邊,不是垂在桿子遠端。修正:線繩與圓形燈籠的 <code>at</code> 全部從 1.6 改成 0(桿子真正的尖端),讓燈籠改成垂在桿子遠端。修正後截圖確認:桿子水平、線繩+燈籠正確垂在桿尖(<code>dx</code> 正負號不需翻轉,原本的 0.4/0.55 方向就是對的)。<br><br><b>仙女棒補發光</b>:核心圓放大(r 0.04→0.06)並上暖白色 <code>#fff4c2</code>、加 <code>glow:10</code>;5 條火花 <code>polyline</code> 全部改用同一個暖白色(讓火花線也帶一點微光感),但刻意不加 <code>glow</code>——發光集中在核心圓,才會是「核心亮、火花線微微透光延伸出去」而不是整把仙女棒糊成一團光暈。握把 <code>shaft</code> 額外補上明確的 <code>color:SIL</code>,避免這個 entry 掛上 <code>rarity:'SSS'</code> 後,沒有自己顏色的 part 透過 <code>resolveWeaponColor()</code> 悄悄繼承 <code>RARITY_STYLE.SSS</code> 的近白色(跟聖杯/手機/燈籠先前踩過的同一種「顏色外洩」)。註冊表補上 <code>rarity:'SSS'</code>。<br><br>火把本輪未加 <code>rarity:'SSS'</code>——使用者這輪只對燈籠、仙女棒給出明確的註冊表程式碼,火把的敘述較偏向脈絡說明而非直接指令,故先保守不動,留待使用者確認是否也要補上。<br><br><b>驗證</b>:三款配件分別截取站立與走路兩種狀態。火把:火焰明顯比之前大,核心+外層發光層次可辨,走路循環中比例依然合理。燈籠:桿子水平、燈籠確實垂掛在桿尖下方(不是套在桿子上),走路循環發光依然清楚。仙女棒:頂端核心發光明顯,火花線有微光但沒有跟核心糊在一起,走路循環中效果依然可辨。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
@@ -3465,36 +3466,40 @@
   // term, stepFsm draw line, checkbox, listener) instead of one registry
   // entry, and the dropdown UI (below) generates its options directly from
   // this object's keys/labels so the two can never drift out of sync.
-  // rarity: 'B' | 'A' | 'S' | 'SSS' | null -- reserved for the future
+  // rarity: 'N' | 'R' | 'SR' | 'SSR' | null -- reserved for the future
   // gacha system, not read by any code yet. See HAND_ACCESSORY_REGISTRY's
   // own comment (component W) for the full rationale -- same convention,
   // applied retroactively here. null is an explicit "not yet assigned"
   // placeholder on every entry, not an omitted field, so the whole
   // registry can be grepped/audited for tiering progress at a glance.
+  // v48.18: tier names renamed B/A/S/SSS -> N/R/SR/SSR (same order, same
+  // meaning), and every entry below tiered per the user's full
+  // classification list (previously only the 3 glow accessories were
+  // tiered, the rest sat at null).
   const HEAD_ACCESSORY_REGISTRY = {
-    hat:          { label: '小帽子',   rarity: null, draw: (ctx, headTop, headR) => drawHatAccessory(ctx, headTop), apex: () => HAT_HEIGHT + HAT_SYMBOL_MARGIN },
-    catEars:      { label: '貓耳',     rarity: null, draw: drawCatEarsAccessory, apex: headR => earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    bunnyEars:    { label: '兔耳',     rarity: null, draw: drawBunnyEarsAccessory, apex: headR => bunnyEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    devilHorns:   { label: '惡魔角',   rarity: null, draw: drawDevilHornsAccessory, apex: headR => devilHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    deerAntlers:  { label: '鹿角',     rarity: null, draw: drawDeerAntlersAccessory, apex: headR => deerAntlerApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    dualAntenna:  { label: '雙天線',   rarity: null, draw: drawDualAntennaAccessory, apex: headR => dualAntennaApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
-    baseballCap:  { label: '鴨舌帽',   rarity: null, draw: drawBaseballCapAccessory, apex: headR => BASEBALL_CAP_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    beret:        { label: '貝雷帽',   rarity: null, draw: drawBeretAccessory, apex: headR => BERET_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    wizardHat:    { label: '巫師帽',   rarity: null, draw: drawWizardHatAccessory, apex: headR => WIZARD_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    strawHat:     { label: '草帽',     rarity: null, draw: drawStrawHatAccessory, apex: headR => STRAW_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    cowboyHat:    { label: '牛仔帽',   rarity: null, draw: drawCowboyHatAccessory, apex: headR => COWBOY_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    singleAntenna:{ label: '單天線',   rarity: null, draw: drawSingleAntennaAccessory, apex: headR => SINGLE_ANTENNA_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    ahoge:        { label: '呆毛',     rarity: null, draw: drawAhogeAccessory, apex: headR => AHOGE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    partyHat:     { label: '生日派對帽', rarity: null, draw: drawPartyHatAccessory, apex: headR => PARTY_HAT_TOTAL_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    sensorLight:  { label: '感測器指示燈', rarity: 'SSS', draw: drawSensorLightAccessory, apex: headR => SENSOR_LIGHT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    santaHat:     { label: '聖誕帽',   rarity: null, draw: drawSantaHatAccessory, apex: headR => SANTA_HAT_HEIGHT_TOTAL_RATIO * headR + HAT_SYMBOL_MARGIN },
-    halo:         { label: '光環',     rarity: 'SSS', draw: drawHaloAccessory, apex: headR => HALO_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    crown:        { label: '皇冠',     rarity: 'SSS', draw: drawCrownAccessory, apex: headR => CROWN_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    fourLeafClover:{ label: '四葉草',  rarity: null, draw: drawFourLeafCloverAccessory, apex: headR => CLOVER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    smallWhiteFlower:{ label: '小白花', rarity: null, draw: drawSmallWhiteFlowerAccessory, apex: headR => FLOWER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    bambooDragonfly:{ label: '竹蜻蜓', rarity: null, draw: drawBambooDragonflyAccessory, apex: headR => DRAGONFLY_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    wheatStalk:   { label: '小麥穗',   rarity: null, draw: drawWheatStalkAccessory, apex: headR => WHEAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
-    mapleLeaf:    { label: '楓葉',     rarity: null, draw: drawMapleLeafAccessory, apex: headR => MAPLE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    hat:          { label: '小帽子',   rarity: 'N', draw: (ctx, headTop, headR) => drawHatAccessory(ctx, headTop), apex: () => HAT_HEIGHT + HAT_SYMBOL_MARGIN },
+    catEars:      { label: '貓耳',     rarity: 'R', draw: drawCatEarsAccessory, apex: headR => earApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    bunnyEars:    { label: '兔耳',     rarity: 'R', draw: drawBunnyEarsAccessory, apex: headR => bunnyEarApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    devilHorns:   { label: '惡魔角',   rarity: 'R', draw: drawDevilHornsAccessory, apex: headR => devilHornApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    deerAntlers:  { label: '鹿角',     rarity: 'R', draw: drawDeerAntlersAccessory, apex: headR => deerAntlerApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    dualAntenna:  { label: '雙天線',   rarity: 'R', draw: drawDualAntennaAccessory, apex: headR => dualAntennaApexBeyondHeadTop(headR) + HAT_SYMBOL_MARGIN },
+    baseballCap:  { label: '鴨舌帽',   rarity: 'N', draw: drawBaseballCapAccessory, apex: headR => BASEBALL_CAP_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    beret:        { label: '貝雷帽',   rarity: 'N', draw: drawBeretAccessory, apex: headR => BERET_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    wizardHat:    { label: '巫師帽',   rarity: 'R', draw: drawWizardHatAccessory, apex: headR => WIZARD_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    strawHat:     { label: '草帽',     rarity: 'N', draw: drawStrawHatAccessory, apex: headR => STRAW_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    cowboyHat:    { label: '牛仔帽',   rarity: 'N', draw: drawCowboyHatAccessory, apex: headR => COWBOY_HAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    singleAntenna:{ label: '單天線',   rarity: 'R', draw: drawSingleAntennaAccessory, apex: headR => SINGLE_ANTENNA_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    ahoge:        { label: '呆毛',     rarity: 'R', draw: drawAhogeAccessory, apex: headR => AHOGE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    partyHat:     { label: '生日派對帽', rarity: 'R', draw: drawPartyHatAccessory, apex: headR => PARTY_HAT_TOTAL_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    sensorLight:  { label: '感測器指示燈', rarity: 'SSR', draw: drawSensorLightAccessory, apex: headR => SENSOR_LIGHT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    santaHat:     { label: '聖誕帽',   rarity: 'R', draw: drawSantaHatAccessory, apex: headR => SANTA_HAT_HEIGHT_TOTAL_RATIO * headR + HAT_SYMBOL_MARGIN },
+    halo:         { label: '光環',     rarity: 'SSR', draw: drawHaloAccessory, apex: headR => HALO_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    crown:        { label: '皇冠',     rarity: 'SSR', draw: drawCrownAccessory, apex: headR => CROWN_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    fourLeafClover:{ label: '四葉草',  rarity: 'R', draw: drawFourLeafCloverAccessory, apex: headR => CLOVER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    smallWhiteFlower:{ label: '小白花', rarity: 'R', draw: drawSmallWhiteFlowerAccessory, apex: headR => FLOWER_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    bambooDragonfly:{ label: '竹蜻蜓', rarity: 'R', draw: drawBambooDragonflyAccessory, apex: headR => DRAGONFLY_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    wheatStalk:   { label: '小麥穗',   rarity: 'R', draw: drawWheatStalkAccessory, apex: headR => WHEAT_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
+    mapleLeaf:    { label: '楓葉',     rarity: 'R', draw: drawMapleLeafAccessory, apex: headR => MAPLE_HEIGHT_RATIO * headR + HAT_SYMBOL_MARGIN },
   };
   let currentHeadAccessory = '';
 
@@ -3785,14 +3790,19 @@
   //
   // RARITY_STYLE: tier -> visual treatment lookup, exactly the table the
   // v37 comment reserved this design for. katana is the first real
-  // consumer -- its registry entry sets rarity:'S' and gets its blade
+  // consumer -- its registry entry sets rarity:'SR' and gets its blade
   // color by LOOKING UP this table at draw time, no color value stored
-  // anywhere on katana's own WEAPON_SHAPES entry. Retiering the whole 'S'
+  // anywhere on katana's own WEAPON_SHAPES entry. Retiering the whole 'SR'
   // look later, or adding a future glow/border effect, only ever touches
   // this one table.
+  // v48.18: tier names renamed B/A/S/SSS -> N/R/SR/SSR system-wide (same
+  // order, same colors, only the labels changed -- see this round's own
+  // changelog entry for the full rationale). N/R have no entry here, same
+  // as B/A never did before the rename: those two tiers are cataloging-
+  // only, they've never driven a color.
   const RARITY_STYLE = {
-    S: { color: '#d9a441' },
-    SSS: { color: '#e9e6df' }
+    SR: { color: '#d9a441' },
+    SSR: { color: '#e9e6df' }
   };
 
   // resolveWeaponColor(): precedence, most to least specific --
@@ -3805,7 +3815,7 @@
   //    passed in by the registry factory), NOT derived from rarity --
   //    "which of 5 blade colors" isn't a rarity-TIER decision, it's the
   //    variant's own intrinsic identity, even though every one of the 5
-  //    also carries rarity:'SSS' for cataloging.
+  //    also carries rarity:'SSR' for cataloging.
   // 3) RARITY_STYLE[style.rarity] -- the decoupled, tier-driven default.
   //    katana's ONLY color source; its registry entry has no color of
   //    its own, only a rarity tier.
@@ -4172,11 +4182,11 @@
     // (shortSword 1.58, curvedSaber 1.62, rapier 2.04, lightsaber 2.08,
     // katana 2.53) per user request to mark it as this batch's rare
     // weapon -- length and rarity are separate signals (see the registry
-    // entry's own opts.rarity:'S', not stored here) but both point the
+    // entry's own opts.rarity:'SR', not stored here) but both point the
     // same direction on purpose. Explicit gripRatio at the blade/tsuba
     // junction (1.9/2.53), same reasoning as the other swords' v48
     // comments. v48.1 color revision: user feedback rejected the original
-    // flat rarity-gold fill (RARITY_STYLE.S applied uniformly to every
+    // flat rarity-gold fill (RARITY_STYLE.SR applied uniformly to every
     // part) as not reading as a katana's actual material -- a real blade
     // is steel, not gold, and painting the whole weapon one tier-color
     // erases the blade/fitting distinction that makes a sword look like a
@@ -4185,15 +4195,16 @@
     // are katana's own fixed material identity, not a rarity-tier
     // decision, so per resolveWeaponColor's precedence (part.color beats
     // style.color beats style.rarity) they take over unconditionally and
-    // the registry's rarity:'S' no longer drives the visible color at
-    // all. rarity:'S' stays on the registry entry purely for cataloging
+    // the registry's rarity:'SR' no longer drives the visible color at
+    // all. rarity:'SR' stays on the registry entry purely for cataloging
     // (still the single marker of "this is the batch's rare weapon" for
     // any future rarity-driven UI -- a border, a sort order -- that reads
-    // the tier without needing a draw-time color); RARITY_STYLE.S itself
+    // the tier without needing a draw-time color); RARITY_STYLE.SR itself
     // is now unused by any shipped item, kept as the lookup table for
     // whichever FUTURE item wants a plain tier-color instead of its own
     // material palette (see component XIV's comment on this exact
-    // material-vs-tier distinction).
+    // material-vs-tier distinction). v48.18: 'S' tier renamed to 'SR'
+    // system-wide (B/A/S/SSS -> N/R/SR/SSR), same color, same meaning.
     katana: {
       totalLen: 1.9 + 0.55 + 0.08,
       gripRatio: 0.75,
@@ -4830,8 +4841,8 @@
     // itself (see katana's own comment on this split). Non-glowing parts
     // get explicit color:SIL -- same reasoning as chalice/smartphone's own
     // v48.17 comments: without it, resolveWeaponColor() falls through to
-    // RARITY_STYLE.SSS's near-white for every part lacking its own
-    // part.color, not just the flame.
+    // RARITY_STYLE.SSR's (renamed from SSS in v48.18) near-white for every
+    // part lacking its own part.color, not just the flame.
     //
     // v48.17.1: first version was a long horizontal hexagonal cage
     // (giant-weapon proportions, heldTilt:-90deg) -- screenshotted against
@@ -4996,9 +5007,10 @@
     // 1.4) already puts the grip on the stem correctly once reversed, no
     // change needed there.
     // v48.17: base(crossbar)/stem(shaft) needed an explicit color now that
-    // this entry carries rarity:'SSS' -- without one, resolveWeaponColor()
-    // falls through past the missing part.color to style.rarity and picks
-    // up RARITY_STYLE.SSS's near-white '#e9e6df' for those two parts too
+    // this entry carries rarity:'SSR' (renamed from 'SSS' in v48.18) --
+    // without one, resolveWeaponColor() falls through past the missing
+    // part.color to style.rarity and picks up RARITY_STYLE.SSR's near-white
+    // '#e9e6df' for those two parts too
     // (screenshotted: the whole item read as pale grey/white). First fix
     // used color:SIL (kept everything but the bowl plain black), but a
     // follow-up screenshot showed the base/stem still reading as flat
@@ -5628,8 +5640,9 @@
     // removed per user trim request: too small to read clearly held) ----
     // smartphone: rounded-rect body + a small lens dot near dist0.
     // v48.17: body/lens get explicit color:SIL now that this entry carries
-    // rarity:'SSS' -- same reasoning as chalice's own v48.17 comment above
-    // (RARITY_STYLE.SSS would otherwise leak its near-white color onto
+    // rarity:'SSR' (renamed from 'SSS' in v48.18) -- same reasoning as
+    // chalice's own v48.17 comment above (RARITY_STYLE.SSR would otherwise
+    // leak its near-white color onto
     // every color-less part, not just the intentionally-glowing screen).
     // v48.17.1: screen glow was a single tiny circle (r 0.03, ~8% of the
     // body's own width) sitting right at the hand -- barely readable as
@@ -5794,10 +5807,10 @@
     // their own -- glow concentrated on just the core reads as "bright tip,
     // faint sparks trailing off it," spreading glow onto every ray would
     // haze the whole thing into one blob instead. Handle shaft gets
-    // explicit color:SIL now that this entry carries rarity:'SSS' -- same
-    // color-leak fix as chalice/smartphone/lantern's own v48.17 comments
-    // (resolveWeaponColor() would otherwise pick up RARITY_STYLE.SSS's
-    // near-white for this color-less part too).
+    // explicit color:SIL now that this entry carries rarity:'SSR' (renamed
+    // from 'SSS' in v48.18) -- same color-leak fix as chalice/smartphone/
+    // lantern's own v48.17 comments (resolveWeaponColor() would otherwise
+    // pick up RARITY_STYLE.SSR's near-white for this color-less part too).
     // v48.17.3: user asked for a wider glow range with no exact numbers
     // given -- core r 0.06->0.08 and glow 10->14 (both further enlarged,
     // consistent with this round's general "make it bigger" direction on
@@ -6217,7 +6230,7 @@
   // 'single' default, which is also the semantically correct choice for
   // them (nobody holds a sword or a canteen in both hands at once).
   //
-  // rarity: 'B' | 'A' | 'S' | 'SSS' | null -- reserved for the future
+  // rarity: 'N' | 'R' | 'SR' | 'SSR' | null -- reserved for the future
   // gacha system (echoing the archetype rarity system's own tiers), not
   // read by any code yet. null means "not yet assigned" (an explicit
   // placeholder, not simply omitted) so every entry can be grepped/
@@ -6227,6 +6240,15 @@
   // same string, not as extra fields bolted onto each accessory entry --
   // accessory data stays "what to draw", presentation-by-rarity stays a
   // separate concern to design when it's actually built.
+  // v48.18: tier names renamed B/A/S/SSS -> N/R/SR/SSR system-wide (same
+  // order, same meaning, only the labels changed), and every accessory
+  // below tiered per the user's full classification list -- previously
+  // only 6 items (katana + 5 lightsabers) carried a real tier, the rest
+  // sat at null. Re: "echoing the archetype rarity system" above -- audited
+  // this round and found no actual ARCHETYPES.rarity field or equivalent
+  // anywhere in the code; that phrase describes design INTENT only, there
+  // is nothing on the archetype side to rename in sync. Flagging this
+  // explicitly rather than silently leaving the claim unverified.
   // stuckWeaponEntry(): factory for a WEAPON_SHAPES-backed registry entry
   // -- 'held' orientation at the hand, 'stuck' orientation (via footStow)
   // at the foot mount, both reading the SAME shape definition so a
@@ -6326,55 +6348,59 @@
     // "gripped further back for leverage" via gripRatio overrides, not a
     // two-handed mount, since none of them were ever meant to read as a
     // two-handed weapon in the first place.
-    shortSword: stuckWeaponEntry('匕首', 'shortSword'),
-    longsword: stuckWeaponEntry('長劍', 'longsword'),
-    spear: stuckWeaponEntry('長矛', 'spear'),
-    trident: stuckWeaponEntry('三叉戟', 'trident'),
-    curvedSaber: stuckWeaponEntry('彎刀', 'curvedSaber'),
-    woodenStick: stuckWeaponEntry('木棍', 'woodenStick'),
-    ironHammer: stuckWeaponEntry('鐵鎚', 'ironHammer'),
-    handAxe: stuckWeaponEntry('手斧', 'handAxe'),
-    // v48: katana is this round's rare weapon -- rarity:'S' flows through
-    // to drawWeaponParts' style argument, which looks up RARITY_STYLE.S's
-    // color at draw time (see component XIV's own comment). No color
-    // value lives here or on WEAPON_SHAPES.katana; only the tier does.
-    katana: stuckWeaponEntry('武士刀', 'katana', { rarity: 'S' }),
-    kunai: stuckWeaponEntry('苦無', 'kunai'),
-    rapier: stuckWeaponEntry('西洋刺劍', 'rapier'),
-    battleAxe: stuckWeaponEntry('戰斧', 'battleAxe'),
-    flailMace: stuckWeaponEntry('流星錘', 'flailMace'),
-    staff: stuckWeaponEntry('長杖', 'staff'),
-    warHammer: stuckWeaponEntry('木柄鐵鎚', 'warHammer'),
+    shortSword: stuckWeaponEntry('匕首', 'shortSword', { rarity: 'N' }),
+    longsword: stuckWeaponEntry('長劍', 'longsword', { rarity: 'N' }),
+    spear: stuckWeaponEntry('長矛', 'spear', { rarity: 'N' }),
+    trident: stuckWeaponEntry('三叉戟', 'trident', { rarity: 'R' }),
+    curvedSaber: stuckWeaponEntry('彎刀', 'curvedSaber', { rarity: 'N' }),
+    woodenStick: stuckWeaponEntry('木棍', 'woodenStick', { rarity: 'N' }),
+    ironHammer: stuckWeaponEntry('鐵鎚', 'ironHammer', { rarity: 'N' }),
+    handAxe: stuckWeaponEntry('手斧', 'handAxe', { rarity: 'N' }),
+    // v48: katana is this round's rare weapon -- rarity:'SR' (renamed from
+    // 'S' in v48.18) flows through to drawWeaponParts' style argument,
+    // which looks up RARITY_STYLE.SR's color at draw time (see component
+    // XIV's own comment). No color value lives here or on
+    // WEAPON_SHAPES.katana; only the tier does.
+    // v48.18: user's full rarity re-classification list places katana in
+    // the SSR bucket alongside the lightsabers/chalice/etc, a genuine
+    // tier change (not just a rename) from this weapon's previous 'S'
+    // (now 'SR') tier -- following the new list, not the old value.
+    katana: stuckWeaponEntry('武士刀', 'katana', { rarity: 'SSR' }),
+    kunai: stuckWeaponEntry('苦無', 'kunai', { rarity: 'N' }),
+    rapier: stuckWeaponEntry('西洋刺劍', 'rapier', { rarity: 'N' }),
+    battleAxe: stuckWeaponEntry('戰斧', 'battleAxe', { rarity: 'N' }),
+    flailMace: stuckWeaponEntry('流星錘', 'flailMace', { rarity: 'N' }),
+    staff: stuckWeaponEntry('長杖', 'staff', { rarity: 'N' }),
+    warHammer: stuckWeaponEntry('木柄鐵鎚', 'warHammer', { rarity: 'N' }),
     // v48: single 'lightsaber' entry replaced by 5 color-variant entries
     // per user request -- all 5 point at the SAME WEAPON_SHAPES.lightsaber
     // geometry (totalLen/parts defined once), only opts.color differs.
-    // rarity:'SSS' is on every one of the 5 for cataloging (this is the
-    // catalog's single rarest item family), but the actual displayed
-    // color always comes from opts.color, never a RARITY_STYLE lookup --
-    // "which of 5 blade colors" is each variant's own intrinsic identity,
-    // not a tier decision (see component XIV's own comment on this exact
-    // precedence choice).
+    // rarity:'SSR' (renamed from 'SSS' in v48.18) is on every one of the 5
+    // for cataloging (this is the catalog's single rarest item family),
+    // but the actual displayed color always comes from opts.color, never a
+    // RARITY_STYLE lookup -- "which of 5 blade colors" is each variant's
+    // own intrinsic identity, not a tier decision (see component XIV's own
+    // comment on this exact precedence choice).
     // v48.1: opts.color switched from opaque hex to a translucent rgba().
     // WEAPON_SHAPES.lightsaber's own v48.1 comment explains why this is
     // safe -- after the blade rework, style.color is consumed by exactly
     // ONE part (the outer glow polygon), everything else (core/hilt) now
     // carries its own fixed part.color, so raising this one value's alpha
     // only ever affects the glow haze, never the hilt or the core.
-    lightsaberBlue: stuckWeaponEntry('光劍(螢光藍)', 'lightsaber', { rarity: 'SSS', color: 'rgba(63,169,245,0.6)' }),
-    lightsaberGreen: stuckWeaponEntry('光劍(螢光綠)', 'lightsaber', { rarity: 'SSS', color: 'rgba(57,226,107,0.6)' }),
-    lightsaberRed: stuckWeaponEntry('光劍(螢光紅)', 'lightsaber', { rarity: 'SSS', color: 'rgba(255,59,59,0.6)' }),
-    lightsaberYellow: stuckWeaponEntry('光劍(螢光黃)', 'lightsaber', { rarity: 'SSS', color: 'rgba(245,225,63,0.6)' }),
-    lightsaberWhite: stuckWeaponEntry('光劍(亮白)', 'lightsaber', { rarity: 'SSS', color: 'rgba(247,245,238,0.65)' }),
+    lightsaberBlue: stuckWeaponEntry('光劍(螢光藍)', 'lightsaber', { rarity: 'SSR', color: 'rgba(63,169,245,0.6)' }),
+    lightsaberGreen: stuckWeaponEntry('光劍(螢光綠)', 'lightsaber', { rarity: 'SSR', color: 'rgba(57,226,107,0.6)' }),
+    lightsaberRed: stuckWeaponEntry('光劍(螢光紅)', 'lightsaber', { rarity: 'SSR', color: 'rgba(255,59,59,0.6)' }),
+    lightsaberYellow: stuckWeaponEntry('光劍(螢光黃)', 'lightsaber', { rarity: 'SSR', color: 'rgba(245,225,63,0.6)' }),
+    lightsaberWhite: stuckWeaponEntry('光劍(亮白)', 'lightsaber', { rarity: 'SSR', color: 'rgba(247,245,238,0.65)' }),
 
     // ---- A group addition (v48.3): 3 oversized "巨型兵器" weapons ----
     // greatsword: holdStyle stays 'single' per explicit user instruction
     // (no two-hand mount despite the name/scale) -- reuses stuckWeaponEntry
     // unmodified, same mechanism as every other single-hold blade. rarity
-    // left null per the user's own instruction (fill null unless there's a
-    // strong case to suggest S/SSS, in which case propose it rather than
-    // deciding unilaterally) -- flagged as a candidate in this round's
-    // reply given its scale rivals katana/lightsaber, not set here.
-    greatsword: stuckWeaponEntry('巨劍', 'greatsword'),
+    // was left null for several rounds (flagged as a possible S/SSS
+    // candidate given its scale rivals katana/lightsaber, but not decided
+    // unilaterally); v48.18's full classification list settles it at 'R'.
+    greatsword: stuckWeaponEntry('巨劍', 'greatsword', { rarity: 'R' }),
     // guandao/deathScythe (v48.10): switched to stuckWeaponEntry
     // (single-hold, handNear only -- the same mechanism staff/trident
     // use), per explicit user instruction. History: v48.3 introduced
@@ -6399,40 +6425,49 @@
     // so the rejection was tested against the old, more leg-parallel
     // angle). dualGripWeaponEntry()/holdStyle:'twoHanded' had exactly
     // one caller (these two weapons) and is removed entirely along with
-    // its stepFsm branch, not kept as unused infrastructure. rarity left
-    // null, same reasoning as greatsword. Weapon length (totalLen) left
-    // unchanged this round -- user will judge from the shipped render
+    // its stepFsm branch, not kept as unused infrastructure. rarity was
+    // left null for several rounds, same as greatsword; v48.18's full
+    // classification list tiers both at 'SR'. Weapon length (totalLen)
+    // left unchanged this round -- user will judge from the shipped render
     // whether guandao/deathScythe should be shortened.
-    guandao: stuckWeaponEntry('關刀', 'guandao'),
-    deathScythe: stuckWeaponEntry('死神鐮刀', 'deathScythe'),
+    guandao: stuckWeaponEntry('關刀', 'guandao', { rarity: 'SR' }),
+    deathScythe: stuckWeaponEntry('死神鐮刀', 'deathScythe', { rarity: 'SR' }),
 
     // ---- 巨型配件擴充清單 (v48.12): 11 new giant items, all single-hold
     // via stuckWeaponEntry (per user instruction -- none use
     // dualGripWeaponEntry, which no longer exists as of v48.10 anyway)
     // and all added to GIANT_WEAPON_KEYS so the arm-sway module picks
-    // them up automatically, no per-item wiring needed. rarity left null
-    // (not requested this round). See WEAPON_SHAPES' own comments on each
-    // shape for the individual silhouette-design notes.
-    giantAxe: stuckWeaponEntry('巨斧', 'giantAxe'),
-    giantSpear: stuckWeaponEntry('巨型長矛', 'giantSpear'),
-    giantClub: stuckWeaponEntry('巨型狼牙棒', 'giantClub'),
-    giantPickaxe: stuckWeaponEntry('巨型十字鎬', 'giantPickaxe'),
-    giantQuill: stuckWeaponEntry('巨型羽毛筆', 'giantQuill'),
-    giantKey: stuckWeaponEntry('巨型鑰匙', 'giantKey'),
-    giantBanner: stuckWeaponEntry('巨型軍旗', 'giantBanner'),
-    giantFishBone: stuckWeaponEntry('巨型魚骨', 'giantFishBone'),
-    giantDumbbell: stuckWeaponEntry('啞鈴', 'giantDumbbell'),
-    giantWarAxe: stuckWeaponEntry('巨戰斧', 'giantWarAxe'),
-    giantFlower: stuckWeaponEntry('巨型花朵', 'giantFlower'),
+    // them up automatically, no per-item wiring needed. rarity was left
+    // null for several rounds (not requested at the time); v48.18's full
+    // classification list tiers each individually -- not a uniform
+    // "giant = one tier" rule, giantDumbbell/giantKey/giantFishBone/
+    // giantFlower land on different tiers than the other 7. See
+    // WEAPON_SHAPES' own comments on each shape for the individual
+    // silhouette-design notes.
+    giantAxe: stuckWeaponEntry('巨斧', 'giantAxe', { rarity: 'R' }),
+    giantSpear: stuckWeaponEntry('巨型長矛', 'giantSpear', { rarity: 'R' }),
+    giantClub: stuckWeaponEntry('巨型狼牙棒', 'giantClub', { rarity: 'R' }),
+    giantPickaxe: stuckWeaponEntry('巨型十字鎬', 'giantPickaxe', { rarity: 'R' }),
+    giantQuill: stuckWeaponEntry('巨型羽毛筆', 'giantQuill', { rarity: 'R' }),
+    giantKey: stuckWeaponEntry('巨型鑰匙', 'giantKey', { rarity: 'SR' }),
+    giantBanner: stuckWeaponEntry('巨型軍旗', 'giantBanner', { rarity: 'R' }),
+    giantFishBone: stuckWeaponEntry('巨型魚骨', 'giantFishBone', { rarity: 'SR' }),
+    giantDumbbell: stuckWeaponEntry('啞鈴', 'giantDumbbell', { rarity: 'N' }),
+    giantWarAxe: stuckWeaponEntry('巨戰斧', 'giantWarAxe', { rarity: 'R' }),
+    giantFlower: stuckWeaponEntry('巨型花朵', 'giantFlower', { rarity: 'SR' }),
 
     // ---- B group: round/block armor & relic items (4) ----
     // All 'flat' footStow -- shield/book/cross/chalice all read better
     // lying at the feet than planted upright (per the user's own
     // grouping instruction), unlike the long-axis weapon family.
-    kiteShield: itemEntry('鳶形盾', 'kiteShield', 'flat'),
-    book: itemEntry('魔法書', 'book', 'flat'),
+    // v48.18: kiteShield/book/chalice tiered per the user's full
+    // classification list (N/SR/SSR respectively). cross is NOT on that
+    // list -- flagged rather than guessed, left at rarity:null pending
+    // the user's confirmation of which tier it belongs in.
+    kiteShield: itemEntry('鳶形盾', 'kiteShield', 'flat', { rarity: 'N' }),
+    book: itemEntry('魔法書', 'book', 'flat', { rarity: 'SR' }),
     cross: itemEntry('十字架', 'cross', 'flat'),
-    chalice: itemEntry('聖杯', 'chalice', 'flat', { rarity: 'SSS' }),
+    chalice: itemEntry('聖杯', 'chalice', 'flat', { rarity: 'SSR' }),
 
     // ---- C group: everyday tools (8; original brief said "9項" but
     // only lists 8 items -- flagged as a likely miscount rather than
@@ -6441,67 +6476,67 @@
     // own" real-world pose (resting on its bristles) to justify 'stuck'
     // instead of the batch's 'flat' default; the rest are ordinary held
     // tools with no natural free-standing pose.
-    screwdriver: itemEntry('螺絲起子', 'screwdriver', 'flat'),
-    wrench: itemEntry('扳手', 'wrench', 'flat'),
-    saw: itemEntry('鋸子', 'saw', 'flat'),
-    scissors: itemEntry('剪刀', 'scissors', 'flat'),
-    broom: itemEntry('木製掃帚', 'broom', 'stuck'),
-    bucket: itemEntry('水桶', 'bucket', 'flat'),
-    wateringCan: itemEntry('澆花壺', 'wateringCan', 'flat'),
+    screwdriver: itemEntry('螺絲起子', 'screwdriver', 'flat', { rarity: 'N' }),
+    wrench: itemEntry('扳手', 'wrench', 'flat', { rarity: 'N' }),
+    saw: itemEntry('鋸子', 'saw', 'flat', { rarity: 'N' }),
+    scissors: itemEntry('剪刀', 'scissors', 'flat', { rarity: 'N' }),
+    broom: itemEntry('木製掃帚', 'broom', 'stuck', { rarity: 'N' }),
+    bucket: itemEntry('水桶', 'bucket', 'flat', { rarity: 'N' }),
+    wateringCan: itemEntry('澆花壺', 'wateringCan', 'flat', { rarity: 'N' }),
     // v48: 釣魚竿/fishingRod replaced by 警棍/baton per user request --
     // 'stuck' kept (a baton propped upright is a reasonable resting
     // pose, same as the fishingRod slot it's taking over).
-    baton: itemEntry('警棍', 'baton', 'stuck'),
+    baton: itemEntry('警棍', 'baton', 'stuck', { rarity: 'R' }),
 
     // ---- F group addition (2): flashlight/torch ----
     // torch gets 'stuck' (a planted torch, handle down, is a genuinely
     // common real-world image -- tiki torches, ceremonial stands);
     // flashlight has no comparable free-standing pose, stays 'flat'.
-    flashlight: itemEntry('手電筒', 'flashlight', 'flat'),
-    torch: itemEntry('火把', 'torch', 'stuck'),
+    flashlight: itemEntry('手電筒', 'flashlight', 'flat', { rarity: 'SSR' }),
+    torch: itemEntry('火把', 'torch', 'stuck', { rarity: 'SSR' }),
 
     // ---- K group addition (brief said "2項" but lists 3 -- same
     // miscount pattern as C group above, flagged rather than guessed;
     // fan/cane removed per v48.17.4 user trim request) ----
-    magnifyingGlass: itemEntry('放大鏡', 'magnifyingGlass', 'flat'),
+    magnifyingGlass: itemEntry('放大鏡', 'magnifyingGlass', 'flat', { rarity: 'N' }),
 
     // ---- D group: kitchenware (6 -- beerStein/thermos removed per user
     // trim request: too small to read clearly held) ----
-    fryingPan: itemEntry('平底鍋', 'fryingPan', 'flat'),
-    ladle: itemEntry('湯勺', 'ladle', 'flat'),
-    kitchenKnife: itemEntry('菜刀', 'kitchenKnife', 'flat'),
-    fork: itemEntry('叉子', 'fork', 'flat'),
-    mug: itemEntry('馬克杯', 'mug', 'flat'),
-    teapot: itemEntry('茶壺', 'teapot', 'flat'),
+    fryingPan: itemEntry('平底鍋', 'fryingPan', 'flat', { rarity: 'N' }),
+    ladle: itemEntry('湯勺', 'ladle', 'flat', { rarity: 'N' }),
+    kitchenKnife: itemEntry('菜刀', 'kitchenKnife', 'flat', { rarity: 'N' }),
+    fork: itemEntry('叉子', 'fork', 'flat', { rarity: 'N' }),
+    mug: itemEntry('馬克杯', 'mug', 'flat', { rarity: 'N' }),
+    teapot: itemEntry('茶壺', 'teapot', 'flat', { rarity: 'N' }),
 
     // ---- E group: food (2 -- pizzaSlice/candyCane removed per earlier
     // user trim request; iceCream/chickenLeg/gingerbreadMan removed per
     // v48.17.4 user trim request) ----
-    carrot: itemEntry('胡蘿蔔', 'carrot', 'flat'),
-    lollipop: itemEntry('棒棒糖', 'lollipop', 'stuck'),
+    carrot: itemEntry('胡蘿蔔', 'carrot', 'flat', { rarity: 'R' }),
+    lollipop: itemEntry('棒棒糖', 'lollipop', 'stuck', { rarity: 'N' }),
 
     // ---- F group: plants/nature (10) ----
-    sunflower: itemEntry('向日葵', 'sunflower', 'stuck'),
-    rose: itemEntry('玫瑰花', 'rose', 'stuck'),
-    lily: itemEntry('百合花', 'lily', 'stuck'),
-    pottedCactus: itemEntry('仙人掌盆栽', 'pottedCactus', 'flat'),
-    pottedClover: itemEntry('四葉草盆栽', 'pottedClover', 'flat'),
-    mushroom: itemEntry('蘑菇', 'mushroom', 'stuck'),
-    branch: itemEntry('樹枝', 'branch', 'stuck'),
-    riceEar: itemEntry('稻穗', 'riceEar', 'flat'),
-    wheatBundle: itemEntry('小麥束', 'wheatBundle', 'stuck'),
-    shell: itemEntry('貝殼', 'shell', 'flat'),
+    sunflower: itemEntry('向日葵', 'sunflower', 'stuck', { rarity: 'R' }),
+    rose: itemEntry('玫瑰花', 'rose', 'stuck', { rarity: 'R' }),
+    lily: itemEntry('百合花', 'lily', 'stuck', { rarity: 'R' }),
+    pottedCactus: itemEntry('仙人掌盆栽', 'pottedCactus', 'flat', { rarity: 'R' }),
+    pottedClover: itemEntry('四葉草盆栽', 'pottedClover', 'flat', { rarity: 'R' }),
+    mushroom: itemEntry('蘑菇', 'mushroom', 'stuck', { rarity: 'R' }),
+    branch: itemEntry('樹枝', 'branch', 'stuck', { rarity: 'R' }),
+    riceEar: itemEntry('稻穗', 'riceEar', 'flat', { rarity: 'R' }),
+    wheatBundle: itemEntry('小麥束', 'wheatBundle', 'stuck', { rarity: 'R' }),
+    shell: itemEntry('貝殼', 'shell', 'flat', { rarity: 'R' }),
 
     // ---- G group: 3C/tech (1 -- tablet/gamepad/microphone/camera/pistol
     // removed per user trim request: too small to read clearly held) ----
-    smartphone: itemEntry('智慧型手機', 'smartphone', 'flat', { rarity: 'SSS' }),
+    smartphone: itemEntry('智慧型手機', 'smartphone', 'flat', { rarity: 'SSR' }),
 
     // ---- H group: instruments/performance props (3 -- recorder/megaphone
     // removed per user trim request: too small to read clearly held) ----
-    guitar: itemEntry('木吉他', 'guitar', 'flat'),
-    trumpet: itemEntry('小喇叭', 'trumpet', 'flat'),
+    guitar: itemEntry('木吉他', 'guitar', 'flat', { rarity: 'N' }),
+    trumpet: itemEntry('小喇叭', 'trumpet', 'flat', { rarity: 'N' }),
     maraca: (function(){
-      const e = itemEntry('沙鈴', 'maraca', 'flat');
+      const e = itemEntry('沙鈴', 'maraca', 'flat', { rarity: 'N' });
       e.holdStyle = 'dual';
       return e;
     })(),
@@ -6509,25 +6544,25 @@
     // ---- I group: stationery/misc (1 -- pencil/ruler/protractor/
     // envelope/globe removed per user trim request: too small to read
     // clearly held) ----
-    rubiksCube: itemEntry('魔術方塊', 'rubiksCube', 'flat'),
+    rubiksCube: itemEntry('魔術方塊', 'rubiksCube', 'flat', { rarity: 'SR' }),
 
     // ---- J group: festive/fantasy items (3 -- balloon/paperAirplane
     // removed per user trim request: too small to read clearly held) ----
-    sparkler: itemEntry('仙女棒', 'sparkler', 'stuck', { rarity: 'SSS' }),
-    magicLamp: itemEntry('魔法神燈', 'magicLamp', 'flat'),
-    voodooDoll: itemEntry('巫毒娃娃', 'voodooDoll', 'stuck'),
+    sparkler: itemEntry('仙女棒', 'sparkler', 'stuck', { rarity: 'SSR' }),
+    magicLamp: itemEntry('魔法神燈', 'magicLamp', 'flat', { rarity: 'SR' }),
+    voodooDoll: itemEntry('巫毒娃娃', 'voodooDoll', 'stuck', { rarity: 'SR' }),
     // 燈籠 lantern (v48.17, revived at giant-weapon scale -- see
     // WEAPON_SHAPES.lantern's own comment): stuckWeaponEntry (not
     // itemEntry), same registration path as every other GIANT_WEAPON_KEYS
     // member.
-    lantern: stuckWeaponEntry('燈籠', 'lantern', { rarity: 'SSS' }),
+    lantern: stuckWeaponEntry('燈籠', 'lantern', { rarity: 'SSR' }),
 
     // ---- K group: sports/misc (3 -- toothbrush/testTube removed per user
     // trim request: too small to read clearly held; all 'flat' per the
     // user's own brief) ----
-    badmintonRacket: itemEntry('羽毛球拍', 'badmintonRacket', 'flat'),
-    pingpongPaddle: itemEntry('桌球拍', 'pingpongPaddle', 'flat'),
-    woodenMask: itemEntry('木製面具', 'woodenMask', 'flat')
+    badmintonRacket: itemEntry('羽毛球拍', 'badmintonRacket', 'flat', { rarity: 'N' }),
+    pingpongPaddle: itemEntry('桌球拍', 'pingpongPaddle', 'flat', { rarity: 'N' }),
+    woodenMask: itemEntry('木製面具', 'woodenMask', 'flat', { rarity: 'SR' })
   };
   let currentHandAccessory = '';
 
