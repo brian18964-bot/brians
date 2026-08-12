@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.17.1 — 燈籠改圓形提燈造型 + 聖杯全身上色 + 手機螢幕發光加大</title>
+<title>剪影走路/跑步循環 v48.17.2 — 火把/燈籠/仙女棒 SSS 發光補強</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17.1</div>
-    <h1>燈籠改圓形提燈造型 + 聖杯全身上色 + 手機螢幕發光加大</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17.2</div>
+    <h1>火把/燈籠/仙女棒 SSS 發光補強</h1>
+    <p class="sub"><b>問題回報(v48.17.2)</b>:使用者截圖點出兩個既有配件的問題,並要求仙女棒補上發光。火把:截圖顯示火焰很小且完全沒有發光暈染,使用者明確指出「不是尺寸問題,是根本沒有 glow」——火焰讀起來像一塊扁平橘色色塊,不是火。燈籠:上一輪(v48.17.1)重做成「握把+垂掛圓形」後,參考圖比對仍然不對,讀起來像「一根棍子直接插進發光球裡」,而不是「水平持握的桿子,桿尖用一條線繩吊著一顆燈籠」——結構性錯誤,不是角度或顏色問題。<br><br><b>火把重做</b>:比照光劍「核心亮+外層暈」的分層做法,把單一小 <code>polygon</code> 拆成兩層:外層放大(<code>dx</code> 範圍從 ±0.16 加大到 ±0.26,火尖延伸到 <code>at:1.7</code>,超出握把本體)並加上 <code>glow:12</code>;內層核心縮小、改用更暖的近白色 <code>#ffe08a</code>,不帶自己的 glow——發光集中在外層,兩層疊起來才會是「中心亮、邊緣柔化暈開」而不是整團火焰均勻發霧。<code>totalLen</code> 依指示維持 1.5 不變(尖端雖然畫到 1.7,但不影響握持/安全距離判定)。<br><br><b>燈籠重做</b>:整個造型從「握把+垂掛圓形」改成「水平桿子+桿尖線繩+燈籠本體」——<code>totalLen:1.9</code>、<code>gripRatio:0.85</code>、<code>shaft</code> 從 0 到 1.6 畫出整根桿子,<code>polyline</code> 兩個端點共用同一個 <code>at</code>、只有 <code>dx</code> 不同(沿著垂直於桿身的方向延伸,不是沿桿子本身),<code>circle</code> 燈籠本體接著沿同一個 <code>dx</code> 方向再往外放,而不是用 <code>at</code>(那樣只會變成桿子的延伸段)。<code>heldTilt</code> 從垂直改回接近 <code>-90°</code> 的水平持握角度——這是造型改成「水平桿子」後的必然結果,不是走回頭路。<br><br>實作時自行抓到一個定位錯誤:直接沿用使用者範例的 <code>at:1.6</code> 放線繩/燈籠,但 <code>gripDist = gripRatio × totalLen = 0.85 × 1.9 = 1.615</code>,幾乎等於 1.6——而本系統的 <code>dist=0</code> 一律是持握時朝外的「尖端」,<code>dist≈gripDist</code> 則落在握把/手部附近,跟桿子本身的畫法慣例(<code>dist=totalLen</code> 才是尾端)搞反了方向,截圖顯示燈籠貼在角色手/腳邊,不是垂在桿子遠端。修正:線繩與圓形燈籠的 <code>at</code> 全部從 1.6 改成 0(桿子真正的尖端),讓燈籠改成垂在桿子遠端。修正後截圖確認:桿子水平、線繩+燈籠正確垂在桿尖(<code>dx</code> 正負號不需翻轉,原本的 0.4/0.55 方向就是對的)。<br><br><b>仙女棒補發光</b>:核心圓放大(r 0.04→0.06)並上暖白色 <code>#fff4c2</code>、加 <code>glow:10</code>;5 條火花 <code>polyline</code> 全部改用同一個暖白色(讓火花線也帶一點微光感),但刻意不加 <code>glow</code>——發光集中在核心圓,才會是「核心亮、火花線微微透光延伸出去」而不是整把仙女棒糊成一團光暈。握把 <code>shaft</code> 額外補上明確的 <code>color:SIL</code>,避免這個 entry 掛上 <code>rarity:'SSS'</code> 後,沒有自己顏色的 part 透過 <code>resolveWeaponColor()</code> 悄悄繼承 <code>RARITY_STYLE.SSS</code> 的近白色(跟聖杯/手機/燈籠先前踩過的同一種「顏色外洩」)。註冊表補上 <code>rarity:'SSS'</code>。<br><br>火把本輪未加 <code>rarity:'SSS'</code>——使用者這輪只對燈籠、仙女棒給出明確的註冊表程式碼,火把的敘述較偏向脈絡說明而非直接指令,故先保守不動,留待使用者確認是否也要補上。<br><br><b>驗證</b>:三款配件分別截取站立與走路兩種狀態。火把:火焰明顯比之前大,核心+外層發光層次可辨,走路循環中比例依然合理。燈籠:桿子水平、燈籠確實垂掛在桿尖下方(不是套在桿子上),走路循環發光依然清楚。仙女棒:頂端核心發光明顯,火花線有微光但沒有跟核心糊在一起,走路循環中效果依然可辨。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.17.1)</b>:使用者用參考圖(女孩提著圓形紙燈籠,手臂垂在身側,燈籠自然懸掛在手下方)指出燈籠造型完全不對——上一輪套用巨型武器那套「長條 <code>polygon</code>+水平持握(<code>heldTilt:-90°</code>)」,截圖裡燈籠變成一小坨貼在腳邊的紅色團塊,角度也不對,跟參考圖的「圓形+自然垂掛」相去甚遠。另外兩個小修正:聖杯的底座/杯莖上一輪只補了 <code>color:SIL</code>(黑色)沒有真的上暗金色,截圖顯示只有杯身有顏色;智慧型手機螢幕發光只有一個貼在手邊的小圓點(半徑僅手機自身寬度的 8%),使用者要求參考手電筒的柔光技法,改成佔手機約 80% 面積的方形發光。<br><br><b>燈籠重做</b>:捨棄長條造型,改成「握把在近手端(<code>gripRatio:0.92</code>,握把段 <code>totalLen</code> 的後 8%)、圓形燈籠主體垂在握把外側(<code>dist:0.3</code>,佔掉大部分長度)」的比例分配,搭配 <code>heldTilt</code> 從 <code>-90°</code>大幅調降到 <code>-15°</code>——這兩個改動缺一不可:只改形狀不改角度,圓形本體還是會被轉成水平;只改角度不改形狀,長條本體轉直了但還是讀不出「一顆燈籠」。截圖跟參考圖並排比對,主體垂掛角度、圓形輪廓、暖橘發光(色票從原本的暗紅 <code>#7a1f1f</code>换成更亮更暖的橘紅 <code>#e8631c</code>,glow 沿用 10)都跟參考圖的觀感接近,<code>-15°</code> 一次就達到「自然下垂」沒有再調的必要。<code>GIANT_WEAPON_KEYS</code> 的持握手臂擺動抑制维持保留(這是使用者特別點名要留住的行為,跟形狀/角度是分開的兩件事)。<br><br><b>聖杯補色</b>:底座(<code>crossbar</code>)、杯莖(<code>shaft</code>)兩個 part 的 <code>color</code> 從 <code>SIL</code> 改成跟杯身同一個暗金 <code>#7a5a1e</code>,但不加 <code>glow</code>——整顆聖杯統一材質色,只有杯身(視覺焦點)帶發光暈染,跟光劍「握把中性深色、只有刀身發光」是不同的分層方式(光劍是「材質色不同+只有一處發光」,聖杯這次是「材質色相同+只有一處發光」),但「只讓一個部位帶 <code>glow</code>」這個原則相同。<br><br><b>智慧型手機螢幕加大</b>:原本的小圓點(<code>circle</code>, r 0.03)換成一個跨手機本體約 80% 長寬的矩形 <code>polygon</code>(<code>at</code> 0.1~0.9,<code>dx</code> ±0.15,對比機身本體 <code>dx</code> 最大 ±0.19),沿用手電筒光束同一招半透明 <code>rgba()</code> 做出「微弱柔光」的質感(<code>rgba(143,208,255,0.55)</code>),額外加一個較弱的 <code>glow:4</code>(低於燈籠的 10、聖杯的 8,對應使用者「比手電筒再微弱一些」的要求)。截圖確認整片螢幕清楚可辨是方形發光區塊,不再是貼在手邊的一個小亮點。<br><br><b>驗證</b>:燈籠站立+走路兩種狀態截圖跟參考圖並排比對,垂掛角度、圓形主體、暖橘光暈都到位,走路循環持握手臂依然穩定(擺動抑制沒有被形狀重做影響)。聖杯截圖確認底座/杯莖/杯身/杯緣全部暗金,只有杯身有發光暈染。智慧型手機截圖確認方形螢幕發光佔機身大部分面積。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.17)</b>:三項調整——① 聖杯、智慧型手機、感測器指示燈、光環、皇冠 5 款配件加上發光效果並標記 <code>rarity:'SSS'</code>;② 燈籠(先前因「太小不易辨識」被移除)以巨型武器份量感重做復活,暗紅發光;③ 燈籠+三叉戟加進 <code>GIANT_WEAPON_KEYS</code>,三叉戟改水平持握。<br><br><b>1a 聖杯/智慧型手機(<code>drawWeaponParts</code> 系統)</b>:沿用光劍已驗證的 <code>p.glow</code> 機制(見該機制原始註解——<code>glow</code> 觸發時 <code>shadowColor</code> 直接讀該 part 自己 resolve 出來的顏色,不是另外指定),只在資料上加 <code>color</code>/<code>glow</code> 欄位,沒有新寫渲染邏輯。聖杯杯身+五顆杯緣圓點改暗金 <code>#7a5a1e</code>(杯身額外 <code>glow:8</code>);智慧型手機螢幕圓點改淺藍 <code>#8fd0ff</code>、<code>glow:6</code>。<br><br><b>截圖抓到一個問題,已修正</b>:兩款登記時都加了 <code>{rarity:'SSS'}</code>,但 <code>resolveWeaponColor()</code> 的優先權鏈是 part.color → style.color → style.rarity 查 <code>RARITY_STYLE</code>(<code>SSS</code> 對應近白 <code>#e9e6df</code>)→ 預設 <code>SIL</code>——聖杯的底座(<code>crossbar</code>/<code>shaft</code>)、手機的機身(<code>polygon</code>)跟鏡頭圓點原本都沒有自己的 <code>part.color</code>,一旦整組登記帶 <code>rarity:'SSS'</code>,這些「不該發光」的部位全部改抓 <code>RARITY_STYLE.SSS</code> 的近白色,截圖看起來變成整支手機/整個杯身泛白,不是「黑色本體 + 一小處發光」。修正方式是幫這些原本沒設色的 part 全部補上明確的 <code>color: SIL</code>,強制蓋過 rarity 查表這一層,只留意圖發光的 part 自己的顏色——跟武士刀當初「材質色蓋過稀有度色」的既有原則完全一致,只是這次反過來是「大部分維持黑,一小處自己上色」而非「整把上材質色」。<br><br><b>1b 感測器指示燈/光環/皇冠(獨立 draw 函式,沒接 <code>drawWeaponParts</code>)</b>:三款原本都寫死 <code>fillStyle=SIL</code>,額外接上 <code>shadowColor</code>/<code>shadowBlur</code>。感測器指示燈原本完全沒有 <code>ctx.save()</code>/<code>restore()</code> 包裹(不像多數頭部配件走 <code>drawInMountFrame</code>),補上明確的 save/restore,避免 shadow 狀態外洩到之後同一個 <code>accCtx</code> 上畫的貓尾巴/道具/表情符號;光環本來就有自己的 save/restore,直接在裡面加;皇冠走 <code>drawInMountFrame</code>(該函式本身就整段包 save/restore),不需要額外處理。三款登記表 <code>rarity</code> 從 <code>null</code> 改 <code>'SSS'</code>——頭部配件系統本身沒有稀有度驅動顏色的機制(顏色都是各自函式寫死),純粹 cataloging metadata,不會像 1a 的武器系統那樣有 rarity 污染色彩的風險。<br><br><b>2 燈籠復活</b>:新增 <code>WEAPON_SHAPES.lantern</code>(短握把+六邊形燈籠外殼+暗紅發光火焰圓,<code>#7a1f1f</code>,<code>glow:10</code>),沿用跟 1a 相同的教訓——握把、外殼都明確加 <code>color: SIL</code>,只留火焰自己的顏色,避免同一個 <code>rarity:'SSS'</code> 污染問題重演(這次實作時直接一併補上,沒有等截圖才發現)。<code>heldTilt</code> 沒有照抄關刀的 <code>-90°</code>——先用預設角度(未覆寫,即全域 <code>-50°</code>)截圖站立+走路兩種狀態,提在手上的角度已經自然可信(斜提,不拖地、不橫躺),不需要額外覆寫,維持預設值。<br><br><b>3 燈籠/三叉戟加入 <code>GIANT_WEAPON_KEYS</code></b>:三叉戟本身已是單手註冊,只需加進陣列(擺動抑制自動套用,不需要額外接線);另外加 <code>heldTilt:-90°*Math.PI/180</code> 覆寫,截圖確認站立/走路都轉成水平持握,跟關刀/死神鐮刀持握質感一致。<br><br><b>驗證</b>:5 款發光配件逐一截圖確認發光清楚可辨;感測器指示燈/皇冠額外搭配貓尾巴+手持道具同時開啟截圖,確認 shadow 沒有外洩到後面畫的其他配件(貓尾巴維持純黑,沒有跟著發光)。燈籠站立+走路兩種狀態截圖確認持握角度自然、暗紅火焰清楚。三叉戟站立+走路確認水平持握、跟巨型武器同一套擺動抑制生效。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.16.6)</b>:寵物飄浮到最低點時會蓋住自己的陰影。使用者列了兩個可能根因,要求先查再修——① 陰影是否誤用了套過 <code>withPetFloat</code> 偏移的 mount,兩邊共用同一個變數;② 陰影本來就用原始 mount,但本體/陰影的固定基礎間距不夠,飄到最低點時剪影範圍還是壓住陰影。<br><br><b>查證</b>:兩處呼叫都重新核對——<code>footMount</code> 那處先用原始 <code>mounts.footMount</code> 呼叫 <code>drawPetShadow</code>,才用 <code>withPetFloat(mounts.footMount,...)</code> 呼叫 <code>petEntry.draw</code>;<code>petSideMount</code> 那處同樣先原始後 float。兩處都是各自獨立變數,不是共用同一個已經套過偏移的變數——排除根因①。<br><br><b>根因確認為②(基礎間距不足),用幾何算清楚,不是憑感覺</b>:<code>drawCoalBody()</code> 的橢圓在本體自己的局部座標系裡,底緣剛好落在掛載原點(局部 <code>y=0</code>),等於「本體飄浮偏移為 0 時,底緣正好貼齊 mount.y」,完全沒有預留給陰影的間距;而 <code>PET_FLOAT_AMP_RATIO</code>(0.35×headR)本身就比舊版 <code>drawPetShadow</code> 讓陰影落在 mount.y 附近的那一點點厚度(約 0.17×headR)大上一倍以上——飄浮循環的下半段(本體下沉),本體底緣會下探到遠超陰影下緣的深度,寬度足夠的本體剪影因此整片蓋住陰影,不是單純視覺變淡,是真的被遮擋;「+小腳」款更嚴重,腳的末端又比本體底緣再往下延伸約 0.32×headR。<br><br><b>修正</b>:新增 <code>PET_SHADOW_GAP = 0.75</code>(headR 比例的固定基礎間距,不是飄浮幅度本身),<code>drawPetShadow()</code> 呼叫 <code>drawGroundShadow()</code> 時把 <code>groundY</code> 從 <code>mount.y</code> 改成 <code>mount.y + PET_SHADOW_GAP*headR</code>——用「+小腳」款在飄浮最低點的最深探底距離反推所需間距下限(0.35+0.32=0.67,含安全餘裕抓到 0.75),涵蓋所有款式的最壞情況,不是只顧本體較淺的無腳款。<br><br><b>驗證</b>:先寫程式化量測(不是憑肉眼猜)找出飄浮循環的實際峰值/谷值影格——側面走路連續截 24 張(涵蓋完整週期),量測寵物剪影 y 範圍,挑出最深(谷值)跟最高(峰值)兩張。「獨眼+小腳」款(最壞情況)谷值影格截圖確認陰影完整可見、清楚落在腳下方,沒有被本體剪影覆蓋;峰值影格陰影跟本體之間有明顯懸浮間距,飄浮感更清楚。無腳款(疊坐小煤炭)同樣兩個極值影格檢查,陰影全程可見,間距沒有大到讀起來像陰影脫節。17 原型 × 8 款寵物切換回歸測試 zero console 錯誤。</p>
@@ -4877,23 +4878,42 @@
     // the user's reference image (a girl carrying a round paper lantern,
     // arm hanging naturally, lantern dangling below the hand) and it read
     // nothing like it: a long bar held level instead of a round shape
-    // hanging down. Rebuilt around a round body instead of a long polygon
-    // -- dist0 is near the carry handle (gripRatio 0.92, close to
-    // totalLen), the round lantern body sits further out at dist 0.3 (most
-    // of the item's length is BELOW/past the grip, matching "dangling from
-    // the hand" rather than "gripped in the middle of a long shaft").
-    // heldTilt dropped from -90deg to a small -15deg so the body hangs
-    // near-vertically off the hand instead of swinging level -- screenshot
-    // confirmed -15deg alone (no further correction needed) already reads
-    // as "dangling," not "held out sideways."
+    // hanging down. Rebuilt around a round body along the SAME axis as the
+    // handle (dist0 near the grip, body further out at dist 0.3, heldTilt
+    // dropped to -15deg) -- an improvement on the cage, but a follow-up
+    // screenshot showed it read as "a stick skewered into a glowing ball,"
+    // not "a stick carrying a lantern by a string," because the body sat
+    // ON the handle's own axis instead of hanging off to the side of it.
+    //
+    // v48.17.2: rebuilt again around the actual structure in the
+    // reference image -- a horizontal stick (heldTilt back to -90deg,
+    // gripRatio 0.85 near the grip end) with a thin string and the round
+    // body hanging off the stick's TIP via dx (perpendicular to the
+    // stick's own axis), not via at (further along the same axis). The
+    // string is a 'polyline' with two points sharing the same `at` (the
+    // tip) and only differing in `dx` -- per that part type's own comment,
+    // capsule(a.dx, y(a.at), b.dx, y(b.at)) with a.at===b.at draws a
+    // segment purely in the dx direction, i.e. straight out to the side of
+    // the stick rather than continuing along it. The body circle sits
+    // further out along that same dx direction, past the string's own end.
+    // v48.17.2 fix (caught by screenshot, not spec-following alone): dist=0
+    // is always the OUTWARD/tip end when held (see this catalog's own
+    // "dist 0 = business end" convention, restated a few lines below for
+    // the item batch) -- gripDist here works out to 0.85*1.9=1.615, so
+    // dist=1.6 (where the string/circle were first placed) lands almost
+    // exactly AT the grip point itself, not at the far tip. First render
+    // showed the lantern hanging right next to the hand/leg instead of off
+    // the end of the stick. String/circle moved to dist=0 (the true tip,
+    // matching where the shaft itself starts) -- the shaft's own far end
+    // is now where the lantern hangs from, not its near end.
     lantern: {
-      totalLen: 1.3,
-      gripRatio: 0.92,
-      heldTilt: -15 * Math.PI / 180,
+      totalLen: 1.9,
+      gripRatio: 0.85,
+      heldTilt: -90 * Math.PI / 180,
       parts: [
-        { type: 'shaft', from: 0.95, to: 1.3, width: 0.05, color: SIL },
-        { type: 'circle', at: 0.3, r: 0.34, color: '#e8631c', glow: 10 },
-        { type: 'shaft', from: 0.62, to: 0.95, width: 0.06, color: SIL }
+        { type: 'shaft', from: 0, to: 1.6, width: 0.05, color: SIL },
+        { type: 'polyline', points: [ { at: 0, dx: 0 }, { at: 0, dx: 0.4 } ], width: 0.025, color: SIL },
+        { type: 'circle', at: 0, dx: 0.55, r: 0.22, color: '#e8631c', glow: 10 }
       ]
     }
   };
@@ -5230,13 +5250,24 @@
     // tier, per the user's explicit direction B distinction). Handle
     // stays SIL/uncolored -- resolveWeaponColor's precedence means only
     // THIS part picks up the color, nothing else on the item does.
+    // v48.17.2: flame was a single small polygon (dx range ~±0.16, no
+    // glow) -- just a flat orange block, no bloom, which was the real
+    // reason it read as underwhelming rather than pure size. Split into
+    // two layered polygons, same "core bright + outer glow" split the
+    // lightsaber blade already established: outer polygon enlarged
+    // (dx up to ±0.26) and extended past the handle tip (to 1.7, totalLen
+    // itself left at 1.5 per explicit instruction) with glow:12; inner
+    // core polygon smaller, warmer near-white, no glow of its own -- glow
+    // stays on the outer layer only so the two read as "bright center,
+    // soft diffuse edge" instead of the whole flame uniformly hazing out.
     torch: {
       totalLen: 1.5,
       gripRatio: 0.2,
       heldReverse: true,
       parts: [
         { type: 'shaft', from: 0, to: 1.1, width: 0.15 },
-        { type: 'polygon', points: [ { at: 1.1, dx: -0.1 }, { at: 1.25, dx: -0.16 }, { at: 1.35, dx: -0.06 }, { at: 1.5, dx: 0 }, { at: 1.4, dx: 0.14 }, { at: 1.22, dx: 0.08 }, { at: 1.1, dx: 0.1 } ], color: '#ff8c3a' }
+        { type: 'polygon', points: [ { at: 1.05, dx: -0.16 }, { at: 1.3, dx: -0.26 }, { at: 1.48, dx: -0.1 }, { at: 1.7, dx: 0 }, { at: 1.55, dx: 0.22 }, { at: 1.28, dx: 0.14 }, { at: 1.05, dx: 0.16 } ], color: '#ff8c3a', glow: 12 },
+        { type: 'polygon', points: [ { at: 1.15, dx: -0.08 }, { at: 1.3, dx: -0.12 }, { at: 1.55, dx: 0 }, { at: 1.3, dx: 0.1 }, { at: 1.15, dx: 0.08 } ], color: '#ffe08a' }
       ]
     },
     // 放大鏡 magnifyingGlass: a true ring lens (hollow frame, matching
@@ -5874,17 +5905,27 @@
     // symmetric burst) to read as "sparking", unlike the flower family's
     // orderly buildStarPoints() rosettes. 'stuck': matches the user's own
     // "baton-like elongated item" guidance.
+    // v48.17.2: SSS glow -- core circle enlarged (r 0.04->0.06) and
+    // colored warm near-white with glow:10; the 5 spark rays get the SAME
+    // color (a little visible spark light) but deliberately NO glow of
+    // their own -- glow concentrated on just the core reads as "bright tip,
+    // faint sparks trailing off it," spreading glow onto every ray would
+    // haze the whole thing into one blob instead. Handle shaft gets
+    // explicit color:SIL now that this entry carries rarity:'SSS' -- same
+    // color-leak fix as chalice/smartphone/lantern's own v48.17 comments
+    // (resolveWeaponColor() would otherwise pick up RARITY_STYLE.SSS's
+    // near-white for this color-less part too).
     sparkler: {
       totalLen: 1.0,
       gripRatio: 0.85,
       parts: [
-        { type: 'shaft', from: 0.15, to: 1.0, width: 0.045 },
-        { type: 'circle', at: 0, r: 0.04 },
-        { type: 'polyline', points: [ { at: 0.05, dx: 0 }, { at: -0.05, dx: 0.08 } ], width: 0.02 },
-        { type: 'polyline', points: [ { at: 0.02, dx: 0.03 }, { at: -0.08, dx: -0.02 } ], width: 0.02 },
-        { type: 'polyline', points: [ { at: 0.08, dx: -0.05 }, { at: 0.15, dx: -0.15 } ], width: 0.02 },
-        { type: 'polyline', points: [ { at: 0.03, dx: -0.04 }, { at: -0.06, dx: -0.1 } ], width: 0.02 },
-        { type: 'polyline', points: [ { at: 0.1, dx: 0.06 }, { at: 0.18, dx: 0.14 } ], width: 0.02 }
+        { type: 'shaft', from: 0.15, to: 1.0, width: 0.045, color: SIL },
+        { type: 'circle', at: 0, r: 0.06, color: '#fff4c2', glow: 10 },
+        { type: 'polyline', points: [ { at: 0.05, dx: 0 }, { at: -0.05, dx: 0.08 } ], width: 0.02, color: '#fff4c2' },
+        { type: 'polyline', points: [ { at: 0.02, dx: 0.03 }, { at: -0.08, dx: -0.02 } ], width: 0.02, color: '#fff4c2' },
+        { type: 'polyline', points: [ { at: 0.08, dx: -0.05 }, { at: 0.15, dx: -0.15 } ], width: 0.02, color: '#fff4c2' },
+        { type: 'polyline', points: [ { at: 0.03, dx: -0.04 }, { at: -0.06, dx: -0.1 } ], width: 0.02, color: '#fff4c2' },
+        { type: 'polyline', points: [ { at: 0.1, dx: 0.06 }, { at: 0.18, dx: 0.14 } ], width: 0.02, color: '#fff4c2' }
       ]
     },
     // 魔法神燈 magicLamp: dist0 = the long upturned spout (a multi-segment
@@ -6591,7 +6632,7 @@
 
     // ---- J group: festive/fantasy items (3 -- balloon/paperAirplane
     // removed per user trim request: too small to read clearly held) ----
-    sparkler: itemEntry('仙女棒', 'sparkler', 'stuck'),
+    sparkler: itemEntry('仙女棒', 'sparkler', 'stuck', { rarity: 'SSS' }),
     magicLamp: itemEntry('魔法神燈', 'magicLamp', 'flat'),
     voodooDoll: itemEntry('巫毒娃娃', 'voodooDoll', 'stuck'),
     // 燈籠 lantern (v48.17, revived at giant-weapon scale -- see
