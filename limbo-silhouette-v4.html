@@ -1,4 +1,4 @@
-<title>剪影走路/跑步循環 v48.17 — 5 款發光 SSS 配件 + 燈籠復活 + 三叉戟水平持握</title>
+<title>剪影走路/跑步循環 v48.17.1 — 燈籠改圓形提燈造型 + 聖杯全身上色 + 手機螢幕發光加大</title>
 <style>
   :root{
     --ink:#e9e6df;
@@ -44,8 +44,9 @@
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17</div>
-    <h1>5 款發光 SSS 配件 + 燈籠復活 + 三叉戟水平持握</h1>
+    <div class="kicker">獨立技術驗證 — 剪影走路/跑步循環 v48.17.1</div>
+    <h1>燈籠改圓形提燈造型 + 聖杯全身上色 + 手機螢幕發光加大</h1>
+    <p class="sub"><b>問題回報(v48.17.1)</b>:使用者用參考圖(女孩提著圓形紙燈籠,手臂垂在身側,燈籠自然懸掛在手下方)指出燈籠造型完全不對——上一輪套用巨型武器那套「長條 <code>polygon</code>+水平持握(<code>heldTilt:-90°</code>)」,截圖裡燈籠變成一小坨貼在腳邊的紅色團塊,角度也不對,跟參考圖的「圓形+自然垂掛」相去甚遠。另外兩個小修正:聖杯的底座/杯莖上一輪只補了 <code>color:SIL</code>(黑色)沒有真的上暗金色,截圖顯示只有杯身有顏色;智慧型手機螢幕發光只有一個貼在手邊的小圓點(半徑僅手機自身寬度的 8%),使用者要求參考手電筒的柔光技法,改成佔手機約 80% 面積的方形發光。<br><br><b>燈籠重做</b>:捨棄長條造型,改成「握把在近手端(<code>gripRatio:0.92</code>,握把段 <code>totalLen</code> 的後 8%)、圓形燈籠主體垂在握把外側(<code>dist:0.3</code>,佔掉大部分長度)」的比例分配,搭配 <code>heldTilt</code> 從 <code>-90°</code>大幅調降到 <code>-15°</code>——這兩個改動缺一不可:只改形狀不改角度,圓形本體還是會被轉成水平;只改角度不改形狀,長條本體轉直了但還是讀不出「一顆燈籠」。截圖跟參考圖並排比對,主體垂掛角度、圓形輪廓、暖橘發光(色票從原本的暗紅 <code>#7a1f1f</code>换成更亮更暖的橘紅 <code>#e8631c</code>,glow 沿用 10)都跟參考圖的觀感接近,<code>-15°</code> 一次就達到「自然下垂」沒有再調的必要。<code>GIANT_WEAPON_KEYS</code> 的持握手臂擺動抑制维持保留(這是使用者特別點名要留住的行為,跟形狀/角度是分開的兩件事)。<br><br><b>聖杯補色</b>:底座(<code>crossbar</code>)、杯莖(<code>shaft</code>)兩個 part 的 <code>color</code> 從 <code>SIL</code> 改成跟杯身同一個暗金 <code>#7a5a1e</code>,但不加 <code>glow</code>——整顆聖杯統一材質色,只有杯身(視覺焦點)帶發光暈染,跟光劍「握把中性深色、只有刀身發光」是不同的分層方式(光劍是「材質色不同+只有一處發光」,聖杯這次是「材質色相同+只有一處發光」),但「只讓一個部位帶 <code>glow</code>」這個原則相同。<br><br><b>智慧型手機螢幕加大</b>:原本的小圓點(<code>circle</code>, r 0.03)換成一個跨手機本體約 80% 長寬的矩形 <code>polygon</code>(<code>at</code> 0.1~0.9,<code>dx</code> ±0.15,對比機身本體 <code>dx</code> 最大 ±0.19),沿用手電筒光束同一招半透明 <code>rgba()</code> 做出「微弱柔光」的質感(<code>rgba(143,208,255,0.55)</code>),額外加一個較弱的 <code>glow:4</code>(低於燈籠的 10、聖杯的 8,對應使用者「比手電筒再微弱一些」的要求)。截圖確認整片螢幕清楚可辨是方形發光區塊,不再是貼在手邊的一個小亮點。<br><br><b>驗證</b>:燈籠站立+走路兩種狀態截圖跟參考圖並排比對,垂掛角度、圓形主體、暖橘光暈都到位,走路循環持握手臂依然穩定(擺動抑制沒有被形狀重做影響)。聖杯截圖確認底座/杯莖/杯身/杯緣全部暗金,只有杯身有發光暈染。智慧型手機截圖確認方形螢幕發光佔機身大部分面積。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.17)</b>:三項調整——① 聖杯、智慧型手機、感測器指示燈、光環、皇冠 5 款配件加上發光效果並標記 <code>rarity:'SSS'</code>;② 燈籠(先前因「太小不易辨識」被移除)以巨型武器份量感重做復活,暗紅發光;③ 燈籠+三叉戟加進 <code>GIANT_WEAPON_KEYS</code>,三叉戟改水平持握。<br><br><b>1a 聖杯/智慧型手機(<code>drawWeaponParts</code> 系統)</b>:沿用光劍已驗證的 <code>p.glow</code> 機制(見該機制原始註解——<code>glow</code> 觸發時 <code>shadowColor</code> 直接讀該 part 自己 resolve 出來的顏色,不是另外指定),只在資料上加 <code>color</code>/<code>glow</code> 欄位,沒有新寫渲染邏輯。聖杯杯身+五顆杯緣圓點改暗金 <code>#7a5a1e</code>(杯身額外 <code>glow:8</code>);智慧型手機螢幕圓點改淺藍 <code>#8fd0ff</code>、<code>glow:6</code>。<br><br><b>截圖抓到一個問題,已修正</b>:兩款登記時都加了 <code>{rarity:'SSS'}</code>,但 <code>resolveWeaponColor()</code> 的優先權鏈是 part.color → style.color → style.rarity 查 <code>RARITY_STYLE</code>(<code>SSS</code> 對應近白 <code>#e9e6df</code>)→ 預設 <code>SIL</code>——聖杯的底座(<code>crossbar</code>/<code>shaft</code>)、手機的機身(<code>polygon</code>)跟鏡頭圓點原本都沒有自己的 <code>part.color</code>,一旦整組登記帶 <code>rarity:'SSS'</code>,這些「不該發光」的部位全部改抓 <code>RARITY_STYLE.SSS</code> 的近白色,截圖看起來變成整支手機/整個杯身泛白,不是「黑色本體 + 一小處發光」。修正方式是幫這些原本沒設色的 part 全部補上明確的 <code>color: SIL</code>,強制蓋過 rarity 查表這一層,只留意圖發光的 part 自己的顏色——跟武士刀當初「材質色蓋過稀有度色」的既有原則完全一致,只是這次反過來是「大部分維持黑,一小處自己上色」而非「整把上材質色」。<br><br><b>1b 感測器指示燈/光環/皇冠(獨立 draw 函式,沒接 <code>drawWeaponParts</code>)</b>:三款原本都寫死 <code>fillStyle=SIL</code>,額外接上 <code>shadowColor</code>/<code>shadowBlur</code>。感測器指示燈原本完全沒有 <code>ctx.save()</code>/<code>restore()</code> 包裹(不像多數頭部配件走 <code>drawInMountFrame</code>),補上明確的 save/restore,避免 shadow 狀態外洩到之後同一個 <code>accCtx</code> 上畫的貓尾巴/道具/表情符號;光環本來就有自己的 save/restore,直接在裡面加;皇冠走 <code>drawInMountFrame</code>(該函式本身就整段包 save/restore),不需要額外處理。三款登記表 <code>rarity</code> 從 <code>null</code> 改 <code>'SSS'</code>——頭部配件系統本身沒有稀有度驅動顏色的機制(顏色都是各自函式寫死),純粹 cataloging metadata,不會像 1a 的武器系統那樣有 rarity 污染色彩的風險。<br><br><b>2 燈籠復活</b>:新增 <code>WEAPON_SHAPES.lantern</code>(短握把+六邊形燈籠外殼+暗紅發光火焰圓,<code>#7a1f1f</code>,<code>glow:10</code>),沿用跟 1a 相同的教訓——握把、外殼都明確加 <code>color: SIL</code>,只留火焰自己的顏色,避免同一個 <code>rarity:'SSS'</code> 污染問題重演(這次實作時直接一併補上,沒有等截圖才發現)。<code>heldTilt</code> 沒有照抄關刀的 <code>-90°</code>——先用預設角度(未覆寫,即全域 <code>-50°</code>)截圖站立+走路兩種狀態,提在手上的角度已經自然可信(斜提,不拖地、不橫躺),不需要額外覆寫,維持預設值。<br><br><b>3 燈籠/三叉戟加入 <code>GIANT_WEAPON_KEYS</code></b>:三叉戟本身已是單手註冊,只需加進陣列(擺動抑制自動套用,不需要額外接線);另外加 <code>heldTilt:-90°*Math.PI/180</code> 覆寫,截圖確認站立/走路都轉成水平持握,跟關刀/死神鐮刀持握質感一致。<br><br><b>驗證</b>:5 款發光配件逐一截圖確認發光清楚可辨;感測器指示燈/皇冠額外搭配貓尾巴+手持道具同時開啟截圖,確認 shadow 沒有外洩到後面畫的其他配件(貓尾巴維持純黑,沒有跟著發光)。燈籠站立+走路兩種狀態截圖確認持握角度自然、暗紅火焰清楚。三叉戟站立+走路確認水平持握、跟巨型武器同一套擺動抑制生效。17 原型 × 86 款手部配件 × 24 款頭部配件回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>問題回報(v48.16.6)</b>:寵物飄浮到最低點時會蓋住自己的陰影。使用者列了兩個可能根因,要求先查再修——① 陰影是否誤用了套過 <code>withPetFloat</code> 偏移的 mount,兩邊共用同一個變數;② 陰影本來就用原始 mount,但本體/陰影的固定基礎間距不夠,飄到最低點時剪影範圍還是壓住陰影。<br><br><b>查證</b>:兩處呼叫都重新核對——<code>footMount</code> 那處先用原始 <code>mounts.footMount</code> 呼叫 <code>drawPetShadow</code>,才用 <code>withPetFloat(mounts.footMount,...)</code> 呼叫 <code>petEntry.draw</code>;<code>petSideMount</code> 那處同樣先原始後 float。兩處都是各自獨立變數,不是共用同一個已經套過偏移的變數——排除根因①。<br><br><b>根因確認為②(基礎間距不足),用幾何算清楚,不是憑感覺</b>:<code>drawCoalBody()</code> 的橢圓在本體自己的局部座標系裡,底緣剛好落在掛載原點(局部 <code>y=0</code>),等於「本體飄浮偏移為 0 時,底緣正好貼齊 mount.y」,完全沒有預留給陰影的間距;而 <code>PET_FLOAT_AMP_RATIO</code>(0.35×headR)本身就比舊版 <code>drawPetShadow</code> 讓陰影落在 mount.y 附近的那一點點厚度(約 0.17×headR)大上一倍以上——飄浮循環的下半段(本體下沉),本體底緣會下探到遠超陰影下緣的深度,寬度足夠的本體剪影因此整片蓋住陰影,不是單純視覺變淡,是真的被遮擋;「+小腳」款更嚴重,腳的末端又比本體底緣再往下延伸約 0.32×headR。<br><br><b>修正</b>:新增 <code>PET_SHADOW_GAP = 0.75</code>(headR 比例的固定基礎間距,不是飄浮幅度本身),<code>drawPetShadow()</code> 呼叫 <code>drawGroundShadow()</code> 時把 <code>groundY</code> 從 <code>mount.y</code> 改成 <code>mount.y + PET_SHADOW_GAP*headR</code>——用「+小腳」款在飄浮最低點的最深探底距離反推所需間距下限(0.35+0.32=0.67,含安全餘裕抓到 0.75),涵蓋所有款式的最壞情況,不是只顧本體較淺的無腳款。<br><br><b>驗證</b>:先寫程式化量測(不是憑肉眼猜)找出飄浮循環的實際峰值/谷值影格——側面走路連續截 24 張(涵蓋完整週期),量測寵物剪影 y 範圍,挑出最深(谷值)跟最高(峰值)兩張。「獨眼+小腳」款(最壞情況)谷值影格截圖確認陰影完整可見、清楚落在腳下方,沒有被本體剪影覆蓋;峰值影格陰影跟本體之間有明顯懸浮間距,飄浮感更清楚。無腳款(疊坐小煤炭)同樣兩個極值影格檢查,陰影全程可見,間距沒有大到讀起來像陰影脫節。17 原型 × 8 款寵物切換回歸測試 zero console 錯誤。</p>
     <p class="sub"><b>需求(v48.16.5)</b>:兩項調整——① 翅膀拔掉改名「雙煤炭」效果不好,改成主體頭上疊坐一隻更小的小小煤炭,取代 <code>coalWings</code>/<code>coalWingsFeet</code>,小小煤炭自己也要有眼睛、也要套用側臉/正面切換邏輯;② 寵物目前完全沒有地面陰影,跟一直都有陰影的角色本體放在一起顯得像浮貼上去,要補上,且陰影必須釘死在地面、不能跟著 <code>withPetFloat</code> 的飄浮偏移一起動。<br><br><b>①實作</b>:新增 <code>drawCoalRider(c, headR, bodyCy, facing)</code>,疊在主體頭頂上方,水平方向套用自己獨立的 <code>Math.sin(accessoryT*PET_FLOAT_SPEED - PET_RIDER_LAG)*PET_RIDER_SWAY_AMP*headR</code>(新增 <code>PET_RIDER_LAG=0.8</code>/<code>PET_RIDER_SWAY_AMP=0.08</code> 兩個常數)——沿用主體同一個 <code>accessoryT</code> 時鐘但帶相位延遲,讀起來像「坐在上面被主體帶動甩動」而不是「跟主體完全同步鏡像」。眼睛用獨立 blink index(<code>petEyeScale(100, ...)</code>,跟主體的 0/1/2 明顯不撞號),同樣吃 <code>facing</code> 參數切換置中(正面)/偏面向側(側面)。<code>coalWings</code>/<code>coalWingsFeet</code> 兩筆整個換成 <code>coalRider</code>/<code>coalRiderFeet</code>,<code>apex</code> 從共用的 <code>PET_HEIGHT_RATIO*headR</code> 改成 <code>(PET_HEIGHT_RATIO+0.55)*headR</code>(疊高後的量測值)——雖然目前 <code>PET_REGISTRY</code> 的 <code>apex</code> 欄位查證後全程式碼還沒有實際呼叫端在用(頭部配件的 <code>apex</code> 才有接到 <code>headAccessoryClearance()</code>),但作為未來可能接上的 metadata,疊高多少就照實反映多少,不留錯誤的數字在那裡。<br><br><b>①截圖抓到一個問題,已修正</b>:小小煤炭的眼睛半徑最初照使用者片段給的 <code>PET_EYE_R*headR*0.75</code>,截圖放大檢視後這顆眼睛在畫面上幾乎融進小小煤炭自己的黑色剪影裡、看不出白點(這個畫布尺度下 <code>headR</code> 只有個位數 px,0.75 倍的 <code>PET_EYE_R</code> 換算下來已經是次像素等級,被畫面縮放的抗鋸齒稀釋到幾乎不可見,主體自己的眼睛半徑更大一些才勉強撐得住同樣的稀釋)。掃了幾組倍率後改成 1.4(其餘位置/計算不變),重新截圖確認小小煤炭的白點眼睛清楚可辨,跟主體的兩顆眼睛明顯是兩個獨立個體、不是同一組眼睛分身。<br><br><b>②實作</b>:新增 <code>drawPetShadow(ctx, mount, headR)</code>,不重新發明畫法,直接包一層呼叫角色本體既有的 <code>drawGroundShadow()</code>(同一份顏色深淺/橢圓扁平比例,兩份陰影視覺上自然一致)。兩個既有呼叫處都在套用 <code>withPetFloat()</code> 之前,先用原始(未套飄浮偏移)的 <code>mounts.petSideMount</code>/<code>mounts.footMount</code> 呼叫 <code>drawPetShadow</code>,陰影因此固定貼地,只有寵物本體(套了 float 偏移的版本)上下飄浮;<code>footMount</code> 那處額外用 <code>footDisplay === petEntry</code> 判斷式擋掉,收納中的手部配件(劍/水壺)不會意外長出寵物陰影。繪製順序陰影在前、本體在後,本體正確蓋在陰影上面。<br><br><b>驗證</b>:<code>coalRider</code>/<code>coalRiderFeet</code> 側面走路+正面站定(等轉場完全結束)各截圖,小小煤炭疊在頭上位置協調、facing 切換有生效(正面置中、側面偏面向側)、眨眼跟主體不同步(獨立 index 確認過)。陰影驗證用連續 6 格走路截圖量測——寵物剪影的最上緣 y 座標隨飄浮在 118-123px 之間變動(確認本體真的在飄),同一批影格裡陰影本身最暗的那一列固定卡在 y=150,6 格完全沒有變動(確認陰影真的釘死不動),繪製順序目視確認本體疊在陰影上面而非陰影蓋住本體。17 原型 × 8 款寵物切換回歸測試 zero console 錯誤。</p>
@@ -4862,23 +4863,37 @@
       ]
     },
     // 燈籠 lantern (v48.17, revived -- previously cut for reading too
-    // small; rebuilt at giant-weapon scale): a short handle + a wide
-    // hexagonal cage polygon + a dark-red glowing flame circle centered
-    // inside the cage. rarity/registration live on the HAND_ACCESSORY_
-    // REGISTRY entry (stuckWeaponEntry's opts), same as every other
-    // weapon -- rarity is never stored on the shape data itself (see
-    // katana's own comment on this split). handle/cage get explicit
-    // color:SIL -- same reasoning as chalice/smartphone's own v48.17
-    // comments: without it, resolveWeaponColor() falls through to
+    // small; rebuilt at giant-weapon scale). rarity/registration live on
+    // the HAND_ACCESSORY_REGISTRY entry (stuckWeaponEntry's opts), same as
+    // every other weapon -- rarity is never stored on the shape data
+    // itself (see katana's own comment on this split). Non-glowing parts
+    // get explicit color:SIL -- same reasoning as chalice/smartphone's own
+    // v48.17 comments: without it, resolveWeaponColor() falls through to
     // RARITY_STYLE.SSS's near-white for every part lacking its own
     // part.color, not just the flame.
+    //
+    // v48.17.1: first version was a long horizontal hexagonal cage
+    // (giant-weapon proportions, heldTilt:-90deg) -- screenshotted against
+    // the user's reference image (a girl carrying a round paper lantern,
+    // arm hanging naturally, lantern dangling below the hand) and it read
+    // nothing like it: a long bar held level instead of a round shape
+    // hanging down. Rebuilt around a round body instead of a long polygon
+    // -- dist0 is near the carry handle (gripRatio 0.92, close to
+    // totalLen), the round lantern body sits further out at dist 0.3 (most
+    // of the item's length is BELOW/past the grip, matching "dangling from
+    // the hand" rather than "gripped in the middle of a long shaft").
+    // heldTilt dropped from -90deg to a small -15deg so the body hangs
+    // near-vertically off the hand instead of swinging level -- screenshot
+    // confirmed -15deg alone (no further correction needed) already reads
+    // as "dangling," not "held out sideways."
     lantern: {
-      totalLen: 1.6,
-      gripRatio: 0.85,
+      totalLen: 1.3,
+      gripRatio: 0.92,
+      heldTilt: -15 * Math.PI / 180,
       parts: [
-        { type: 'shaft', from: 0, to: 0.15, width: 0.05, color: SIL },
-        { type: 'polygon', points: [ { at: 0.15, dx: -0.3 }, { at: 0.2, dx: -0.42 }, { at: 1.3, dx: -0.4 }, { at: 1.5, dx: -0.2 }, { at: 1.5, dx: 0.2 }, { at: 1.3, dx: 0.4 }, { at: 0.2, dx: 0.42 }, { at: 0.15, dx: 0.3 } ], color: SIL },
-        { type: 'circle', at: 0.85, r: 0.28, color: '#7a1f1f', glow: 10 }
+        { type: 'shaft', from: 0.95, to: 1.3, width: 0.05, color: SIL },
+        { type: 'circle', at: 0.3, r: 0.34, color: '#e8631c', glow: 10 },
+        { type: 'shaft', from: 0.62, to: 0.95, width: 0.06, color: SIL }
       ]
     }
   };
@@ -4993,21 +5008,26 @@
     // 'held' only; gripRatio (0.35, landing the grip mid-stem at 0.49 of
     // 1.4) already puts the grip on the stem correctly once reversed, no
     // change needed there.
-    // v48.17: base(crossbar)/stem(shaft) get an explicit color:SIL now
-    // that this entry carries rarity:'SSS' -- without it, resolveWeaponColor()
+    // v48.17: base(crossbar)/stem(shaft) needed an explicit color now that
+    // this entry carries rarity:'SSS' -- without one, resolveWeaponColor()
     // falls through past the missing part.color to style.rarity and picks
     // up RARITY_STYLE.SSS's near-white '#e9e6df' for those two parts too
-    // (screenshotted: the whole item read as pale grey/white, not "black
-    // base + glowing gold bowl"). Only the bowl polygon/rim circles are
-    // meant to carry the gold, so every other part needs its own explicit
-    // SIL now instead of relying on "no rarity means SIL by default".
+    // (screenshotted: the whole item read as pale grey/white). First fix
+    // used color:SIL (kept everything but the bowl plain black), but a
+    // follow-up screenshot showed the base/stem still reading as flat
+    // black against the gold bowl -- not the intended "whole item is the
+    // same warm gold material" look. v48.17.1: base/stem now carry the
+    // SAME gold as the bowl, just without glow -- only the bowl (the
+    // actual focal point) gets the shadowBlur haze, same "material color
+    // everywhere, glow only on the one part that should shine" split the
+    // lightsaber hilt/blade already established.
     chalice: {
       totalLen: 1.4,
       gripRatio: 0.35,
       heldReverse: true,
       parts: [
-        { type: 'crossbar', at: 0.05, halfLen: 0.28, width: 0.14, color: SIL },
-        { type: 'shaft', from: 0.1, to: 0.9, width: 0.12, color: SIL },
+        { type: 'crossbar', at: 0.05, halfLen: 0.28, width: 0.14, color: '#7a5a1e' },
+        { type: 'shaft', from: 0.1, to: 0.9, width: 0.12, color: '#7a5a1e' },
         { type: 'polygon', points: [ { at: 0.85, dx: -0.12 }, { at: 1.1, dx: -0.38 }, { at: 1.4, dx: -0.42 }, { at: 1.4, dx: 0.42 }, { at: 1.1, dx: 0.38 }, { at: 0.85, dx: 0.12 } ], color: '#7a5a1e', glow: 8 },
         { type: 'circle', at: 1.4, dx: -0.35, r: 0.05, color: '#7a5a1e' },
         { type: 'circle', at: 1.4, dx: -0.17, r: 0.05, color: '#7a5a1e' },
@@ -5697,6 +5717,15 @@
     // rarity:'SSS' -- same reasoning as chalice's own v48.17 comment above
     // (RARITY_STYLE.SSS would otherwise leak its near-white color onto
     // every color-less part, not just the intentionally-glowing screen).
+    // v48.17.1: screen glow was a single tiny circle (r 0.03, ~8% of the
+    // body's own width) sitting right at the hand -- barely readable as
+    // "phone screen lit up," closer to a single indicator LED. Replaced
+    // with a rectangle polygon spanning most of the body's own footprint
+    // (~80% of both its length and width) so it reads as the actual
+    // screen, not a dot on it. Soft translucent fill (rgba alpha) is the
+    // SAME technique flashlight's own beam cone uses for "weak glow," plus
+    // a modest glow (4, below lantern's 10 / chalice's 8) for a screen-lit
+    // haze rather than flashlight's directional beam brightness.
     smartphone: {
       totalLen: 1.0,
       flatLift: 0.19,
@@ -5704,7 +5733,7 @@
       parts: [
         { type: 'polygon', points: [ { at: 0.03, dx: -0.19 }, { at: 0, dx: -0.15 }, { at: 0, dx: 0.15 }, { at: 0.03, dx: 0.19 }, { at: 0.97, dx: 0.19 }, { at: 1.0, dx: 0.15 }, { at: 1.0, dx: -0.15 }, { at: 0.97, dx: -0.19 } ], color: SIL },
         { type: 'circle', at: 0.1, r: 0.035, color: SIL },
-        { type: 'circle', at: 0.92, r: 0.03, color: '#8fd0ff', glow: 6 }
+        { type: 'polygon', points: [ { at: 0.1, dx: -0.15 }, { at: 0.9, dx: -0.15 }, { at: 0.9, dx: 0.15 }, { at: 0.1, dx: 0.15 } ], color: 'rgba(143,208,255,0.55)', glow: 4 }
       ]
     },
 
